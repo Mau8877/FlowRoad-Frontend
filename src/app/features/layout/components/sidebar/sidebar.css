@@ -1,0 +1,45 @@
+/* sidebar.css */
+
+.text-fr-taupe {
+    color: #A8A196;
+    transition: color 0.2s ease-in-out;
+}
+
+/* Efecto de hover: Solo cambia a blanco el texto, los iconos se quedan dorados */
+.group:hover .text-fr-taupe {
+    color: #FFFFFF;
+}
+
+/* Línea Decorativa Izquierda */
+.border-l {
+    transition: border-color 0.4s ease;
+    border-color: rgba(255, 255, 255, 0.05);
+}
+
+div.ml-6:hover {
+    border-color: rgba(212, 175, 55, 0.3);
+}
+
+/* Brillo del punto al hover */
+.group:hover .w-1 {
+    transform: scale(1.5);
+    transition: all 0.3s ease;
+    box-shadow: 0 0 8px rgba(212, 175, 55, 0.5);
+}
+
+/* Scrollbar invisible */
+.custom-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+/* Tipografía */
+nav span,
+nav button {
+    letter-spacing: 0.15em;
+    -webkit-font-smoothing: antialiased;
+}

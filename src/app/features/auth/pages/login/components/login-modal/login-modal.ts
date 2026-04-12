@@ -18,6 +18,7 @@ export class LoginModal {
   // Signals para la UI
   public IS_LOADING = signal(false);
   public ERROR_MSG = signal<string | null>(null);
+  public SHOW_PASSWORD = signal(false);
 
   loginForm = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
@@ -43,5 +44,9 @@ export class LoginModal {
         console.error('Login Error:', err);
       },
     });
+  }
+
+  TOGGLE_PASSWORD() {
+    this.SHOW_PASSWORD.update((v) => !v);
   }
 }

@@ -1,0 +1,23 @@
+:host {
+    display: block;
+    height: 100vh;
+    width: 100vw;
+}
+
+/* Scrollbar personalizado para que se vea 'God' */
+main::-webkit-scrollbar {
+    width: 6px;
+}
+
+main::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+main::-webkit-scrollbar-thumb {
+    background: #e2e8f0;
+    border-radius: 10px;
+}
+
+main::-webkit-scrollbar-thumb:hover {
+    background: var(--color-fr-gold);
+}

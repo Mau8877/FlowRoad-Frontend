@@ -23,6 +23,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "jwt-decode": "^4.0.0",
+    "lucide-angular": "^1.0.0",
     "ngx-cookie-service": "^21.3.1",
     "rxjs": "~7.8.0",
     "tailwind-merge": "^3.5.0",
