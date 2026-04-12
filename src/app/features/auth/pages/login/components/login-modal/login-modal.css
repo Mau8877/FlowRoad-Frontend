@@ -1,0 +1,24 @@
+:host {
+    display: block;
+}
+
+.card {
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    transition: transform 0.3s ease;
+}
+
+.card:hover {
+    border-color: var(--color-fr-gold);
+}
+
+.btn {
+    background-color: var(--color-fr-gold);
+    color: white;
+}
+
+.btn:disabled {
+    background-color: #1a1a1a !important;
+    color: #444 !important;
+    border: 1px solid #333 !important;
+    cursor: not-allowed;
+}

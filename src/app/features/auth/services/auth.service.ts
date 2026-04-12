@@ -4,7 +4,13 @@ import { CookieService } from 'ngx-cookie-service';
 import { jwtDecode } from 'jwt-decode';
 import { tap } from 'rxjs';
 import { environment } from '#/environments/environment';
-import { LoginRequest, AuthResponse, User, RegisterRequest } from '../interfaces/auth.model';
+import {
+  LoginRequest,
+  AuthResponse,
+  User,
+  RegisterRequest,
+  JwtPayload,
+} from '../interfaces/auth.model';
 
 @Injectable({
   providedIn: 'root',
@@ -14,11 +20,11 @@ export class AuthService {
   private cookieService = inject(CookieService);
   private readonly URL = `${environment.BASE_URL}/auth`;
 
-  // 1. Estado privado
+  // 1. Estado privado (Signals)
   private _token = signal<string | null>(null);
   private _user = signal<User | null>(null);
 
-  // 2. Exposición pública (Signals de solo lectura)
+  // 2. Exposición pública
   public currentUser = this._user.asReadonly();
   public isAuthenticated = computed(() => !!this._token());
 
@@ -31,7 +37,6 @@ export class AuthService {
   LOGIN(credentials: LoginRequest) {
     return this.http.post<AuthResponse>(`${this.URL}/login`, credentials).pipe(
       tap((response) => {
-        // Guardamos en Cookie por seguridad
         this.cookieService.set('auth_token', response.token, 1, '/');
         this._token.set(response.token);
         this.DECODE_AND_SET_USER(response.token);
@@ -63,14 +68,20 @@ export class AuthService {
     }
   }
 
+  /**
+   * Decodifica el JWT usando el tipado estricto JwtPayload
+   * y mapea los datos al modelo User de la aplicación.
+   */
   private DECODE_AND_SET_USER(token: string): void {
     try {
-      const decoded: any = jwtDecode(token);
+      // Usamos el Genérico <JwtPayload> para autocompletado y seguridad
+      const decoded = jwtDecode<JwtPayload>(token);
+
       this._user.set({
-        uid: decoded.sub || decoded.id,
-        email: decoded.email,
-        displayName: decoded.name || 'Usuario',
-        roles: decoded.roles || [],
+        uid: decoded.userId, //userId del JWT -> uid
+        email: decoded.sub, //sub del JWT -> email
+        displayName: decoded.sub.split('@')[0], // Extrae el nombre del correo
+        roles: [decoded.role], // Convierte el role único en Array
       });
     } catch (error) {
       console.error('Error decodificando el token', error);

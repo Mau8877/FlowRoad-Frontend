@@ -1,3 +1,47 @@
-/* You can add global styles to this file, and also import other style files */
+@import "tailwindcss";
+@plugin "daisyui";
 
-@import 'tailwindcss';
+@theme {
+    /* Paleta de Colores FlowRoad */
+    --color-fr-black: #020304;
+    /* Fondo profundo */
+    --color-fr-brown: #541F14;
+    /* Primario / Detalle */
+    --color-fr-taupe: #938172;
+    /* Texto secundario / Bordes */
+    --color-fr-gold: #CC9E61;
+    /* Acento / Call to action */
+    --color-fr-gray: #626266;
+    /* Neutral */
+
+    /* Tipografía */
+    --font-display: "Bebas Neue", sans-serif;
+    /* Para "FLOWROAD" */
+    --font-sans: "Inter", system-ui, sans-serif;
+    /* Para el resto */
+}
+
+/* Configuración de DaisyUI para usar tu paleta */
+[data-theme="dark"] {
+    --b1: var(--color-fr-black);
+    /* Background nivel 1 */
+    --p: var(--color-fr-brown);
+    /* Primary */
+    --s: var(--color-fr-taupe);
+    /* Secondary */
+    --acc: var(--color-fr-gold);
+    /* Accent */
+    --n: var(--color-fr-gray);
+    /* Neutral */
+
+    /* Color de texto base para que contraste con el negro */
+    --bc: 255 255 255;
+}
+
+body,
+html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+}

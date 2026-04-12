@@ -1,41 +1,16 @@
-<div class="flex min-h-screen items-center justify-center bg-slate-950 p-4">
-    <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-xl shadow-2xl overflow-hidden">
+<div class="h-screen w-screen flex overflow-hidden bg-fr-black">
 
-        <div class="p-6 pb-0">
-            <h3 class="text-2xl font-bold text-white tracking-tight">Bienvenido</h3>
-            <p class="text-slate-400 text-sm mt-1">Ingresa tus credenciales para acceder a FlowRoad</p>
+    <div class="relative hidden lg:flex lg:w-[60%] items-center justify-center p-20 bg-linear-to-r from-fr-black via-fr-brown/25 to-fr-black">
+
+        <app-login-carousel class="z-20"></app-login-carousel>
+
+        <div
+            class="absolute -right-12 top-0 h-full w-24 bg-white -skew-x-6 z-30 shadow-[15px_0_35px_rgba(0,0,0,0.6)]">
         </div>
-
-        <div class="p-6">
-            <form [formGroup]="loginForm" (ngSubmit)="ON_SUBMIT()" class="space-y-5">
-
-                <div class="space-y-2">
-                    <label for="email" class="text-sm font-medium text-slate-200 block">Correo Electrónico</label>
-                    <input id="email" type="email" formControlName="email" placeholder="nombre@ejemplo.com"
-                        class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" />
-                </div>
-
-                <div class="space-y-2">
-                    <label for="password" class="text-sm font-medium text-slate-200 block">Contraseña</label>
-                    <input id="password" type="password" formControlName="password"
-                        class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" />
-                </div>
-
-                <button type="submit" [disabled]="loginForm.invalid"
-                    class="w-full py-2.5 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 focus:ring-4 focus:ring-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all mt-2">
-                    Iniciar Sesión
-                </button>
-            </form>
-        </div>
-
-        <div class="p-6 pt-0 flex flex-col items-center">
-            <div class="w-full h-[1px] bg-slate-800 mb-6"></div>
-            <p class="text-sm text-slate-500">
-                ¿No tienes cuenta?
-                <a href="#"
-                    class="text-blue-500 hover:text-blue-400 font-medium hover:underline transition-colors">Regístrate</a>
-            </p>
-        </div>
-
     </div>
+
+    <div class="flex w-full lg:w-[40%] items-center justify-center bg-white p-8 z-40">
+        <app-login-modal class="w-full max-w-md scale-90 lg:scale-95 origin-center"></app-login-modal>
+    </div>
+
 </div>

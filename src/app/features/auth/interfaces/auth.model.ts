@@ -21,3 +21,12 @@ export interface User {
   displayName: string;
   roles: string[];
 }
+
+export interface JwtPayload {
+  role: string;
+  userId: string;
+  orgId?: string;
+  sub: string;
+  iat: number;
+  exp: number;
+}

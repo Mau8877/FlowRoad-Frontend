@@ -1,0 +1,56 @@
+<div class="p-10 bg-slate-50 min-h-screen">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-4xl font-display text-fr-black uppercase tracking-tighter">
+            Panel de Control <span class="text-fr-gold">FlowRoad</span>
+        </h1>
+
+        <div class="h-1 w-20 bg-fr-brown mt-2 mb-10"></div>
+
+        @if (authService.currentUser(); as user) {
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+            <div class="card bg-white shadow-xl border border-slate-200">
+                <div class="card-body">
+                    <h2 class="card-title text-fr-brown uppercase text-sm tracking-widest">Información del Perfil</h2>
+                    <div class="space-y-2 mt-4">
+                        <p class="text-slate-600 text-sm">
+                            <span class="font-bold text-fr-black">Nombre:</span> {{ user.displayName }}
+                        </p>
+                        <p class="text-slate-600 text-sm">
+                            <span class="font-bold text-fr-black">Email:</span> {{ user.email }}
+                        </p>
+                        <p class="text-slate-600 text-sm">
+                            <span class="font-bold text-fr-black">ID de Usuario:</span>
+                            <code class="bg-slate-100 px-2 py-0.5 rounded text-[10px]">{{ user.uid }}</code>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card bg-fr-black text-white shadow-xl">
+                <div class="card-body">
+                    <h2 class="card-title text-fr-gold uppercase text-sm tracking-widest">Estado de Acceso</h2>
+                    <div class="flex items-center gap-3 mt-4">
+                        <div class="badge badge-success gap-2 p-4 font-black">
+                            {{ user.roles[0] }}
+                        </div>
+                        <span class="text-[10px] uppercase tracking-widest opacity-60">Acceso Autorizado</span>
+                    </div>
+
+                    <div class="card-actions justify-end mt-6">
+                        <button (click)="authService.LOGOUT()"
+                            class="btn btn-error btn-outline btn-sm uppercase text-[10px]">
+                            Cerrar Sesión
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        } @else {
+        <div class="alert alert-warning">
+            <span>No se encontró información de sesión activa.</span>
+        </div>
+        }
+    </div>
+</div>
