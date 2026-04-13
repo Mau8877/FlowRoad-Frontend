@@ -95,7 +95,7 @@ export class AuthService {
     this.cookieService.delete('auth_token', '/');
     this._token.set(null);
     this._user.set(null);
-    this.router.navigate(['/']);
+    this.router.navigate(['/auth/login']);
   }
 
   private CHECK_AUTH_STATUS(): void {

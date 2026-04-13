@@ -1,5 +1,7 @@
 import { Routes } from '@angular/router';
 import { Layout } from './features/layout/layout';
+import { authGuard } from './core/guards/auth.guard';
+import { roleGuard } from './core/guards/role.guard';
 
 export const routes: Routes = [
   // ZONA PÚBLICA (Sin Layout)
@@ -11,15 +13,20 @@ export const routes: Routes = [
   // ZONA PRIVADA (Todo bajo el mismo Layout)
   {
     path: '',
-    component: Layout, // 👈 EL ÚNICO LAYOUT
+    component: Layout,
+    canActivate: [authGuard],
     children: [
       {
         path: 'dashboard',
+        canActivate: [roleGuard],
+        data: { roles: ['ADMIN', 'DESIGNER', 'CLIENT', 'WORKER', 'RECEP'] },
         loadChildren: () =>
           import('./features/dashboard/dashboard.routes').then((m) => m.DASHBOARD_ROUTES),
       },
       {
         path: 'config',
+        canActivate: [roleGuard],
+        data: { roles: ['ADMIN', 'DESIGNER'] },
         loadChildren: () =>
           import('./features/config-org/config-org.routes').then((m) => m.CONFIG_ORG_ROUTES),
       },
@@ -29,5 +36,5 @@ export const routes: Routes = [
   },
 
   // Redirección global
-  { path: '', redirectTo: 'auth', pathMatch: 'full' },
+  { path: '**', redirectTo: 'auth', pathMatch: 'full' },
 ];
