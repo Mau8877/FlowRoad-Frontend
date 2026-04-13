@@ -45,6 +45,9 @@ export class EditModal implements OnChanges {
   @Output() onClose = new EventEmitter<void>();
   @Output() onSave = new EventEmitter<any>();
 
+  // 👈 NUEVO: Emisor para detectar cambios en cascada
+  @Output() onFieldChange = new EventEmitter<{ name: string; value: any }>();
+
   public form!: FormGroup;
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -76,6 +79,17 @@ export class EditModal implements OnChanges {
     this.form = this.fb.group(group);
   }
 
+  /**
+   * 👈 NUEVO: Captura el cambio y notifica al UsersComponent
+   */
+  handleInputChange(fieldName: string, event: Event): void {
+    const element = event.target as HTMLInputElement | HTMLSelectElement;
+    const value = element.value;
+    this.onFieldChange.emit({ name: fieldName, value });
+  }
+
+  // --- LÓGICA DE MULTISELECT-CHIPS ---
+
   addChip(fieldName: string, event: Event): void {
     const selectElement = event.target as HTMLSelectElement;
     const value = selectElement.value;
@@ -83,14 +97,18 @@ export class EditModal implements OnChanges {
 
     const currentValues: string[] = this.form.get(fieldName)?.value || [];
     if (!currentValues.includes(value)) {
-      this.form.get(fieldName)?.setValue([...currentValues, value]);
+      const updatedValues = [...currentValues, value];
+      this.form.get(fieldName)?.setValue(updatedValues);
+      this.onFieldChange.emit({ name: fieldName, value: updatedValues });
     }
     selectElement.value = '';
   }
 
   removeChip(fieldName: string, valueToRemove: string): void {
     const currentValues: string[] = this.form.get(fieldName)?.value || [];
-    this.form.get(fieldName)?.setValue(currentValues.filter((v) => v !== valueToRemove));
+    const updatedValues = currentValues.filter((v) => v !== valueToRemove);
+    this.form.get(fieldName)?.setValue(updatedValues);
+    this.onFieldChange.emit({ name: fieldName, value: updatedValues });
   }
 
   getAvailableOptions(field: FormField): any[] {

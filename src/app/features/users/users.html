@@ -1,0 +1,51 @@
+<app-common-table [title]="'Gestión de Usuarios'" [subtitle]="'Control de Personal, Roles y Accesos'"
+    [iconName]="'users'" [data]="users" [columns]="tableColumns" [isLoading]="isLoading()"
+    (onEdit)="handleEdit($event)" (onDelete)="handleDelete($event)" (onAdd)="isCreateModalOpen.set(true)">
+
+    <ng-template #customCell let-row>
+        <div class="flex items-center gap-3">
+            <div
+                class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center border border-slate-200 shadow-sm shrink-0 overflow-hidden">
+                @if (row.profile.avatarUrl) {
+                <img [src]="row.profile.avatarUrl" alt="Avatar" class="w-full h-full object-cover">
+                } @else {
+                <span class="text-xs font-black text-slate-400 uppercase">
+                    {{ row.profile.nombre[0] }}{{ row.profile.apellido[0] }}
+                </span>
+                }
+            </div>
+
+            <div class="flex flex-col text-left">
+                <span class="text-sm font-bold text-slate-800 leading-tight">
+                    {{ row.profile.nombre }} {{ row.profile.apellido }}
+                </span>
+                <div class="flex items-center gap-1.5 mt-0.5">
+                    <lucide-icon name="mail" class="w-2.5 h-2.5 text-slate-300"></lucide-icon>
+                    <span class="text-[9px] font-medium text-slate-400 lowercase tracking-wider">
+                        {{ row.email }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </ng-template>
+</app-common-table>
+
+<app-create-modal [isOpen]="isCreateModalOpen()" [title]="'Registrar Nuevo Usuario'" [fields]="formFields"
+    (onClose)="isCreateModalOpen.set(false)" (onSave)="handleSave($event)"
+    (onFieldChange)="$event.name === 'departmentId' ? onDepartmentChange($event.value) : null">
+</app-create-modal>
+
+<app-edit-modal [isOpen]="isEditModalOpen()" [title]="'Actualizar Datos de Usuario'" [fields]="formFields"
+    [data]="selectedUser()" (onClose)="isEditModalOpen.set(false)" (onSave)="handleUpdate($event)"
+    (onFieldChange)="$event.name === 'departmentId' ? onDepartmentChange($event.value) : null">
+</app-edit-modal>
+
+<app-delete-modal [isOpen]="isDeleteModalOpen()" [title]="'Desactivar Acceso'"
+    [itemName]="selectedUser()?.profile?.nombre + ' ' + selectedUser()?.profile?.apellido"
+    [itemId]="selectedUser()?.id || ''" (onClose)="isDeleteModalOpen.set(false)" (onConfirm)="confirmDelete()">
+</app-delete-modal>
+
+<button (click)="isCreateModalOpen.set(true)"
+    class="fixed bottom-8 right-8 bg-slate-900 text-white p-4 rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all z-50 lg:hidden flex items-center justify-center">
+    <lucide-icon name="user-plus" class="w-6 h-6 text-fr-gold"></lucide-icon>
+</button>

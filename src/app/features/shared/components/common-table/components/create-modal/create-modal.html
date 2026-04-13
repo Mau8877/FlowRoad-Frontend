@@ -61,6 +61,7 @@
 
                     } @else if (field.type === 'select') {
                     <select [id]="field.name" [formControlName]="field.name"
+                        (change)="handleInputChange(field.name, $event)"
                         class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-700 focus:border-fr-gold focus:ring-4 focus:ring-fr-gold/5 outline-none transition-all appearance-none">
                         <option value="">Seleccionar...</option>
                         @for (opt of field.options; track opt.value) {
@@ -79,7 +80,7 @@
                     </div>
                     } @else {
                     <input [type]="field.type" [id]="field.name" [formControlName]="field.name"
-                        [placeholder]="field.placeholder || ''"
+                        (input)="handleInputChange(field.name, $event)" [placeholder]="field.placeholder || ''"
                         class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-700 focus:border-fr-gold focus:ring-4 focus:ring-fr-gold/5 outline-none transition-all shadow-sm">
                     }
 

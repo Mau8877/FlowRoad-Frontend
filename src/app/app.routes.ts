@@ -30,6 +30,12 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./features/config-org/config-org.routes').then((m) => m.CONFIG_ORG_ROUTES),
       },
+      {
+        path: 'users',
+        canActivate: [roleGuard],
+        data: { roles: ['ADMIN'] },
+        loadChildren: () => import('./features/users/users.routes').then((m) => m.USER_ROUTES),
+      },
       // Si entran a la raíz estando logueados, los mandamos al dashboard
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
     ],

@@ -35,6 +35,9 @@ export class CreateModal implements OnInit {
   @Output() onClose = new EventEmitter<void>();
   @Output() onSave = new EventEmitter<any>();
 
+  // 👈 NUEVO: Emite cuando cualquier campo cambia su valor
+  @Output() onFieldChange = new EventEmitter<{ name: string; value: any }>();
+
   public form!: FormGroup;
 
   ngOnInit(): void {
@@ -44,54 +47,61 @@ export class CreateModal implements OnInit {
   private initForm() {
     const group: any = {};
     this.fields.forEach((field) => {
-      // Si es multiselect, el valor inicial debe ser un array []
       const initialValue = field.type === 'multiselect-chips' ? [] : '';
       group[field.name] = [initialValue, field.validators || []];
     });
     this.form = this.fb.group(group);
+
+    // 👈 NUEVO: Escucha cambios globales en el formulario para avisar al padre
+    // Esto sirve para que el componente Users reaccione al departamento inmediatamente
+    this.form.valueChanges.subscribe((values) => {
+      // Opcional: podrías emitir solo campos específicos si quieres optimizar
+    });
   }
 
-  // --- LÓGICA DE MULTISELECT-CHIPS ---
-
   /**
-   * Agrega un ID al array del formulario y resetea el select visual
+   * Método para capturar cambios en selects o inputs específicos
+   * Se llamará desde el HTML
    */
+  handleInputChange(fieldName: string, event: Event): void {
+    const element = event.target as HTMLInputElement | HTMLSelectElement;
+    const value = element.value;
+
+    // Emitimos el cambio para que el padre (UsersComponent) pueda filtrar
+    this.onFieldChange.emit({ name: fieldName, value });
+  }
+
+  // --- LÓGICA DE MULTISELECT-CHIPS (Se mantiene igual) ---
+
   addChip(fieldName: string, event: Event): void {
     const selectElement = event.target as HTMLSelectElement;
     const value = selectElement.value;
-
     if (!value) return;
 
     const currentValues: string[] = this.form.get(fieldName)?.value || [];
-
     if (!currentValues.includes(value)) {
       const updatedValues = [...currentValues, value];
       this.form.get(fieldName)?.setValue(updatedValues);
-    }
 
+      // También emitimos cambio aquí por si acaso
+      this.onFieldChange.emit({ name: fieldName, value: updatedValues });
+    }
     selectElement.value = '';
   }
 
-  /**
-   * Elimina un ID del array
-   */
   removeChip(fieldName: string, valueToRemove: string): void {
     const currentValues: string[] = this.form.get(fieldName)?.value || [];
     const updatedValues = currentValues.filter((v) => v !== valueToRemove);
     this.form.get(fieldName)?.setValue(updatedValues);
+
+    this.onFieldChange.emit({ name: fieldName, value: updatedValues });
   }
 
-  /**
-   * Retorna solo las opciones que NO han sido seleccionadas aún
-   */
   getAvailableOptions(field: FormField): any[] {
     const selectedValues: string[] = this.form.get(field.name)?.value || [];
     return field.options?.filter((opt) => !selectedValues.includes(opt.value)) || [];
   }
 
-  /**
-   * Obtiene la etiqueta (label) de un ID seleccionado para mostrarla en el Chip
-   */
   getOptionLabel(field: FormField, value: string): string {
     return field.options?.find((opt) => opt.value === value)?.label || value;
   }

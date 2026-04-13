@@ -30,6 +30,7 @@ import {
   Building2,
   Clock,
   Tag,
+  Mail,
 } from 'lucide-angular';
 import { TableColumn } from './interfaces/column.interface';
 
@@ -57,6 +58,7 @@ import { TableColumn } from './interfaces/column.interface';
         Building2,
         Clock,
         Tag,
+        Mail,
       }),
     },
   ],
