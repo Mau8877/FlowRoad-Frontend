@@ -18,6 +18,7 @@ import {
   RefreshCw,
   AlertCircle,
   Power,
+  Plus,
 } from 'lucide-angular';
 
 @Component({
@@ -29,7 +30,7 @@ import {
     {
       provide: LUCIDE_ICONS,
       multi: true,
-      useValue: new LucideIconProvider({ X, RefreshCw, AlertCircle, Power }),
+      useValue: new LucideIconProvider({ X, RefreshCw, AlertCircle, Power, Plus }),
     },
   ],
 })
@@ -54,21 +55,57 @@ export class EditModal implements OnChanges {
 
   private initForm() {
     const group: any = {};
+
     this.fields.forEach((field) => {
-      group[field.name] = [this.data[field.name] ?? '', field.validators || []];
+      let value = this.data[field.name];
+      if (field.type === 'multiselect-chips') {
+        if (Array.isArray(value)) {
+          value = value.map((item: any) => (typeof item === 'object' ? item.id : item));
+        } else {
+          value = [];
+        }
+      }
+
+      group[field.name] = [value ?? '', field.validators || []];
     });
 
-    // Agregamos el campo isActive dinámicamente si los datos indican que está false
-    if (this.data.isActive === false) {
-      group['isActive'] = [false];
+    if (this.data.isActive !== undefined) {
+      group['isActive'] = [this.data.isActive];
     }
 
     this.form = this.fb.group(group);
   }
 
+  addChip(fieldName: string, event: Event): void {
+    const selectElement = event.target as HTMLSelectElement;
+    const value = selectElement.value;
+    if (!value) return;
+
+    const currentValues: string[] = this.form.get(fieldName)?.value || [];
+    if (!currentValues.includes(value)) {
+      this.form.get(fieldName)?.setValue([...currentValues, value]);
+    }
+    selectElement.value = '';
+  }
+
+  removeChip(fieldName: string, valueToRemove: string): void {
+    const currentValues: string[] = this.form.get(fieldName)?.value || [];
+    this.form.get(fieldName)?.setValue(currentValues.filter((v) => v !== valueToRemove));
+  }
+
+  getAvailableOptions(field: FormField): any[] {
+    const selectedValues: string[] = this.form.get(field.name)?.value || [];
+    return field.options?.filter((opt) => !selectedValues.includes(opt.value)) || [];
+  }
+
+  getOptionLabel(field: FormField, value: string): string {
+    return field.options?.find((opt) => opt.value === value)?.label || value;
+  }
+
+  // --- ACCIONES ---
+
   submit() {
     if (this.form.valid) {
-      // Retornamos los datos del form + el ID original
       this.onSave.emit({ ...this.form.value, id: this.data.id });
       this.close();
     } else {

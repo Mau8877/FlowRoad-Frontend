@@ -83,6 +83,7 @@
                         <th class="px-6 py-5 text-right">Acciones</th>
                     </tr>
                 </thead>
+
                 <tbody class="divide-y divide-slate-100">
                     @for (row of pagedData(); track row.id) {
                     <tr class="hover:bg-slate-50/50 transition-colors group">
@@ -101,22 +102,27 @@
 
                         @for (col of columns; track col.key) {
                         @if (col.key !== 'id') {
-                        <td class="px-6 py-4">
-                            @if (col.type === 'badge') {
-                            <div class="flex items-center gap-2">
-                                <div [class]="row[col.key] ? 'bg-green-500' : 'bg-red-500'"
-                                    class="w-1.5 h-1.5 rounded-full"></div>
-                                <span [class]="row[col.key] ? 'text-green-600' : 'text-red-600'"
-                                    class="text-[9px] font-black uppercase tracking-widest">
-                                    {{ row[col.key] ? 'Activo' : 'Inactivo' }}
+                        <td class="px-6 py-4 text-left"> <ng-container>
+                                @if (col.type === 'custom' && customCell) {
+                                <ng-container [ngTemplateOutlet]="customCell" [ngTemplateOutletContext]="{ $implicit: row, column: col }">
+                                </ng-container>
+                                }
+                                @else if (col.type === 'badge') {
+                                <div class="flex items-center gap-2">
+                                    <div [class]="row[col.key] ? 'bg-green-500' : 'bg-red-500'" class="w-1.5 h-1.5 rounded-full"></div>
+                                    <span [class]="row[col.key] ? 'text-green-600' : 'text-red-600'"
+                                        class="text-[9px] font-black uppercase tracking-widest">
+                                        {{ row[col.key] ? 'Activo' : 'Inactivo' }}
+                                    </span>
+                                </div>
+                                }
+                                @else {
+                                <span class="text-sm font-medium text-slate-700">
+                                    {{ row[col.key] !== undefined && row[col.key] !== null ? row[col.key] : '---' }}
                                 </span>
-                            </div>
-                            } @else if (col.type === 'custom') {
-                            <ng-container [ngTemplateOutlet]="customCell!"
-                                [ngTemplateOutletContext]="{ $implicit: row, column: col }"></ng-container>
-                            } @else {
-                            <span class="text-sm font-medium text-slate-700">{{ row[col.key] }}</span>
-                            }
+                                }
+                            </ng-container>
+                        
                         </td>
                         }
                         }

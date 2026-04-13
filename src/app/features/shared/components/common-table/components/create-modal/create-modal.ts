@@ -9,6 +9,7 @@ import {
   X,
   Save,
   AlertCircle,
+  Plus,
 } from 'lucide-angular';
 
 @Component({
@@ -20,7 +21,7 @@ import {
     {
       provide: LUCIDE_ICONS,
       multi: true,
-      useValue: new LucideIconProvider({ X, Save, AlertCircle }),
+      useValue: new LucideIconProvider({ X, Save, AlertCircle, Plus }),
     },
   ],
 })
@@ -43,10 +44,59 @@ export class CreateModal implements OnInit {
   private initForm() {
     const group: any = {};
     this.fields.forEach((field) => {
-      group[field.name] = ['', field.validators || []];
+      // Si es multiselect, el valor inicial debe ser un array []
+      const initialValue = field.type === 'multiselect-chips' ? [] : '';
+      group[field.name] = [initialValue, field.validators || []];
     });
     this.form = this.fb.group(group);
   }
+
+  // --- LÓGICA DE MULTISELECT-CHIPS ---
+
+  /**
+   * Agrega un ID al array del formulario y resetea el select visual
+   */
+  addChip(fieldName: string, event: Event): void {
+    const selectElement = event.target as HTMLSelectElement;
+    const value = selectElement.value;
+
+    if (!value) return;
+
+    const currentValues: string[] = this.form.get(fieldName)?.value || [];
+
+    if (!currentValues.includes(value)) {
+      const updatedValues = [...currentValues, value];
+      this.form.get(fieldName)?.setValue(updatedValues);
+    }
+
+    selectElement.value = '';
+  }
+
+  /**
+   * Elimina un ID del array
+   */
+  removeChip(fieldName: string, valueToRemove: string): void {
+    const currentValues: string[] = this.form.get(fieldName)?.value || [];
+    const updatedValues = currentValues.filter((v) => v !== valueToRemove);
+    this.form.get(fieldName)?.setValue(updatedValues);
+  }
+
+  /**
+   * Retorna solo las opciones que NO han sido seleccionadas aún
+   */
+  getAvailableOptions(field: FormField): any[] {
+    const selectedValues: string[] = this.form.get(field.name)?.value || [];
+    return field.options?.filter((opt) => !selectedValues.includes(opt.value)) || [];
+  }
+
+  /**
+   * Obtiene la etiqueta (label) de un ID seleccionado para mostrarla en el Chip
+   */
+  getOptionLabel(field: FormField, value: string): string {
+    return field.options?.find((opt) => opt.value === value)?.label || value;
+  }
+
+  // --- MÉTODOS DE ACCIÓN ---
 
   submit() {
     if (this.form.valid) {
@@ -59,6 +109,7 @@ export class CreateModal implements OnInit {
 
   close() {
     this.form.reset();
+    this.initForm();
     this.onClose.emit();
   }
 }

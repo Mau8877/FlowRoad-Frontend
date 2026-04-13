@@ -7,6 +7,9 @@ import {
   computed,
   ContentChild,
   TemplateRef,
+  inject,
+  ChangeDetectorRef,
+  effect,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
@@ -24,6 +27,9 @@ import {
   Copy,
   ChevronUp,
   ChevronDown,
+  Building2,
+  Clock,
+  Tag,
 } from 'lucide-angular';
 import { TableColumn } from './interfaces/column.interface';
 
@@ -48,11 +54,17 @@ import { TableColumn } from './interfaces/column.interface';
         Copy,
         ChevronUp,
         ChevronDown,
+        Building2,
+        Clock,
+        Tag,
       }),
     },
   ],
 })
 export class CommonTable {
+  // Inyecciones
+  private cd = inject(ChangeDetectorRef);
+
   // Inputs
   @Input({ required: true }) data = signal<any[]>([]);
   @Input({ required: true }) columns: TableColumn[] = [];
@@ -66,7 +78,8 @@ export class CommonTable {
   @Output() onDelete = new EventEmitter<any>();
   @Output() onAdd = new EventEmitter<void>();
 
-  @ContentChild('customCell') customCell?: TemplateRef<any>;
+  // Buscamos el template que viene del padre
+  @ContentChild('customCell', { descendants: true }) customCell?: TemplateRef<any>;
 
   // Internals
   public Math = Math;
@@ -74,10 +87,25 @@ export class CommonTable {
   public currentPage = signal(0);
   public pageSize = 10;
 
-  // Estado de ordenamiento
-  // sortKey: columna actual, sortDir: 'asc' | 'desc' | null
   public sortKey = signal<string | null>(null);
   public sortDir = signal<'asc' | 'desc' | null>(null);
+
+  constructor() {
+    /**
+     * EFECTO DE DETECCIÓN:
+     * Cada vez que el signal de 'data' cambia, forzamos a Angular
+     * a re-chequear la vista. Esto evita que las columnas se vean mal
+     * hasta que interactúas con la página.
+     */
+    effect(() => {
+      this.data();
+
+      setTimeout(() => {
+        this.cd.markForCheck();
+        this.cd.detectChanges();
+      }, 0);
+    });
+  }
 
   // 1. Lógica de Filtrado y Ordenamiento
   public filteredData = computed(() => {
@@ -86,19 +114,14 @@ export class CommonTable {
 
     if (query) {
       list = list.filter((item) => {
-        // A) Buscamos en el ID
         const matchId = String(item.id).toLowerCase().includes(query);
-
-        // B) Buscamos en el resto de las columnas configuradas
         const matchColumns = this.columns.some((col) =>
           String(item[col.key]).toLowerCase().includes(query),
         );
-
         return matchId || matchColumns;
       });
     }
 
-    // Ordenamiento (se mantiene igual)
     const key = this.sortKey();
     const dir = this.sortDir();
     if (key && dir) {
@@ -134,7 +157,6 @@ export class CommonTable {
     this.currentPage.set(0);
   }
 
-  // Toggle de ordenamiento: ASC -> DESC -> NULL
   toggleSort(key: string) {
     if (this.sortKey() !== key) {
       this.sortKey.set(key);
