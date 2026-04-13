@@ -1,11 +1,10 @@
-<div class="flex h-screen bg-slate-50 overflow-hidden">
+<div class="flex h-screen w-full bg-slate-50 overflow-hidden">
+    <app-sidebar class="shrink-0 h-full"></app-sidebar>
 
-    <app-sidebar class="hidden lg:block shrink-0"></app-sidebar>
+    <div class="flex flex-col flex-1 min-w-0 h-full overflow-hidden">
+        <app-header class="w-full shrink-0"></app-header>
 
-    <div class="flex flex-col flex-1 min-w-0">
-        <app-header></app-header>
-
-        <main class="flex-1 overflow-y-auto p-8">
+        <main class="flex-1 overflow-y-auto p-8 bg-slate-50 custom-scrollbar">
             <div class="max-w-7xl mx-auto">
                 <router-outlet></router-outlet>
             </div>

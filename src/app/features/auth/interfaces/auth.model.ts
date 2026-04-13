@@ -16,10 +16,25 @@ export interface RegisterRequest {
 }
 
 export interface User {
-  uid: string;
+  id: string;
   email: string;
-  displayName: string;
-  roles: string[];
+  role: string;
+  orgId?: string;
+  departmentId?: string;
+  cargoId?: string;
+  workload?: number;
+  isActive: boolean;
+  profile?: {
+    nombre?: string;
+    apellido?: string;
+    telefono?: string;
+    avatarUrl?: string;
+    direccion?: string;
+  };
+  createdAt: string;
+
+  // Campo calculado (opcional)
+  displayName?: string;
 }
 
 export interface JwtPayload {

@@ -1,14 +1,13 @@
 export interface NavItem {
   label: string;
   icon?: string;
-  route?: string; // Opcional si es un padre
+  route?: string;
   roles: string[];
-  children?: NavItem[]; // Lista de hijos
+  children?: NavItem[];
 }
 
 export const MENU_ITEMS: NavItem[] = [
   { label: 'Inicio', icon: 'house', route: '/dashboard', roles: ['ADMIN', 'CLIENT'] },
-  { label: 'Gestión Usuarios', icon: 'users', route: '/users', roles: ['ADMIN'] },
 
   // NUEVO MENÚ PADRE
   {
@@ -31,6 +30,7 @@ export const MENU_ITEMS: NavItem[] = [
       },
     ],
   },
+  { label: 'Gestión Usuarios', icon: 'users', route: '/users', roles: ['ADMIN'] },
 
   { label: 'Mis Trámites', icon: 'file-text', route: '/tramites', roles: ['USER'] },
 ];

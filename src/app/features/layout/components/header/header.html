@@ -1,46 +1,65 @@
-<header class="h-16 border-b border-slate-200 bg-white/80 backdrop-blur-md flex items-center justify-between px-8 z-40">
+<header
+    class="h-16 border-b border-white/5 bg-fr-black/80 backdrop-blur-md flex items-center justify-between px-8 z-40 sticky top-0">
 
     <div class="flex items-center gap-4">
-        <div class="h-6 w-1 bg-fr-gold rounded-full"></div>
-        <h2 class="text-sm font-black uppercase tracking-[0.2em] text-fr-black">
-            {{ currentSection }}
-        </h2>
+        <button (click)="uiService.toggleSidebar()" class="text-fr-gold hover:scale-110 transition-all lg:hidden">
+            <lucide-icon name="menu" class="w-6 h-6"></lucide-icon>
+        </button>
+
+        <div class="flex items-center gap-3">
+            <div class="h-6 w-1 bg-fr-gold rounded-full"></div>
+            <h2 class="text-[10px] font-black uppercase tracking-[0.3em] text-white">
+                {{ currentSection }}
+            </h2>
+        </div>
     </div>
 
     <div class="flex items-center gap-6">
-
         @if (authService.currentUser(); as user) {
-        <div class="text-right hidden sm:block">
-            <p class="text-[11px] font-black text-fr-black uppercase leading-none mb-1">
-                {{ user.displayName }}
+
+        <div class="text-right hidden md:block">
+            <p class="text-[11px] font-black text-white uppercase leading-none mb-1 tracking-wider">
+                {{ authService.displayName() }}
             </p>
-            <p class="text-[9px] font-bold text-fr-gold uppercase tracking-widest leading-none">
-                {{ user.roles[0] }}
+            <p class="text-[9px] font-bold text-fr-gold uppercase tracking-[0.2em] leading-none opacity-90">
+                {{ authService.displayLastName() }}
             </p>
         </div>
 
         <div class="dropdown dropdown-end">
             <div tabindex="0" role="button"
-                class="btn btn-ghost btn-circle avatar bg-slate-100 border border-slate-200">
-                <div class="w-8 rounded-full">
-                    <span class="text-fr-brown font-black flex items-center justify-center h-full">
-                        {{ user.displayName.charAt(0) }}
+                class="btn btn-ghost btn-circle avatar bg-white/5 border border-white/10 hover:border-fr-gold/50 transition-all">
+                <div class="w-8 rounded-full flex items-center justify-center bg-fr-gold/20">
+                    <span class="text-fr-gold font-black text-xs">
+                        {{ authService.displayName().charAt(0).toUpperCase() }}
                     </span>
                 </div>
             </div>
+
             <ul tabindex="0"
-                class="mt-3 z-1 p-2 shadow-xl menu menu-sm dropdown-content bg-white border border-slate-100 rounded-box w-52">
-                <li><a class="text-slate-600 py-3">Mi Perfil</a></li>
-                <li><a class="text-slate-600 py-3">Ajustes</a></li>
-                <div class="divider my-1"></div>
+                class="mt-4 z-1 p-2 shadow-2xl menu menu-sm dropdown-content bg-[#1a1a1a] border border-white/10 rounded-xl w-52 backdrop-blur-xl">
+
+                <div class="px-4 py-3 border-b border-white/5 md:hidden">
+                    <p class="text-[10px] font-black text-white uppercase">
+                        {{ authService.displayName() }} {{ authService.displayLastName() }}
+                    </p>
+                    <p class="text-[8px] text-fr-gold uppercase tracking-widest">{{ user.role }}</p>
+                </div>
+
+                <li><a class="text-fr-taupe py-3 hover:text-white hover:bg-white/5 transition-colors">Mi Perfil</a></li>
+                <li><a class="text-fr-taupe py-3 hover:text-white hover:bg-white/5 transition-colors">Ajustes</a></li>
+
+                <div class="divider my-1 before:bg-white/5 after:bg-white/5"></div>
+
                 <li>
-                    <a (click)="LOGOUT()" class="text-red-600 font-bold py-3 hover:bg-red-50">
+                    <a (click)="LOGOUT()"
+                        class="text-red-500 font-bold py-3 hover:bg-red-500/10 transition-colors cursor-pointer">
+                        <lucide-icon name="log-out" class="w-4 h-4 mr-2"></lucide-icon>
                         Cerrar Sesión
                     </a>
                 </li>
             </ul>
         </div>
         }
-
     </div>
 </header>

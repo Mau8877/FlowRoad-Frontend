@@ -1,4 +1,12 @@
-/* sidebar.css */
+:host {
+    display: contents;
+}
+
+/* Evita que el contenido interno del sidebar intente ajustarse al ancho 0 */
+aside>div {
+    min-width: 256px;
+    /* 64 * 4 = w-64 */
+}
 
 .text-fr-taupe {
     color: #A8A196;
