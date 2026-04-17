@@ -1,25 +1,25 @@
+import { CommonModule } from '@angular/common';
 import {
   Component,
-  Input,
-  Output,
   EventEmitter,
   inject,
+  Input,
   OnChanges,
+  Output,
   SimpleChanges,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { FormField } from '../../interfaces/field.interface';
+import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import {
-  LucideAngularModule,
-  LUCIDE_ICONS,
-  LucideIconProvider,
-  X,
-  RefreshCw,
   AlertCircle,
-  Power,
+  LUCIDE_ICONS,
+  LucideAngularModule,
+  LucideIconProvider,
   Plus,
+  Power,
+  RefreshCw,
+  X,
 } from 'lucide-angular';
+import { FormField } from '../../interfaces/field.interface';
 
 @Component({
   selector: 'app-edit-modal',
@@ -37,10 +37,10 @@ import {
 export class EditModal implements OnChanges {
   private fb = inject(FormBuilder);
 
-  @Input({ required: true }) title: string = '';
+  @Input({ required: true }) title = '';
   @Input({ required: true }) fields: FormField[] = [];
   @Input({ required: true }) data: any = null;
-  @Input() isOpen: boolean = false;
+  @Input() isOpen = false;
 
   @Output() onClose = new EventEmitter<void>();
   @Output() onSave = new EventEmitter<any>();
@@ -53,6 +53,21 @@ export class EditModal implements OnChanges {
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['isOpen'] && this.isOpen && this.data) {
       this.initForm();
+    }
+
+    if (changes['fields'] && this.form) {
+      setTimeout(() => {
+        this.fields.forEach((field) => {
+          const control = this.form.get(field.name);
+          if (control) {
+            if (field.hidden) {
+              control.disable(); // Apaga la validación
+            } else {
+              control.enable(); // Enciende la validación
+            }
+          }
+        });
+      });
     }
   }
 

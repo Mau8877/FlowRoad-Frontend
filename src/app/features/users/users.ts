@@ -1,38 +1,38 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { Validators } from '@angular/forms';
 
 // Services
-import { UserService } from './services/users.service';
-import { DepartmentService } from '#/app/features/config-org/services/departamento.service';
 import { AuthService } from '#/app/features/auth/services/auth.service';
+import { DepartmentService } from '#/app/features/config-org/services/departamento.service';
+import { UserService } from './services/users.service';
 
 // Interfaces
-import {
-  UserResponse,
-  RegisterWorkerRequest,
-  UpdateUserRequest,
-  Roles,
-} from './interfaces/users.model';
 import { DepartmentResponse } from '#/app/features/config-org/interfaces/departamentos.model';
+import {
+  RegisterWorkerRequest,
+  Roles,
+  UpdateUserRequest,
+  UserResponse,
+} from './interfaces/users.model';
 
 // Shared
 import { CommonTable } from '#/app/features/shared/components/common-table/common-table';
-import { TableColumn } from '#/app/features/shared/components/common-table/interfaces/column.interface';
 import { CreateModal } from '#/app/features/shared/components/common-table/components/create-modal/create-modal';
-import { EditModal } from '#/app/features/shared/components/common-table/components/edit-modal/edit-modal';
 import { DeleteModal } from '#/app/features/shared/components/common-table/components/delete-modal/delete-modal';
+import { EditModal } from '#/app/features/shared/components/common-table/components/edit-modal/edit-modal';
+import { TableColumn } from '#/app/features/shared/components/common-table/interfaces/column.interface';
 import { FormField } from '#/app/features/shared/components/common-table/interfaces/field.interface';
 
 import {
-  LucideAngularModule,
+  Briefcase,
   LUCIDE_ICONS,
+  LucideAngularModule,
   LucideIconProvider,
-  Users,
-  UserPlus,
   Mail,
   ShieldCheck,
-  Briefcase,
+  UserPlus,
+  Users,
 } from 'lucide-angular';
 
 @Component({
@@ -125,6 +125,7 @@ export class UsersComponent implements OnInit {
       type: 'select',
       gridCols: 1,
       options: [],
+      hidden: true,
       validators: [Validators.required],
     },
     {
@@ -133,6 +134,7 @@ export class UsersComponent implements OnInit {
       type: 'select',
       gridCols: 1,
       options: [],
+      hidden: true,
       validators: [Validators.required],
     },
     { name: 'telefono', label: 'Teléfono', type: 'text', gridCols: 1 },
@@ -151,8 +153,8 @@ export class UsersComponent implements OnInit {
         // Aplanamos solo lo necesario para la visualización de la tabla
         const mappedData = data.map((user) => ({
           ...user,
-          deptName: user.department?.name || '---',
-          cargoName: user.cargo?.name || '---',
+          deptName: user.department?.name || 'SIN DEPARTAMENTO',
+          cargoName: user.cargo?.name || 'Sin Cargo',
         }));
 
         this.users.set(mappedData as any);
@@ -191,6 +193,15 @@ export class UsersComponent implements OnInit {
     }
   }
 
+  openCreateModal(): void {
+    this.formFields = this.formFields.map((f) =>
+      f.name === 'password' ? { ...f, hidden: false } : f,
+    );
+
+    this.onRoleChange(''); // Limpia la vista (oculta departamento y cargo por defecto)
+    this.isCreateModalOpen.set(true);
+  }
+
   handleSave(formData: any): void {
     const orgId = this.authService.currentUser()?.orgId;
     if (!orgId) return;
@@ -200,8 +211,8 @@ export class UsersComponent implements OnInit {
       password: formData.password,
       role: formData.role,
       orgId: orgId,
-      departmentId: formData.departmentId,
-      cargoId: formData.cargoId,
+      departmentId: formData.departmentId || null,
+      cargoId: formData.cargoId || null,
       profile: {
         nombre: formData.nombre,
         apellido: formData.apellido,
@@ -232,13 +243,20 @@ export class UsersComponent implements OnInit {
       cargoId: user.cargo?.id || '',
     };
 
-    // 2. Guardamos este objeto en la señal de usuario seleccionado
     this.selectedUser.set(aplanado as any);
 
-    // 3. Filtramos los cargos para que el modal ya aparezca con las opciones correctas
-    this.onDepartmentChange(user.department.id);
+    this.formFields = this.formFields.map((f) =>
+      f.name === 'password' ? { ...f, hidden: true } : f,
+    );
 
-    // 4. AHORA SÍ: Abrimos el modal pasando un simple TRUE
+    this.onRoleChange(user.role);
+
+    // 2. Cargar la lista de cargos dependiendo del departamento que tenga
+    if (user.department?.id) {
+      this.onDepartmentChange(user.department.id);
+    }
+    // -------------------
+
     this.isEditModalOpen.set(true);
   }
 
@@ -253,8 +271,8 @@ export class UsersComponent implements OnInit {
         telefono: updatedData.telefono,
         direccion: updatedData.direccion,
       },
-      departmentId: updatedData.departmentId,
-      cargoId: updatedData.cargoId,
+      departmentId: updatedData.departmentId || null,
+      cargoId: updatedData.cargoId || null,
       isActive: updatedData.isActive,
     };
 
@@ -284,6 +302,28 @@ export class UsersComponent implements OnInit {
         this.isDeleteModalOpen.set(false);
       },
       error: () => this.isLoading.set(false),
+    });
+  }
+
+  handleFieldChange(event: { name: string; value: any }): void {
+    if (event.name === 'departmentId') {
+      this.onDepartmentChange(event.value);
+    } else if (event.name === 'role') {
+      this.onRoleChange(event.value);
+    }
+  }
+
+  // Nueva función para manejar el rol
+  onRoleChange(role: string): void {
+    const isWorker = role === Roles.WORKER;
+
+    // IMPORTANTE: Usamos .map() para crear un nuevo array.
+    // Esto dispara el ngOnChanges en los modales para actualizar validaciones.
+    this.formFields = this.formFields.map((field) => {
+      if (field.name === 'departmentId' || field.name === 'cargoId') {
+        return { ...field, hidden: !isWorker };
+      }
+      return field;
     });
   }
 }

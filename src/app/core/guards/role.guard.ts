@@ -1,13 +1,13 @@
+import { AuthService } from '#/app/features/auth/services/auth.service';
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { AuthService } from '#/app/features/auth/services/auth.service';
 
-export const roleGuard: CanActivateFn = (route, state) => {
+export const roleGuard: CanActivateFn = (route) => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
   // 1. Obtenemos los roles permitidos definidos en la ruta
-  const allowedRoles = route.data['roles'] as Array<string>;
+  const allowedRoles = (route.data?.['roles'] ?? []) as string[];
 
   // 2. Obtenemos el rol del usuario desde nuestro signal (ya decodificado del token)
   const userRole = authService.currentUser()?.role;

@@ -6,4 +6,5 @@ export interface FormField {
   options?: { label: string; value: any }[];
   validators?: any[];
   gridCols?: 1 | 2;
+  hidden?: boolean;
 }

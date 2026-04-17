@@ -1,27 +1,27 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { Validators } from '@angular/forms';
-import { CargoService } from '../../services/cargo.service';
 import { AuthService } from '#/app/features/auth/services/auth.service';
+import { CommonTable } from '#/app/features/shared/components/common-table/common-table';
+import { CreateModal } from '#/app/features/shared/components/common-table/components/create-modal/create-modal';
+import { DeleteModal } from '#/app/features/shared/components/common-table/components/delete-modal/delete-modal';
+import { EditModal } from '#/app/features/shared/components/common-table/components/edit-modal/edit-modal';
+import { TableColumn } from '#/app/features/shared/components/common-table/interfaces/column.interface';
+import { FormField } from '#/app/features/shared/components/common-table/interfaces/field.interface';
+import { CommonModule } from '@angular/common';
+import { Component, OnInit, inject, signal } from '@angular/core';
+import { Validators } from '@angular/forms';
 import {
   CargoResponse,
   CreateCargoRequest,
   UpdateCargoRequest,
 } from '../../interfaces/cargo.model';
-import { CommonTable } from '#/app/features/shared/components/common-table/common-table';
-import { TableColumn } from '#/app/features/shared/components/common-table/interfaces/column.interface';
-import { CreateModal } from '#/app/features/shared/components/common-table/components/create-modal/create-modal';
-import { EditModal } from '#/app/features/shared/components/common-table/components/edit-modal/edit-modal';
-import { DeleteModal } from '#/app/features/shared/components/common-table/components/delete-modal/delete-modal';
-import { FormField } from '#/app/features/shared/components/common-table/interfaces/field.interface';
+import { CargoService } from '../../services/cargo.service';
 
 import {
-  LucideAngularModule,
-  LUCIDE_ICONS,
-  LucideIconProvider,
-  Users,
   Briefcase,
+  LUCIDE_ICONS,
+  LucideAngularModule,
+  LucideIconProvider,
   Plus,
+  Users,
 } from 'lucide-angular';
 
 @Component({

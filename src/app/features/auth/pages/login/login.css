@@ -1,16 +1,16 @@
 .diagonal-divider {
+  position: absolute;
+  &::after {
+    content: '';
     position: absolute;
-    &::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -40px;
-        /* Posición de la sombra */
-        width: 40px;
-        height: 100%;
-        /* Degradado que simula sombra diagonal */
-        background: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.5));
-        pointer-events: none;
-        /* No necesita skew porque hereda el del padre */
-    }
+    top: 0;
+    left: -40px;
+    /* Posición de la sombra */
+    width: 40px;
+    height: 100%;
+    /* Degradado que simula sombra diagonal */
+    background: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.5));
+    pointer-events: none;
+    /* No necesita skew porque hereda el del padre */
+  }
 }

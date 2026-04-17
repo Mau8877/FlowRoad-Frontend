@@ -70,10 +70,10 @@ export class CommonTable {
   // Inputs
   @Input({ required: true }) data = signal<any[]>([]);
   @Input({ required: true }) columns: TableColumn[] = [];
-  @Input() title: string = '';
-  @Input() subtitle: string = '';
-  @Input() iconName: string = 'database';
-  @Input() isLoading: boolean = false;
+  @Input() title = '';
+  @Input() subtitle = '';
+  @Input() iconName = 'database';
+  @Input() isLoading = false;
 
   // Outputs
   @Output() onEdit = new EventEmitter<any>();

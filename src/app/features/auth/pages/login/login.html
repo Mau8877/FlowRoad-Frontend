@@ -1,16 +1,15 @@
 <div class="h-screen w-screen flex overflow-hidden bg-fr-black">
+  <div
+    class="relative hidden lg:flex lg:w-[60%] items-center justify-center p-20 bg-linear-to-r from-fr-black via-fr-brown/25 to-fr-black"
+  >
+    <app-login-carousel class="z-20"></app-login-carousel>
 
-    <div class="relative hidden lg:flex lg:w-[60%] items-center justify-center p-20 bg-linear-to-r from-fr-black via-fr-brown/25 to-fr-black">
+    <div
+      class="absolute -right-12 top-0 h-full w-24 bg-white -skew-x-6 z-30 shadow-[15px_0_35px_rgba(0,0,0,0.6)]"
+    ></div>
+  </div>
 
-        <app-login-carousel class="z-20"></app-login-carousel>
-
-        <div
-            class="absolute -right-12 top-0 h-full w-24 bg-white -skew-x-6 z-30 shadow-[15px_0_35px_rgba(0,0,0,0.6)]">
-        </div>
-    </div>
-
-    <div class="flex w-full lg:w-[40%] items-center justify-center bg-white p-8 z-40">
-        <app-login-modal class="w-full max-w-md scale-90 lg:scale-95 origin-center"></app-login-modal>
-    </div>
-
+  <div class="flex w-full lg:w-[40%] items-center justify-center bg-white p-8 z-40">
+    <app-login-modal class="w-full max-w-md scale-90 lg:scale-95 origin-center"></app-login-modal>
+  </div>
 </div>

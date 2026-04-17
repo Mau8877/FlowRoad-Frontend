@@ -1,53 +1,53 @@
 :host {
-    display: contents;
+  display: contents;
 }
 
 /* Evita que el contenido interno del sidebar intente ajustarse al ancho 0 */
-aside>div {
-    min-width: 256px;
-    /* 64 * 4 = w-64 */
+aside > div {
+  min-width: 256px;
+  /* 64 * 4 = w-64 */
 }
 
 .text-fr-taupe {
-    color: #A8A196;
-    transition: color 0.2s ease-in-out;
+  color: #a8a196;
+  transition: color 0.2s ease-in-out;
 }
 
 /* Efecto de hover: Solo cambia a blanco el texto, los iconos se quedan dorados */
 .group:hover .text-fr-taupe {
-    color: #FFFFFF;
+  color: #ffffff;
 }
 
 /* Línea Decorativa Izquierda */
 .border-l {
-    transition: border-color 0.4s ease;
-    border-color: rgba(255, 255, 255, 0.05);
+  transition: border-color 0.4s ease;
+  border-color: rgba(255, 255, 255, 0.05);
 }
 
 div.ml-6:hover {
-    border-color: rgba(212, 175, 55, 0.3);
+  border-color: rgba(212, 175, 55, 0.3);
 }
 
 /* Brillo del punto al hover */
 .group:hover .w-1 {
-    transform: scale(1.5);
-    transition: all 0.3s ease;
-    box-shadow: 0 0 8px rgba(212, 175, 55, 0.5);
+  transform: scale(1.5);
+  transition: all 0.3s ease;
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.5);
 }
 
 /* Scrollbar invisible */
 .custom-scrollbar {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
-    display: none;
+  display: none;
 }
 
 /* Tipografía */
 nav span,
 nav button {
-    letter-spacing: 0.15em;
-    -webkit-font-smoothing: antialiased;
+  letter-spacing: 0.15em;
+  -webkit-font-smoothing: antialiased;
 }

@@ -1,73 +1,95 @@
 @if (uiService.isSidebarOpen()) {
-<div (click)="uiService.closeSidebar()"
-    class="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-sm transition-opacity duration-300">
-</div>
+  <div
+    (click)="uiService.closeSidebar()"
+    class="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-sm transition-opacity duration-300"
+  ></div>
 }
 
-<aside [class.w-64]="uiService.isSidebarOpen()" [class.w-0]="!uiService.isSidebarOpen()"
-    [class.-translate-x-full]="!uiService.isSidebarOpen()"
-    class="fixed lg:relative inset-y-0 left-0 z-50 bg-fr-black flex flex-col transition-all duration-300 ease-in-out border-r border-white/5 overflow-hidden lg:translate-x-0 lg:w-64">
+<aside
+  [class.w-64]="uiService.isSidebarOpen()"
+  [class.w-0]="!uiService.isSidebarOpen()"
+  [class.-translate-x-full]="!uiService.isSidebarOpen()"
+  class="fixed lg:relative inset-y-0 left-0 z-50 bg-fr-black flex flex-col transition-all duration-300 ease-in-out border-r border-white/5 overflow-hidden lg:translate-x-0 lg:w-64"
+>
+  <div class="w-64 flex flex-col h-full p-6">
+    <button
+      (click)="uiService.closeSidebar()"
+      class="lg:hidden absolute top-6 right-6 text-fr-gold hover:scale-110 transition-transform"
+    >
+      <lucide-icon name="x" class="w-6 h-6"></lucide-icon>
+    </button>
 
-    <div class="w-64 flex flex-col h-full p-6">
-
-        <button (click)="uiService.closeSidebar()"
-            class="lg:hidden absolute top-6 right-6 text-fr-gold hover:scale-110 transition-transform">
-            <lucide-icon name="x" class="w-6 h-6"></lucide-icon>
-        </button>
-
-        <div class="mb-10 px-4 shrink-0">
-            <h1 class="text-4xl font-display text-white uppercase tracking-tighter">
-                FLOW<span class="text-fr-gold">ROAD</span>
-            </h1>
-            <div class="h-1.5 w-8 bg-fr-gold mt-1 opacity-60"></div>
-        </div>
-
-        <nav (click)="CLOSE_ON_MOBILE()" class="flex-1 space-y-2 overflow-y-auto pr-2 custom-scrollbar">
-            @for (item of filteredMenu(); track item.label) {
-            @if (item.children && item.children.length > 0) {
-            <div class="group">
-                <button (click)="TOGGLE_MENU(item.label); $event.stopPropagation()"
-                    class="w-full flex items-center justify-between px-4 py-3 text-fr-taupe hover:bg-white/5 hover:text-white transition-all rounded-lg group">
-                    <div class="flex items-center gap-3">
-                        <lucide-icon [name]="item.icon || 'briefcase'" class="w-4 h-4 text-fr-gold"></lucide-icon>
-                        <span class="text-[10px] font-black uppercase tracking-[0.2em]">{{ item.label }}</span>
-                    </div>
-                    <lucide-icon name="chevron-down" [class.rotate-180]="IS_OPEN(item.label)"
-                        class="w-3 h-3 transition-transform duration-300">
-                    </lucide-icon>
-                </button>
-
-                @if (IS_OPEN(item.label)) {
-                <div class="ml-6 mt-1 space-y-1 border-l border-white/10">
-                    @for (child of item.children; track child.label) {
-                    <a [routerLink]="[child.route]"
-                        routerLinkActive="bg-fr-gold/10 text-fr-gold border-r-4 border-fr-gold"
-                        class="flex items-center gap-3 px-6 py-2.5 text-[9px] text-fr-taupe uppercase tracking-widest hover:bg-white/5 hover:text-white transition-all duration-300 no-underline group rounded-lg">
-                        @if (child.icon) { <lucide-icon [name]="child.icon" class="w-3 h-3 text-fr-gold"></lucide-icon>
-                        }
-                        {{ child.label }}
-                    </a>
-                    }
-                </div>
-                }
-            </div>
-            } @else {
-            <a [routerLink]="[item.route]" routerLinkActive="bg-fr-gold/10 text-fr-gold border-r-4 border-fr-gold"
-                class="flex items-center gap-3 px-4 py-3 text-fr-taupe hover:bg-white/5 hover:text-white transition-all rounded-lg group no-underline">
-                <lucide-icon [name]="item.icon || 'home'" class="w-4 h-4 text-fr-gold"></lucide-icon>
-                <span class="text-[10px] font-black uppercase tracking-[0.2em]">{{ item.label }}</span>
-            </a>
-            }
-            }
-        </nav>
-
-        <div class="pt-6 border-t border-white/10 mt-auto shrink-0">
-            @if (authService.currentUser(); as user) {
-            <div class="px-2">
-                <p class="text-[9px] text-fr-gold font-black uppercase tracking-widest mb-1">{{ user.role }}</p>
-                <p class="text-[11px] text-fr-taupe truncate opacity-70">{{ user.email }}</p>
-            </div>
-            }
-        </div>
+    <div class="mb-10 px-4 shrink-0">
+      <h1 class="text-4xl font-display text-white uppercase tracking-tighter">
+        FLOW<span class="text-fr-gold">ROAD</span>
+      </h1>
+      <div class="h-1.5 w-8 bg-fr-gold mt-1 opacity-60"></div>
     </div>
+
+    <nav (click)="CLOSE_ON_MOBILE()" class="flex-1 space-y-2 overflow-y-auto pr-2 custom-scrollbar">
+      @for (item of filteredMenu(); track item.label) {
+        @if (item.children && item.children.length > 0) {
+          <div class="group">
+            <button
+              (click)="TOGGLE_MENU(item.label); $event.stopPropagation()"
+              class="w-full flex items-center justify-between px-4 py-3 text-fr-taupe hover:bg-white/5 hover:text-white transition-all rounded-lg group"
+            >
+              <div class="flex items-center gap-3">
+                <lucide-icon
+                  [name]="item.icon || 'briefcase'"
+                  class="w-4 h-4 text-fr-gold"
+                ></lucide-icon>
+                <span class="text-[10px] font-black uppercase tracking-[0.2em]">{{
+                  item.label
+                }}</span>
+              </div>
+              <lucide-icon
+                name="chevron-down"
+                [class.rotate-180]="IS_OPEN(item.label)"
+                class="w-3 h-3 transition-transform duration-300"
+              >
+              </lucide-icon>
+            </button>
+
+            @if (IS_OPEN(item.label)) {
+              <div class="ml-6 mt-1 space-y-1 border-l border-white/10">
+                @for (child of item.children; track child.label) {
+                  <a
+                    [routerLink]="[child.route]"
+                    routerLinkActive="bg-fr-gold/10 text-fr-gold border-r-4 border-fr-gold"
+                    class="flex items-center gap-3 px-6 py-2.5 text-[9px] text-fr-taupe uppercase tracking-widest hover:bg-white/5 hover:text-white transition-all duration-300 no-underline group rounded-lg"
+                  >
+                    @if (child.icon) {
+                      <lucide-icon [name]="child.icon" class="w-3 h-3 text-fr-gold"></lucide-icon>
+                    }
+                    {{ child.label }}
+                  </a>
+                }
+              </div>
+            }
+          </div>
+        } @else {
+          <a
+            [routerLink]="[item.route]"
+            routerLinkActive="bg-fr-gold/10 text-fr-gold border-r-4 border-fr-gold"
+            class="flex items-center gap-3 px-4 py-3 text-fr-taupe hover:bg-white/5 hover:text-white transition-all rounded-lg group no-underline"
+          >
+            <lucide-icon [name]="item.icon || 'home'" class="w-4 h-4 text-fr-gold"></lucide-icon>
+            <span class="text-[10px] font-black uppercase tracking-[0.2em]">{{ item.label }}</span>
+          </a>
+        }
+      }
+    </nav>
+
+    <div class="pt-6 border-t border-white/10 mt-auto shrink-0">
+      @if (authService.currentUser(); as user) {
+        <div class="px-2">
+          <p class="text-[9px] text-fr-gold font-black uppercase tracking-widest mb-1">
+            {{ user.role }}
+          </p>
+          <p class="text-[11px] text-fr-taupe truncate opacity-70">{{ user.email }}</p>
+        </div>
+      }
+    </div>
+  </div>
 </aside>

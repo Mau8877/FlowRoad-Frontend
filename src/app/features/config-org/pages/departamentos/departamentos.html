@@ -1,44 +1,70 @@
-<app-common-table [title]="'Gestión de Departamentos'" [subtitle]="'Estructura Organizacional y Niveles de Servicio'"
-    [iconName]="'building-2'" [data]="departamentos" [columns]="tableColumns" [isLoading]="isLoading()"
-    (onEdit)="handleEdit($event)" (onDelete)="handleDelete($event)" (onAdd)="isCreateModalOpen.set(true)">
+<app-common-table
+  [title]="'Gestión de Departamentos'"
+  [subtitle]="'Estructura Organizacional y Niveles de Servicio'"
+  [iconName]="'building-2'"
+  [data]="departamentos"
+  [columns]="tableColumns"
+  [isLoading]="isLoading()"
+  (onEdit)="handleEdit($event)"
+  (onDelete)="handleDelete($event)"
+  (onAdd)="isCreateModalOpen.set(true)"
+>
+  <ng-template #customCell let-row>
+    <div class="flex items-center gap-3">
+      <div
+        class="w-10 h-10 rounded-xl bg-slate-50 flex flex-col items-center justify-center border border-slate-100 shadow-sm shrink-0"
+      >
+        <span class="text-[10px] font-black text-fr-gold leading-none">{{ row.code }}</span>
+        <lucide-icon name="building-2" class="w-3 h-3 text-slate-400 mt-1"></lucide-icon>
+      </div>
 
-    <ng-template #customCell let-row>
-        <div class="flex items-center gap-3">
-            <div
-                class="w-10 h-10 rounded-xl bg-slate-50 flex flex-col items-center justify-center border border-slate-100 shadow-sm shrink-0">
-                <span class="text-[10px] font-black text-fr-gold leading-none">{{ row.code }}</span>
-                <lucide-icon name="building-2" class="w-3 h-3 text-slate-400 mt-1"></lucide-icon>
-            </div>
-
-            <div class="flex flex-col text-left">
-                <span class="text-sm font-bold text-slate-800 leading-tight">
-                    {{ row.name }}
-                </span>
-                <div class="flex items-center gap-1.5 mt-0.5">
-                    <lucide-icon name="tag" class="w-2.5 h-2.5 text-slate-300"></lucide-icon>
-                    <span class="text-[9px] font-medium text-slate-400 uppercase tracking-wider">
-                        {{ row.cargos?.length || 0 }} Cargos vinculados
-                    </span>
-                </div>
-            </div>
+      <div class="flex flex-col text-left">
+        <span class="text-sm font-bold text-slate-800 leading-tight">
+          {{ row.name }}
+        </span>
+        <div class="flex items-center gap-1.5 mt-0.5">
+          <lucide-icon name="tag" class="w-2.5 h-2.5 text-slate-300"></lucide-icon>
+          <span class="text-[9px] font-medium text-slate-400 uppercase tracking-wider">
+            {{ row.cargos?.length || 0 }} Cargos vinculados
+          </span>
         </div>
-    </ng-template>
+      </div>
+    </div>
+  </ng-template>
 </app-common-table>
 
-<app-create-modal [isOpen]="isCreateModalOpen()" [title]="'Registrar Nuevo Departamento'" [fields]="formFields"
-    (onClose)="isCreateModalOpen.set(false)" (onSave)="handleSave($event)">
+<app-create-modal
+  [isOpen]="isCreateModalOpen()"
+  [title]="'Registrar Nuevo Departamento'"
+  [fields]="formFields"
+  (onClose)="isCreateModalOpen.set(false)"
+  (onSave)="handleSave($event)"
+>
 </app-create-modal>
 
-<app-edit-modal [isOpen]="isEditModalOpen()" [title]="'Configurar Departamento'" [fields]="formFields"
-    [data]="selectedDept()" (onClose)="isEditModalOpen.set(false)" (onSave)="handleUpdate($event)">
+<app-edit-modal
+  [isOpen]="isEditModalOpen()"
+  [title]="'Configurar Departamento'"
+  [fields]="formFields"
+  [data]="selectedDept()"
+  (onClose)="isEditModalOpen.set(false)"
+  (onSave)="handleUpdate($event)"
+>
 </app-edit-modal>
 
-<app-delete-modal [isOpen]="isDeleteModalOpen()" [title]="'Desactivar Departamento'"
-    [itemName]="selectedDept()?.name || ''" [itemId]="selectedDept()?.id || ''" (onClose)="isDeleteModalOpen.set(false)"
-    (onConfirm)="confirmDelete()">
+<app-delete-modal
+  [isOpen]="isDeleteModalOpen()"
+  [title]="'Desactivar Departamento'"
+  [itemName]="selectedDept()?.name || ''"
+  [itemId]="selectedDept()?.id || ''"
+  (onClose)="isDeleteModalOpen.set(false)"
+  (onConfirm)="confirmDelete()"
+>
 </app-delete-modal>
 
-<button (click)="isCreateModalOpen.set(true)"
-    class="fixed bottom-8 right-8 bg-slate-900 text-white p-4 rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all z-50 lg:hidden flex items-center justify-center">
-    <lucide-icon name="plus" class="w-6 h-6 text-fr-gold"></lucide-icon>
+<button
+  (click)="isCreateModalOpen.set(true)"
+  class="fixed bottom-8 right-8 bg-slate-900 text-white p-4 rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all z-50 lg:hidden flex items-center justify-center"
+>
+  <lucide-icon name="plus" class="w-6 h-6 text-fr-gold"></lucide-icon>
 </button>

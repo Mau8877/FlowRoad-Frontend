@@ -21,8 +21,8 @@ export interface RegisterWorkerRequest {
   password: string;
   role: Roles;
   orgId: string;
-  departmentId: string;
-  cargoId: string;
+  departmentId?: string | null;
+  cargoId?: string | null;
   profile: UserProfile;
 }
 
@@ -33,8 +33,8 @@ export interface UserResponse {
   email: string;
   role: Roles;
   orgId: string;
-  department: { id: string; name: string };
-  cargo: { id: string; name: string };
+  department?: { id: string; name: string } | null;
+  cargo?: { id: string; name: string } | null;
   workload: number;
   isActive: boolean;
   profile: UserProfile;
@@ -43,7 +43,7 @@ export interface UserResponse {
 
 export interface UpdateUserRequest {
   profile: UserProfile;
-  departmentId?: string;
-  cargoId?: string;
+  departmentId?: string | null;
+  cargoId?: string | null;
   isActive?: boolean;
 }

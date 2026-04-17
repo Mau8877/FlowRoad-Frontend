@@ -1,16 +1,25 @@
-import { Component, Input, Output, EventEmitter, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { FormField } from '../../interfaces/field.interface';
 import {
-  LucideAngularModule,
-  LUCIDE_ICONS,
-  LucideIconProvider,
-  X,
-  Save,
+  Component,
+  EventEmitter,
+  inject,
+  Input,
+  OnChanges,
+  OnInit,
+  Output,
+  SimpleChanges,
+} from '@angular/core';
+import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import {
   AlertCircle,
+  LUCIDE_ICONS,
+  LucideAngularModule,
+  LucideIconProvider,
   Plus,
+  Save,
+  X,
 } from 'lucide-angular';
+import { FormField } from '../../interfaces/field.interface';
 
 @Component({
   selector: 'app-create-modal',
@@ -25,12 +34,12 @@ import {
     },
   ],
 })
-export class CreateModal implements OnInit {
+export class CreateModal implements OnInit, OnChanges {
   private fb = inject(FormBuilder);
 
-  @Input({ required: true }) title: string = '';
+  @Input({ required: true }) title = '';
   @Input({ required: true }) fields: FormField[] = [];
-  @Input() isOpen: boolean = false;
+  @Input() isOpen = false;
 
   @Output() onClose = new EventEmitter<void>();
   @Output() onSave = new EventEmitter<any>();
@@ -44,6 +53,22 @@ export class CreateModal implements OnInit {
     this.initForm();
   }
 
+  ngOnChanges(changes: SimpleChanges): void {
+    // Si el array de 'fields' cambia y el formulario ya está construido
+    if (changes['fields'] && this.form) {
+      this.fields.forEach((field) => {
+        const control = this.form.get(field.name);
+        if (control) {
+          if (field.hidden) {
+            control.disable(); // Lo oculta de form.value y anula el Validators.required
+          } else {
+            control.enable(); // Lo vuelve a requerir
+          }
+        }
+      });
+    }
+  }
+
   private initForm() {
     const group: any = {};
     this.fields.forEach((field) => {
@@ -51,12 +76,6 @@ export class CreateModal implements OnInit {
       group[field.name] = [initialValue, field.validators || []];
     });
     this.form = this.fb.group(group);
-
-    // 👈 NUEVO: Escucha cambios globales en el formulario para avisar al padre
-    // Esto sirve para que el componente Users reaccione al departamento inmediatamente
-    this.form.valueChanges.subscribe((values) => {
-      // Opcional: podrías emitir solo campos específicos si quieres optimizar
-    });
   }
 
   /**

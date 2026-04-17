@@ -23,10 +23,10 @@ import {
   ],
 })
 export class DeleteModal {
-  @Input() isOpen: boolean = false;
-  @Input() title: string = 'Confirmar Acción';
-  @Input() itemName: string = '';
-  @Input() itemId: string = '';
+  @Input() isOpen = false;
+  @Input() title = 'Confirmar Acción';
+  @Input() itemName = '';
+  @Input() itemId = '';
 
   @Output() onClose = new EventEmitter<void>();
   @Output() onConfirm = new EventEmitter<void>();

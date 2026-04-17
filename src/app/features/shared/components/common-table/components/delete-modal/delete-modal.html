@@ -1,53 +1,66 @@
 @if (isOpen) {
-<div class="fixed inset-0 z-70 flex items-center justify-center p-4">
+  <div class="fixed inset-0 z-70 flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" (click)="close()"></div>
 
     <div
-        class="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-red-100 overflow-hidden animate-in fade-in zoom-in duration-200">
+      class="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-red-100 overflow-hidden animate-in fade-in zoom-in duration-200"
+    >
+      <div class="px-6 py-4 border-b border-red-50 flex items-center justify-between bg-red-50/30">
+        <div class="flex items-center gap-2">
+          <lucide-icon name="alert-triangle" class="w-4 h-4 text-red-500"></lucide-icon>
+          <h3 class="text-xs font-black uppercase text-red-600 tracking-widest">{{ title }}</h3>
+        </div>
+        <button
+          (click)="close()"
+          class="p-2 hover:bg-red-100/50 rounded-lg text-red-300 transition-colors"
+        >
+          <lucide-icon name="x" class="w-4 h-4"></lucide-icon>
+        </button>
+      </div>
 
-        <div class="px-6 py-4 border-b border-red-50 flex items-center justify-between bg-red-50/30">
-            <div class="flex items-center gap-2">
-                <lucide-icon name="alert-triangle" class="w-4 h-4 text-red-500"></lucide-icon>
-                <h3 class="text-xs font-black uppercase text-red-600 tracking-widest">{{ title }}</h3>
-            </div>
-            <button (click)="close()" class="p-2 hover:bg-red-100/50 rounded-lg text-red-300 transition-colors">
-                <lucide-icon name="x" class="w-4 h-4"></lucide-icon>
-            </button>
+      <div class="p-8 flex flex-col items-center text-center">
+        <div
+          class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-6 border border-red-100"
+        >
+          <lucide-icon name="trash-2" class="w-8 h-8 text-red-500"></lucide-icon>
         </div>
 
-        <div class="p-8 flex flex-col items-center text-center">
-            <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-6 border border-red-100">
-                <lucide-icon name="trash-2" class="w-8 h-8 text-red-500"></lucide-icon>
-            </div>
+        <h4 class="text-slate-900 font-display text-lg mb-2 uppercase tracking-tight">
+          ¿Confirmar desactivación?
+        </h4>
 
-            <h4 class="text-slate-900 font-display text-lg mb-2 uppercase tracking-tight">¿Confirmar desactivación?</h4>
+        <p class="text-sm text-slate-500 leading-relaxed mb-1">
+          ¿Estás seguro de desactivar el cargo
+          <span class="font-bold text-slate-800">"{{ itemName }}"</span>?
+        </p>
+        <p
+          class="text-[10px] font-mono text-slate-400 uppercase bg-slate-50 px-2 py-1 rounded border border-slate-100 mb-6"
+        >
+          ID: {{ itemId }}
+        </p>
 
-            <p class="text-sm text-slate-500 leading-relaxed mb-1">
-                ¿Estás seguro de desactivar el cargo <span class="font-bold text-slate-800">"{{ itemName }}"</span>?
-            </p>
-            <p
-                class="text-[10px] font-mono text-slate-400 uppercase bg-slate-50 px-2 py-1 rounded border border-slate-100 mb-6">
-                ID: {{ itemId }}
-            </p>
-
-            <div class="bg-amber-50 border border-amber-100 rounded-xl p-4 w-full">
-                <p class="text-[10px] text-amber-700 font-bold uppercase tracking-widest leading-tight">
-                    Nota: El registro dejará de estar disponible, pero podrá reactivarlo más tarde desde el panel de
-                    edición.
-                </p>
-            </div>
+        <div class="bg-amber-50 border border-amber-100 rounded-xl p-4 w-full">
+          <p class="text-[10px] text-amber-700 font-bold uppercase tracking-widest leading-tight">
+            Nota: El registro dejará de estar disponible, pero podrá reactivarlo más tarde desde el
+            panel de edición.
+          </p>
         </div>
+      </div>
 
-        <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex gap-3">
-            <button (click)="close()"
-                class="flex-1 px-4 py-3 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 hover:bg-slate-100 transition-all">
-                Cancelar
-            </button>
-            <button (click)="confirm()"
-                class="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-red-700 transition-all shadow-lg shadow-red-600/20 flex items-center justify-center gap-2">
-                Desactivar
-            </button>
-        </div>
+      <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex gap-3">
+        <button
+          (click)="close()"
+          class="flex-1 px-4 py-3 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 hover:bg-slate-100 transition-all"
+        >
+          Cancelar
+        </button>
+        <button
+          (click)="confirm()"
+          class="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-red-700 transition-all shadow-lg shadow-red-600/20 flex items-center justify-center gap-2"
+        >
+          Desactivar
+        </button>
+      </div>
     </div>
-</div>
+  </div>
 }
