@@ -1,39 +1,42 @@
-import {
-  Component,
-  Input,
-  Output,
-  EventEmitter,
-  signal,
-  computed,
-  ContentChild,
-  TemplateRef,
-  inject,
-  ChangeDetectorRef,
-  effect,
-} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
-  LucideAngularModule,
-  LUCIDE_ICONS,
-  LucideIconProvider,
-  Plus,
-  Edit3,
-  Trash2,
-  Database,
-  Search,
+  ChangeDetectorRef,
+  Component,
+  computed,
+  ContentChild,
+  effect,
+  EventEmitter,
+  inject,
+  Input,
+  Output,
+  signal,
+  TemplateRef,
+} from '@angular/core';
+import { Router } from '@angular/router';
+import {
+  Building2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Users,
-  Copy,
   ChevronUp,
-  ChevronDown,
-  Building2,
   Clock,
-  Tag,
+  Copy,
+  Database,
+  Edit3,
+  FileJson,
+  Layers,
+  LUCIDE_ICONS,
+  LucideAngularModule,
+  LucideIconProvider,
   Mail,
+  Plus,
+  Search,
+  Settings2,
+  Tag,
+  Trash2,
+  Users,
 } from 'lucide-angular';
 import { TableColumn } from './interfaces/column.interface';
-
 @Component({
   selector: 'app-common-table',
   standalone: true,
@@ -59,6 +62,9 @@ import { TableColumn } from './interfaces/column.interface';
         Clock,
         Tag,
         Mail,
+        Layers,
+        Settings2,
+        FileJson,
       }),
     },
   ],
@@ -66,6 +72,7 @@ import { TableColumn } from './interfaces/column.interface';
 export class CommonTable {
   // Inyecciones
   private cd = inject(ChangeDetectorRef);
+  private router = inject(Router);
 
   // Inputs
   @Input({ required: true }) data = signal<any[]>([]);
@@ -74,6 +81,9 @@ export class CommonTable {
   @Input() subtitle = '';
   @Input() iconName = 'database';
   @Input() isLoading = false;
+
+  @Input() addRoute?: string;
+  @Input() editRoute?: string;
 
   // Outputs
   @Output() onEdit = new EventEmitter<any>();
@@ -154,6 +164,23 @@ export class CommonTable {
   });
 
   // Métodos
+  public handleAddAction(): void {
+    if (this.addRoute) {
+      this.router.navigate([this.addRoute]);
+    } else {
+      this.onAdd.emit();
+    }
+  }
+
+  public handleEditAction(item: any): void {
+    if (this.editRoute) {
+      // Navegamos a la ruta + el ID del item
+      this.router.navigate([this.editRoute, item.id]);
+    } else {
+      this.onEdit.emit(item);
+    }
+  }
+
   onSearch(event: Event) {
     this.searchQuery.set((event.target as HTMLInputElement).value);
     this.currentPage.set(0);

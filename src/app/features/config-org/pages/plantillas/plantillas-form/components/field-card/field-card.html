@@ -1,0 +1,108 @@
+<div
+  [formGroup]="group"
+  class="relative bg-white border border-slate-200 rounded-3xl p-4 sm:p-5 transition-all group shadow-sm flex flex-col gap-4"
+  [class.border-l-4]="!isPreview"
+  [class.border-l-fr-gold]="!isPreview"
+>
+  @if (!isPreview) {
+    <div class="flex justify-between items-center">
+      <div
+        cdkDragHandle
+        class="cursor-move p-2 bg-slate-50 rounded-lg text-slate-300 hover:text-slate-600 transition-colors"
+      >
+        <lucide-icon name="grip-vertical" class="w-4 h-4"></lucide-icon>
+      </div>
+      <button
+        type="button"
+        (click)="onRemove.emit(index)"
+        class="p-2 hover:bg-red-50 rounded-lg text-slate-300 hover:text-red-500 transition-all"
+      >
+        <lucide-icon name="trash-2" class="w-4 h-4"></lucide-icon>
+      </button>
+    </div>
+
+    <div class="flex flex-col gap-3 border-b border-slate-100 pb-4">
+      <div class="w-full">
+        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">
+          Nombre del Campo
+        </label>
+        <input
+          type="text"
+          formControlName="label"
+          placeholder="Escriba el nombre aquí..."
+          class="w-full bg-transparent border-none p-0 text-sm sm:text-base font-bold text-slate-800 placeholder:text-slate-200 outline-none focus:ring-0 truncate"
+        />
+      </div>
+
+      <div
+        class="w-fit flex items-center gap-3 bg-slate-50 py-1.5 px-2 rounded-xl border border-slate-100 self-start"
+      >
+        <label class="flex items-center gap-2 cursor-pointer px-2 border-r border-slate-200">
+          <input
+            type="checkbox"
+            formControlName="required"
+            class="w-3.5 h-3.5 rounded border-slate-300 text-fr-gold focus:ring-fr-gold"
+          />
+          <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wide"
+            >Obligatorio</span
+          >
+        </label>
+
+        <div [formGroupName]="'uiProps'" class="pr-2">
+          <select
+            formControlName="gridCols"
+            class="bg-transparent text-[10px] font-black text-slate-600 uppercase tracking-wide outline-none cursor-pointer"
+          >
+            <option [value]="1">Mitad</option>
+            <option [value]="2">Ancho Total</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    @if (hasOptions) {
+      <div class="bg-slate-50/50 p-3 sm:p-4 rounded-2xl space-y-3">
+        <div class="flex justify-between items-center">
+          <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+            Opciones
+          </span>
+          <button
+            type="button"
+            (click)="addOption()"
+            class="flex items-center gap-1 text-[10px] font-bold text-fr-gold hover:text-slate-900 transition-colors"
+          >
+            <lucide-icon name="plus" class="w-3 h-3"></lucide-icon> Añadir
+          </button>
+        </div>
+
+        <div formArrayName="options" class="grid grid-cols-1 gap-2">
+          @for (opt of options.controls; let j = $index; track j) {
+            <div
+              [formGroupName]="j"
+              class="flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-100 shadow-sm"
+            >
+              <input
+                type="text"
+                formControlName="label"
+                (input)="syncValue(j)"
+                placeholder="Escriba opción..."
+                class="flex-1 w-full text-xs font-bold outline-none bg-transparent overflow-hidden text-ellipsis"
+              />
+              <button
+                type="button"
+                (click)="removeOption(j)"
+                class="text-slate-300 hover:text-red-500 shrink-0"
+              >
+                <lucide-icon name="x" class="w-3 h-3"></lucide-icon>
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  }
+
+  <div class="w-full mt-1">
+    <ng-content></ng-content>
+  </div>
+</div>
