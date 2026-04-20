@@ -6,9 +6,9 @@
       >
         Iniciar Sesión
       </h2>
-      <div class="h-1 w-10 bg-fr-brown mt-1"></div>
+      <div class="h-1 w-10 bg-fr-gold mt-1"></div>
       <p
-        class="font-sans text-fr-taupe text-[11px] mt-3 font-semibold uppercase tracking-wider opacity-80"
+        class="font-sans text-fr-gold text-[11px] mt-3 font-semibold uppercase tracking-wider opacity-80"
       >
         Gestión de Trámites & Workflow para Equipos Ágiles
       </p>
@@ -25,11 +25,11 @@
           type="email"
           formControlName="email"
           placeholder="usuario@flowroad.com"
-          class="input input-bordered w-full bg-transparent border-fr-gray/30 focus:border-fr-gold text-fr-brown transition-all duration-300"
+          class="input input-bordered w-full bg-transparent border-fr-gray/30 focus:border-fr-gold text-fr-gold/80 transition-all duration-300"
         />
 
         @if (loginForm.get('email')?.invalid && loginForm.get('email')?.touched) {
-          <span class="text-fr-brown text-[9px] mt-1 font-bold uppercase italic tracking-tighter">
+          <span class="text-fr-taupe text-[9px] mt-1 font-bold uppercase italic tracking-tighter">
             Email no válido
           </span>
         }
@@ -46,7 +46,7 @@
             [type]="SHOW_PASSWORD() ? 'text' : 'password'"
             formControlName="password"
             placeholder="••••••••"
-            class="input input-bordered input-sm h-11 w-full bg-transparent border-fr-gray/30 focus:border-fr-gold text-fr-brown transition-all duration-300 pr-10"
+            class="input input-bordered input-sm h-11 w-full bg-transparent border-fr-gray/30 focus:border-fr-gold text-fr-gold/80 transition-all duration-300 pr-10"
           />
 
           <button
@@ -97,7 +97,7 @@
       @if (ERROR_MSG()) {
         <div class="text-center">
           <span
-            class="text-fr-brown text-[10px] font-black uppercase italic tracking-widest animate-pulse"
+            class="text-fr-taupe text-[10px] font-black uppercase italic tracking-widest animate-pulse"
           >
             {{ ERROR_MSG() }}
           </span>
@@ -130,7 +130,7 @@
       <p class="text-[10px] text-fr-taupe font-medium uppercase tracking-widest">
         ¿No tienes una cuenta?
         <a
-          class="text-fr-gold cursor-pointer hover:text-fr-brown transition-colors font-black ml-1"
+          class="text-fr-gold cursor-pointer hover:text-fr-taupe transition-colors font-black ml-1"
         >
           Registrarse
         </a>

@@ -1,0 +1,43 @@
+<app-common-table
+  [title]="'Gestión de Procesos'"
+  [subtitle]="'Diseño y Modelado de Flujos de Trabajo / UAGRM'"
+  [iconName]="'layout'"
+  [data]="diagramas"
+  [columns]="tableColumns"
+  [isLoading]="isLoading()"
+  (onAdd)="goToCreate()"
+  (onEdit)="goToEdit($event)"
+  (onDelete)="handleDelete($event)"
+>
+  <ng-template #customCell let-row>
+    <div class="flex items-center gap-3">
+      <div
+        class="w-10 h-10 rounded-xl bg-slate-50 flex flex-col items-center justify-center border border-slate-100 shadow-sm shrink-0"
+      >
+        <lucide-icon name="activity" class="w-4 h-4 text-fr-gold"></lucide-icon>
+      </div>
+
+      <div class="flex flex-col text-left">
+        <span class="text-sm font-bold text-slate-800 leading-tight">
+          {{ row.name }}
+        </span>
+        <div class="flex items-center gap-1.5 mt-0.5">
+          <lucide-icon name="file-code" class="w-2.5 h-2.5 text-slate-300"></lucide-icon>
+          <span class="text-[9px] font-medium text-slate-400 uppercase tracking-wider">
+            {{ row.description | slice: 0 : 40 }}{{ row.description.length > 40 ? '...' : '' }}
+          </span>
+        </div>
+      </div>
+    </div>
+  </ng-template>
+</app-common-table>
+
+<app-delete-modal
+  [isOpen]="isDeleteModalOpen()"
+  [title]="'Estado del Diagrama'"
+  [itemName]="selectedDiagram()?.name || ''"
+  [itemId]="selectedDiagram()?.id || ''"
+  (onClose)="isDeleteModalOpen.set(false)"
+  (onConfirm)="confirmDelete()"
+>
+</app-delete-modal>

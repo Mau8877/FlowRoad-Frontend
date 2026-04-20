@@ -14,6 +14,7 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 import {
+  Activity,
   Building2,
   ChevronDown,
   ChevronLeft,
@@ -23,8 +24,10 @@ import {
   Copy,
   Database,
   Edit3,
+  FileCode,
   FileJson,
   Layers,
+  Layout,
   LUCIDE_ICONS,
   LucideAngularModule,
   LucideIconProvider,
@@ -65,6 +68,9 @@ import { TableColumn } from './interfaces/column.interface';
         Layers,
         Settings2,
         FileJson,
+        Layout,
+        Activity,
+        FileCode,
       }),
     },
   ],

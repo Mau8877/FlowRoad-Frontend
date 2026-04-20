@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
-import { Layout } from './features/layout/layout';
 import { authGuard } from './core/guards/auth.guard';
 import { roleGuard } from './core/guards/role.guard';
+import { Layout } from './features/layout/layout';
 
 export const routes: Routes = [
   // ZONA PÚBLICA (Sin Layout)
@@ -35,6 +35,13 @@ export const routes: Routes = [
         canActivate: [roleGuard],
         data: { roles: ['ADMIN'] },
         loadChildren: () => import('./features/users/users.routes').then((m) => m.USER_ROUTES),
+      },
+      {
+        path: 'diagram',
+        loadChildren: () =>
+          import('./features/diagram-editor/diagram-editor.routes').then(
+            (m) => m.DIAGRAM_EDITOR_ROUTES,
+          ),
       },
       // Si entran a la raíz estando logueados, los mandamos al dashboard
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },

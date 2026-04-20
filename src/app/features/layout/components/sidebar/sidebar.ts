@@ -1,22 +1,23 @@
-import { Component, inject, computed, signal, OnInit } from '@angular/core';
-import { RouterModule, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
-import { CommonModule } from '@angular/common';
-import { filter } from 'rxjs';
 import { UiService } from '#/app/core/services/ui.service';
 import { AuthService } from '#/app/features/auth/services/auth.service';
 import { MENU_ITEMS } from '#/app/features/layout/interfaces/navigation.model';
+import { CommonModule } from '@angular/common';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { NavigationEnd, Router, RouterLinkActive, RouterModule } from '@angular/router';
+import { filter } from 'rxjs';
 
 // Icons
 import {
-  LucideAngularModule,
-  LUCIDE_ICONS,
-  LucideIconProvider,
-  House,
-  Users,
   Briefcase,
-  FileText,
   ChevronDown,
+  FileText,
+  House,
   HousePlus,
+  LUCIDE_ICONS,
+  LucideAngularModule,
+  LucideIconProvider,
+  Users,
+  Workflow,
   X,
 } from 'lucide-angular';
 
@@ -38,6 +39,7 @@ import {
         ChevronDown,
         HousePlus,
         X,
+        Workflow,
       }),
     },
   ],

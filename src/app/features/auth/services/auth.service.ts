@@ -1,16 +1,16 @@
-import { Injectable, signal, computed, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Router } from '@angular/router';
-import { CookieService } from 'ngx-cookie-service';
-import { jwtDecode } from 'jwt-decode';
-import { tap, of, catchError } from 'rxjs';
 import { environment } from '#/environments/environment';
+import { HttpClient } from '@angular/common/http';
+import { computed, inject, Injectable, signal } from '@angular/core';
+import { Router } from '@angular/router';
+import { jwtDecode } from 'jwt-decode';
+import { CookieService } from 'ngx-cookie-service';
+import { catchError, of, tap } from 'rxjs';
 import {
-  LoginRequest,
   AuthResponse,
-  User,
-  RegisterRequest,
   JwtPayload,
+  LoginRequest,
+  RegisterRequest,
+  User,
 } from '../interfaces/auth.model';
 
 @Injectable({
@@ -51,18 +51,15 @@ export class AuthService {
    */
   GET_ME() {
     if (this._user()?.profile) {
-      console.log('GET_ME: Datos recuperados de caché (Signal)', this._user());
       return of(this._user());
     }
 
     return this.http.get<User>(`${this.URL}/users/me`).pipe(
       tap((user) => {
         this._user.set(user);
-        console.log('GET_ME: Datos recibidos del servidor', user);
-        console.log('Signal actualizado:', this._user());
       }),
       catchError((err) => {
-        console.error('GET_ME: Error al obtener perfil', err);
+        console.error('Error obteniendo datos del usuario:', err);
         return of(null);
       }),
     );
@@ -127,5 +124,13 @@ export class AuthService {
       console.error('Error decodificando el token', error);
       this.LOGOUT();
     }
+  }
+
+  /**
+   * Retorna el token actual (útil para servicios que no son reactivos
+   * o necesitan el valor instantáneo)
+   */
+  public getToken(): string | null {
+    return this._token() || this.cookieService.get('auth_token');
   }
 }

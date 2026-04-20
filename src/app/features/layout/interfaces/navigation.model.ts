@@ -32,5 +32,12 @@ export const MENU_ITEMS: NavItem[] = [
   },
   { label: 'Gestión Usuarios', icon: 'users', route: '/users', roles: ['ADMIN'] },
 
+  {
+    label: 'Diagrama De Actividades',
+    icon: 'workflow',
+    route: '/diagram',
+    roles: ['ADMIN', 'DESIGNER'],
+  },
+
   { label: 'Mis Trámites', icon: 'file-text', route: '/tramites', roles: ['USER'] },
 ];
