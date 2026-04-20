@@ -2,18 +2,17 @@
 // 1. MODELOS DE VISTA (REST API)
 // ==========================================
 
-// Usado para listar en la tabla (sin cargar el JSON gigante)
 export interface DiagramSummaryResponse {
   id: string;
   name: string;
   description: string;
   version: number;
   isActive: boolean;
-  updatedAt: string; // Las fechas llegan como string ISO desde Java
+  updatedAt: string;
 }
 
 // ==========================================
-// 2. MODELO DE DOMINIO (El Archivo Oficial)
+// 2. MODELO DE DOMINIO
 // ==========================================
 
 export interface Diagram {
@@ -23,25 +22,24 @@ export interface Diagram {
   description: string;
   version: number;
   isActive: boolean;
-  cells: DiagramCell[]; // Aquí vive el dibujo de JointJS
+  cells: DiagramCell[];
   createdAt: string;
   createdBy: string;
   updatedAt: string;
 }
 
-// Sub-documentos que componen el dibujo
 export interface DiagramCell {
   id: string;
-  type: string; // Ej: 'standard.Rectangle' o 'standard.Link'
+  type: string;
 
-  position?: Position; // Opcional: Las flechas no tienen posición
-  size?: Size; // Opcional: Las flechas no tienen tamaño
+  position?: Position;
+  size?: Size;
 
-  source?: CellReference; // Opcional: Los nodos no tienen origen
-  target?: CellReference; // Opcional: Los nodos no tienen destino
+  source?: CellReference;
+  target?: CellReference;
 
-  attrs?: Record<string, any>; // Estilos visuales de JointJS
-  customData?: Record<string, any>; // Metadatos de FlowRoad (templateId, roles)
+  attrs?: Record<string, any>;
+  customData?: Record<string, any>;
 }
 
 export interface Position {
@@ -60,29 +58,40 @@ export interface CellReference {
 }
 
 // ==========================================
-// 3. MODELOS DE SESIÓN Y WEBSOCKETS
+// 3. MODELOS DE SESIÓN Y SOCKET
 // ==========================================
 
-// Lo que responde el backend al hacer GET /design-sessions/join/{id}
 export interface JoinSessionResponse {
   sessionToken: string;
   diagramId: string;
-  snapshot: string; // Llega como un string de JSON (hay que hacerle JSON.parse())
+  snapshot: string;
   currentUsers: ActiveUser[];
 }
 
 export interface ActiveUser {
   userId: string;
   nombre: string;
-  color: string; // Ej: '#FF5733'
+  color: string;
   cursor?: Position;
   lastPing: string;
 }
 
-// El paquete de datos que viaja a la velocidad de la luz por STOMP
 export interface SocketOperationMessage {
-  opType: string; // Ej: 'MOVE_LIVE', 'MOVE', 'RENAME', 'PING'
-  nodeId: string; // Ej: 'act-1'
-  delta: Record<string, any>; // Ej: { x: 100, y: 250 } o { text: "Nueva Actividad" }
+  opType:
+    | 'MOVE_LIVE'
+    | 'MOVE_COMMIT'
+    | 'CURSOR'
+    | 'CREATE_NODE'
+    | 'UPDATE_NODE'
+    | 'DELETE_CELL'
+    | 'CREATE_LINK'
+    | 'UPDATE_LINK'
+    | 'DELETE_LINK'
+    | 'LOCK_CELL'
+    | 'UNLOCK_CELL'
+    | 'LOCK_REJECTED';
+
+  cellId: string;
+  delta: Record<string, any>;
   userId: string;
 }

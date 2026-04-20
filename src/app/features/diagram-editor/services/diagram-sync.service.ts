@@ -4,6 +4,7 @@ import { Client, Message } from '@stomp/stompjs';
 import { Subject } from 'rxjs';
 import SockJS from 'sockjs-client';
 import { AuthService } from '../../auth/services/auth.service';
+import { SocketOperationMessage } from '../interfaces/diagram.models';
 
 @Injectable({
   providedIn: 'root',
@@ -13,94 +14,72 @@ export class DiagramSyncService {
   private sessionToken = '';
   private authService = inject(AuthService);
 
-  // Observables para que JointJS escuche
-  public onNodeMoved$ = new Subject<any>();
-  public onUserJoined$ = new Subject<any>();
+  public onMessage$ = new Subject<SocketOperationMessage>();
+  public onConnectionState$ = new Subject<'CONNECTED' | 'DISCONNECTED'>();
 
-  /**
-   * 1. Conectar al Broker STOMP
-   */
   CONNECT(sessionToken: string): void {
     this.sessionToken = sessionToken;
 
-    // Obtenemos el token desde el CookieService (vía AuthService)
-    // O directamente del signal si prefieres: this.authService.getToken()
-    // Pero como tu AuthService usa cookies, lo más seguro es:
-    const token =
-      this.authService.getToken?.() ||
-      document.cookie
-        .split('; ')
-        .find((row) => row.startsWith('auth_token='))
-        ?.split('=')[1];
+    const token = this.authService.getToken();
 
     this.stompClient = new Client({
-      webSocketFactory: () => new SockJS(environment.BASE_URL + '/ws-flowroad'),
+      webSocketFactory: () => new SockJS(`${environment.BASE_URL}/ws-flowroad`),
       connectHeaders: {
-        // IMPORTANTE: Aquí pasamos el token real
         Authorization: `Bearer ${token}`,
       },
       reconnectDelay: 5000,
       debug: (msg: string) => {
-        if (!environment.production) console.log(msg);
+        if (!environment.production) {
+          console.log('[STOMP]', msg);
+        }
       },
     });
 
     this.stompClient.onConnect = () => {
-      console.log(`[STOMP] Conectado con Identidad: ${this.authService.currentUser()?.email}`);
+      console.log('[STOMP] conectado');
       this.SUBSCRIBE_TO_TOPICS();
+      this.onConnectionState$.next('CONNECTED');
+    };
+
+    this.stompClient.onStompError = (frame) => {
+      console.error('[STOMP ERROR]', frame);
+    };
+
+    this.stompClient.onWebSocketClose = () => {
+      this.onConnectionState$.next('DISCONNECTED');
     };
 
     this.stompClient.activate();
   }
 
-  /**
-   * 2. Suscribirse a los tópicos de respuesta
-   */
   private SUBSCRIBE_TO_TOPICS(): void {
     this.stompClient.subscribe(
       `/topic/session/${this.sessionToken}/cambios`,
       (message: Message) => {
-        const payload = JSON.parse(message.body);
-        this.onNodeMoved$.next(payload);
+        const payload = JSON.parse(message.body) as SocketOperationMessage;
+        this.onMessage$.next(payload);
       },
     );
   }
 
-  /**
-   * 3. VÍA RÁPIDA: Bypass de movimiento (Se llama al arrastrar)
-   */
-  SEND_LIVE_MOVEMENT(nodeId: string, x: number, y: number): void {
+  SEND_OPERATION(message: SocketOperationMessage): void {
     if (!this.stompClient?.connected) return;
-
-    const payload = { opType: 'MOVE_LIVE', nodeId, delta: { x, y } };
-
-    this.stompClient.publish({
-      destination: `/topic/session/${this.sessionToken}/cambios`,
-      body: JSON.stringify(payload),
-    });
-  }
-
-  /**
-   * 4. VÍA OFICIAL: Guardado en BD (Se llama en el pointerup)
-   */
-  SAVE_OFFICIAL_MOVEMENT(nodeId: string, x: number, y: number, userId: string): void {
-    if (!this.stompClient?.connected) return;
-
-    const payload = { opType: 'MOVE', nodeId, delta: { x, y }, userId };
 
     this.stompClient.publish({
       destination: `/app/session/${this.sessionToken}/operacion`,
-      body: JSON.stringify(payload),
+      body: JSON.stringify(message),
     });
   }
 
-  /**
-   * 5. Ping de mantenimiento (Opcional, si usas el scheduler)
-   */
   SEND_PING(userId: string, cursorX: number, cursorY: number): void {
     if (!this.stompClient?.connected) return;
 
-    const payload = { opType: 'PING', userId, delta: { x: cursorX, y: cursorY } };
+    const payload = {
+      opType: 'CURSOR',
+      cellId: 'cursor',
+      delta: { x: cursorX, y: cursorY },
+      userId,
+    };
 
     this.stompClient.publish({
       destination: `/app/session/${this.sessionToken}/ping`,
@@ -108,13 +87,141 @@ export class DiagramSyncService {
     });
   }
 
-  /**
-   * 6. Desconectar al salir de la pantalla
-   */
-  public DISCONNECT(): void {
-    if (this.stompClient && this.stompClient.connected) {
+  LOCK_CELL(cellId: string, userId: string): void {
+    this.SEND_OPERATION({
+      opType: 'LOCK_CELL',
+      cellId,
+      delta: {},
+      userId,
+    });
+  }
+
+  UNLOCK_CELL(cellId: string, userId: string): void {
+    this.SEND_OPERATION({
+      opType: 'UNLOCK_CELL',
+      cellId,
+      delta: {},
+      userId,
+    });
+  }
+
+  CREATE_NODE(cellId: string, userId: string, x: number, y: number): void {
+    this.SEND_OPERATION({
+      opType: 'CREATE_NODE',
+      cellId,
+      userId,
+      delta: {
+        cell: {
+          id: cellId,
+          type: 'standard.Rectangle',
+          position: { x, y },
+          size: { width: 160, height: 60 },
+          attrs: {
+            body: {
+              fill: '#ffffff',
+              stroke: '#2563eb',
+              strokeWidth: 2,
+              rx: 12,
+              ry: 12,
+            },
+            label: {
+              text: 'Nueva Actividad',
+              fill: '#111827',
+            },
+          },
+          customData: {
+            nombre: 'Nueva Actividad',
+            tipo: 'ACTION',
+          },
+        },
+      },
+    });
+  }
+
+  UPDATE_NODE(cellId: string, userId: string, label: string): void {
+    this.SEND_OPERATION({
+      opType: 'UPDATE_NODE',
+      cellId,
+      userId,
+      delta: {
+        attrs: {
+          body: {
+            fill: '#ffffff',
+            stroke: '#16a34a',
+            strokeWidth: 2,
+            rx: 12,
+            ry: 12,
+          },
+          label: {
+            text: label,
+            fill: '#111827',
+          },
+        },
+        customData: {
+          nombre: label,
+          tipo: 'ACTION',
+        },
+      },
+    });
+  }
+
+  MOVE_LIVE(cellId: string, userId: string, x: number, y: number): void {
+    this.SEND_OPERATION({
+      opType: 'MOVE_LIVE',
+      cellId,
+      userId,
+      delta: { x, y },
+    });
+  }
+
+  MOVE_COMMIT(cellId: string, userId: string, x: number, y: number): void {
+    this.SEND_OPERATION({
+      opType: 'MOVE_COMMIT',
+      cellId,
+      userId,
+      delta: { x, y },
+    });
+  }
+
+  CREATE_LINK(linkId: string, sourceId: string, targetId: string, userId: string): void {
+    this.SEND_OPERATION({
+      opType: 'CREATE_LINK',
+      cellId: linkId,
+      userId,
+      delta: {
+        cell: {
+          id: linkId,
+          type: 'standard.Link',
+          source: { id: sourceId },
+          target: { id: targetId },
+          attrs: {
+            line: {
+              stroke: '#334155',
+              strokeWidth: 2,
+            },
+          },
+          customData: {
+            tipo: 'CONTROL_FLOW',
+          },
+        },
+      },
+    });
+  }
+
+  DELETE_CELL(cellId: string, userId: string): void {
+    this.SEND_OPERATION({
+      opType: 'DELETE_CELL',
+      cellId,
+      userId,
+      delta: {},
+    });
+  }
+
+  DISCONNECT(): void {
+    if (this.stompClient) {
       this.stompClient.deactivate();
-      console.log('🔌 Conexión de WebSocket cerrada manualmente.');
+      this.onConnectionState$.next('DISCONNECTED');
+      console.log('🔌 WebSocket desconectado');
     }
   }
 }

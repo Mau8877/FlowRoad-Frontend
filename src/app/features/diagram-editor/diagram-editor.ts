@@ -1,191 +1,222 @@
-import {
-  AfterViewInit,
-  Component,
-  ElementRef,
-  OnDestroy,
-  OnInit,
-  ViewChild,
-  inject,
-} from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import * as joint from '@joint/core';
+import { Subscription } from 'rxjs';
 
-import { AuthService } from '#/app/features/auth/services/auth.service';
+import { AuthService } from '../auth/services/auth.service';
+import {
+  DiagramCell,
+  JoinSessionResponse,
+  SocketOperationMessage,
+} from './interfaces/diagram.models';
 import { DiagramSyncService } from './services/diagram-sync.service';
 import { DiagramService } from './services/diagram.service';
 
 @Component({
   selector: 'app-diagram-editor',
   standalone: true,
+  imports: [CommonModule, FormsModule],
   templateUrl: './diagram-editor.html',
-  styleUrls: ['./diagram-editor.css'],
 })
-export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
-  @ViewChild('canvasContainer', { static: false }) canvasContainer!: ElementRef;
-
-  private graph!: joint.dia.Graph;
-  private paper!: joint.dia.Paper;
-
-  // Inyección de dependencias moderna
+export class DiagramEditor implements OnInit, OnDestroy {
+  private route = inject(ActivatedRoute);
   private diagramService = inject(DiagramService);
   private syncService = inject(DiagramSyncService);
   private authService = inject(AuthService);
-  private route = inject(ActivatedRoute);
 
-  private currentUserId = '';
+  private subscriptions: Subscription[] = [];
+
+  public diagramId = signal('');
+  public sessionToken = signal('');
+  public isConnected = signal(false);
+  public snapshotCells = signal<DiagramCell[]>([]);
+  public logs = signal<string[]>([]);
+
+  public selectedCellId = signal('node-1');
+  public selectedTargetId = signal('node-2');
+  public labelText = signal('Actividad Editada');
+
+  public currentUserId = computed(() => this.authService.currentUser()?.id || '');
 
   ngOnInit(): void {
-    const user = this.authService.currentUser();
+    const id = this.route.snapshot.paramMap.get('id') || '';
+    this.diagramId.set(id);
 
-    if (user) {
-      this.currentUserId = user.id;
-    } else {
-      console.warn('No hay usuario logueado en el Signal');
-      this.currentUserId = 'usuario-anonimo';
+    if (!id) {
+      this.addLog('No llegó diagramId por ruta');
+      return;
     }
-  }
 
-  ngAfterViewInit(): void {
-    this.initializeJointJS();
-    this.setupSocketListeners();
-    this.joinDiagramSession();
+    this.joinSession(id);
   }
 
   ngOnDestroy(): void {
-    console.log('cleanup: Cerrando sesión de diseño...');
-
-    // 1. Detener la sincronización
     this.syncService.DISCONNECT();
-
-    // 2. Limpiar el grafo de JointJS para liberar memoria RAM
-    this.graph.clear();
-
-    // 3. (Opcional) Si usas un intervalo para el PING de los cursores, cancélalo aquí
-    // clearInterval(this.pingInterval);
+    this.subscriptions.forEach((s) => s.unsubscribe());
   }
 
-  /**
-   * 1. INICIALIZA EL LIENZO VACÍO
-   */
-  private initializeJointJS(): void {
-    this.graph = new joint.dia.Graph({}, { cellNamespace: joint.shapes });
-
-    this.paper = new joint.dia.Paper({
-      el: this.canvasContainer.nativeElement,
-      model: this.graph,
-      width: '100%',
-      height: 700,
-      gridSize: 10,
-      drawGrid: { name: 'dot', args: { color: '#cbd5e1' } },
-      background: { color: '#f8fafc' },
-      cellViewNamespace: joint.shapes,
-      linkPinning: false,
-      snapLinks: { radius: 20 },
-      interactive: true,
-      defaultLink: () =>
-        new joint.shapes.standard.Link({
-          attrs: {
-            line: {
-              stroke: '#626266',
-              strokeWidth: 2,
-              targetMarker: { type: 'path', d: 'M 10 -5 0 0 10 5 Z' },
-            },
-          },
-          router: { name: 'manhattan' },
-        }),
-    });
-
-    // ==========================================
-    // EMISIÓN DE EVENTOS (Frontend -> Backend)
-    // ==========================================
-
-    // VÍA RÁPIDA: Mientras se arrastra (Bypass)
-    this.graph.on('change:position', (cell: any, newPosition: any, opt: any) => {
-      // Si el movimiento vino del socket, no lo reenviamos para evitar loops
-      if (opt && opt.fromServer) return;
-
-      if (cell.isElement()) {
-        this.syncService.SEND_LIVE_MOVEMENT(cell.id, newPosition.x, newPosition.y);
-      }
-    });
-
-    // VÍA OFICIAL: Al soltar el click (Guardar en Mongo)
-    this.paper.on('element:pointerup', (elementView: any) => {
-      const cell = elementView.model;
-      const pos = cell.position();
-
-      this.syncService.SAVE_OFFICIAL_MOVEMENT(cell.id, pos.x, pos.y, this.currentUserId);
-    });
-  }
-
-  /**
-   * 2. ENTRAR A LA SALA Y CARGAR DIAGRAMA
-   */
-  private joinDiagramSession(): void {
-    const diagramId = this.route.snapshot.paramMap.get('id');
-    if (!diagramId) return;
-
+  private joinSession(diagramId: string): void {
     this.diagramService.JOIN_SESSION(diagramId).subscribe({
-      next: (response) => {
-        // 1. Cargamos el JSON inicial en el lienzo
+      next: (response: JoinSessionResponse) => {
+        this.sessionToken.set(response.sessionToken);
+
         try {
-          const cellsData = JSON.parse(response.snapshot);
-          if (cellsData && cellsData.length > 0) {
-            // Limpiamos lo que haya (incluyendo el hardcodeado de prueba)
-            this.graph.clear();
+          const parsed = response.snapshot ? JSON.parse(response.snapshot) : [];
+          this.snapshotCells.set(parsed);
+        } catch {
+          this.snapshotCells.set([]);
+        }
 
-            // Cargamos el estado real que vino de Atlas
-            this.graph.fromJSON({ cells: cellsData });
-            console.log('✅ Grafo sincronizado con Atlas');
-          } else {
-            // Solo si la sala es totalmente nueva creamos el 'Inicio'
-            this.createUMLActivity(100, 150, 'Inicio', 'act-1');
+        this.addLog(`Sesión iniciada: ${response.sessionToken}`);
+        this.connectSocket(response.sessionToken);
+      },
+      error: (err) => {
+        console.error(err);
+        this.addLog('Error al entrar a la sesión');
+      },
+    });
+  }
+
+  private connectSocket(sessionToken: string): void {
+    const sub1 = this.syncService.onMessage$.subscribe((msg) => {
+      this.addLog(`MSG => ${msg.opType} | ${msg.cellId}`);
+      this.applyIncomingMessage(msg);
+    });
+
+    const sub2 = this.syncService.onConnectionState$.subscribe((state) => {
+      this.isConnected.set(state === 'CONNECTED');
+      this.addLog(`Socket: ${state}`);
+    });
+
+    this.subscriptions.push(sub1, sub2);
+    this.syncService.CONNECT(sessionToken);
+  }
+
+  private applyIncomingMessage(msg: SocketOperationMessage): void {
+    if (msg.opType === 'CREATE_NODE' || msg.opType === 'CREATE_LINK') {
+      const cell = msg.delta?.['cell'];
+      if (!cell) return;
+
+      this.snapshotCells.update((cells) => {
+        const exists = cells.some((c) => c.id === cell.id);
+        return exists ? cells : [...cells, cell];
+      });
+      return;
+    }
+
+    if (msg.opType === 'MOVE_COMMIT') {
+      this.snapshotCells.update((cells) =>
+        cells.map((cell) =>
+          cell.id === msg.cellId
+            ? {
+                ...cell,
+                position: {
+                  x: msg.delta['x'],
+                  y: msg.delta['y'],
+                },
+              }
+            : cell,
+        ),
+      );
+      return;
+    }
+
+    if (msg.opType === 'UPDATE_NODE' || msg.opType === 'UPDATE_LINK') {
+      this.snapshotCells.update((cells) =>
+        cells.map((cell) => {
+          if (cell.id !== msg.cellId) return cell;
+
+          return {
+            ...cell,
+            ...(msg.delta['position'] ? { position: msg.delta['position'] } : {}),
+            ...(msg.delta['size'] ? { size: msg.delta['size'] } : {}),
+            ...(msg.delta['source'] ? { source: msg.delta['source'] } : {}),
+            ...(msg.delta['target'] ? { target: msg.delta['target'] } : {}),
+            ...(msg.delta['attrs'] ? { attrs: msg.delta['attrs'] } : {}),
+            ...(msg.delta['customData'] ? { customData: msg.delta['customData'] } : {}),
+          };
+        }),
+      );
+      return;
+    }
+
+    if (msg.opType === 'DELETE_CELL' || msg.opType === 'DELETE_LINK') {
+      this.snapshotCells.update((cells) => {
+        const targetCell = cells.find((c) => c.id === msg.cellId);
+
+        if (!targetCell) {
+          return cells;
+        }
+
+        const isNode = targetCell.type !== 'standard.Link';
+
+        if (!isNode) {
+          return cells.filter((c) => c.id !== msg.cellId);
+        }
+
+        return cells.filter((c) => {
+          if (c.id === msg.cellId) {
+            return false;
           }
-        } catch (e) {
-          console.error('Error parseando el snapshot:', e);
-        }
 
-        // 2. Nos conectamos al WebSocket de alta velocidad
-        this.syncService.CONNECT(response.sessionToken);
-      },
-      error: (err) => console.error('Error al entrar a la sesión:', err),
-    });
+          const isRelatedLink =
+            c.type === 'standard.Link' &&
+            (c.source?.id === msg.cellId || c.target?.id === msg.cellId);
+
+          return !isRelatedLink;
+        });
+      });
+
+      return;
+    }
   }
 
-  /**
-   * 3. ESCUCHAR LOS MOVIMIENTOS DE OTROS
-   */
-  private setupSocketListeners(): void {
-    this.syncService.onNodeMoved$.subscribe((msg: any) => {
-      // { opType: 'MOVE_LIVE', nodeId: 'act-1', delta: { x: 150, y: 200 } }
-      if (msg.opType === 'MOVE_LIVE' || msg.opType === 'MOVE') {
-        const cell = this.graph.getCell(msg.nodeId);
-        if (cell && cell.isElement()) {
-          // El flag 'fromServer: true' rompe el bucle infinito
-          cell.position(msg.delta.x, msg.delta.y, { fromServer: true });
-        }
-      }
-    });
+  createNode(): void {
+    const cellId = `node-${Date.now()}`;
+    this.selectedCellId.set(cellId);
+    this.syncService.CREATE_NODE(cellId, this.currentUserId(), 100, 100);
   }
 
-  // Helper para crear cajas manualmente (Si el diagrama es nuevo)
-  private createUMLActivity(x: number, y: number, labelText: string, id: string): void {
-    const rect = new joint.shapes.standard.Rectangle();
-    rect.set('id', id);
-    rect.position(x, y);
-    rect.resize(160, 60);
-    rect.prop('ports', {
-      groups: {
-        in: { position: 'left', attrs: { circle: { fill: '#3b82f6', r: 5, magnet: 'passive' } } },
-        out: { position: 'right', attrs: { circle: { fill: '#ef4444', r: 5, magnet: true } } },
-      },
-    });
-    rect.addPort({ group: 'in', id: 'p-in', attrs: { text: { text: 'In' } } });
-    rect.addPort({ group: 'out', id: 'p-out', attrs: { text: { text: 'Out' } } });
-    rect.attr({
-      body: { fill: '#ffffff', stroke: '#541f14', strokeWidth: 2, rx: 20, ry: 20 },
-      label: { text: labelText, fill: '#020304', fontSize: 13, fontWeight: '500' },
-    });
-    rect.addTo(this.graph);
+  lockCell(): void {
+    this.syncService.LOCK_CELL(this.selectedCellId(), this.currentUserId());
+  }
+
+  unlockCell(): void {
+    this.syncService.UNLOCK_CELL(this.selectedCellId(), this.currentUserId());
+  }
+
+  moveLive(): void {
+    this.syncService.MOVE_LIVE(this.selectedCellId(), this.currentUserId(), 250, 180);
+  }
+
+  moveCommit(): void {
+    this.syncService.MOVE_COMMIT(this.selectedCellId(), this.currentUserId(), 250, 180);
+  }
+
+  updateNode(): void {
+    this.syncService.UPDATE_NODE(this.selectedCellId(), this.currentUserId(), this.labelText());
+  }
+
+  createLink(): void {
+    const linkId = `link-${Date.now()}`;
+    this.syncService.CREATE_LINK(
+      linkId,
+      this.selectedCellId(),
+      this.selectedTargetId(),
+      this.currentUserId(),
+    );
+  }
+
+  deleteCell(): void {
+    this.syncService.DELETE_CELL(this.selectedCellId(), this.currentUserId());
+  }
+
+  sendPing(): void {
+    this.syncService.SEND_PING(this.currentUserId(), 320, 220);
+  }
+
+  private addLog(text: string): void {
+    this.logs.update((current) => [`${new Date().toLocaleTimeString()} - ${text}`, ...current]);
   }
 }

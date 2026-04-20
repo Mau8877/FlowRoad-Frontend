@@ -1,14 +1,114 @@
-<div class="editor-layout">
-  <header class="editor-toolbar">
-    <div class="brand">
-      <span class="font-bold text-xl">FlowRoad</span>
-      <span class="text-sm text-gray-400 ml-2">Modo Colaborativo</span>
+<div class="p-6 space-y-6">
+  <div class="border rounded-xl p-4 bg-white shadow-sm">
+    <h1 class="text-xl font-bold text-fr-black">FlowRoad · Tester mínimo del editor</h1>
+    <p class="text-sm text-fr-black mt-1">Pruebas directas del backend colaborativo</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 text-sm text-fr-black">
+      <div>
+        <span class="font-semibold text-fr-black">Diagram ID:</span>
+        {{ diagramId() }}
+      </div>
+      <div>
+        <span class="font-semibold text-fr-black">Session Token:</span>
+        {{ sessionToken() }}
+      </div>
+      <div>
+        <span class="font-semibold text-fr-black">Socket:</span>
+        <span
+          [class]="isConnected() ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'"
+        >
+          {{ isConnected() ? 'CONECTADO' : 'DESCONECTADO' }}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="border rounded-xl p-4 bg-white shadow-sm space-y-4 text-fr-black">
+    <h2 class="font-bold text-lg">Controles</h2>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div>
+        <label class="block text-sm font-medium mb-1">Cell ID actual</label>
+        <input
+          class="w-full border rounded-lg px-3 py-2"
+          [ngModel]="selectedCellId()"
+          (ngModelChange)="selectedCellId.set($event)"
+        />
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium mb-1">Target ID para link</label>
+        <input
+          class="w-full border rounded-lg px-3 py-2"
+          [ngModel]="selectedTargetId()"
+          (ngModelChange)="selectedTargetId.set($event)"
+        />
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium mb-1">Texto update node</label>
+        <input
+          class="w-full border rounded-lg px-3 py-2"
+          [ngModel]="labelText()"
+          (ngModelChange)="labelText.set($event)"
+        />
+      </div>
     </div>
 
-    <div class="actions">
-      <div class="status-indicator"><span class="pulse-dot"></span> Sincronizado</div>
-    </div>
-  </header>
+    <div class="flex flex-wrap gap-2">
+      <button class="px-4 py-2 rounded-lg bg-blue-600 text-white" (click)="createNode()">
+        Create Node
+      </button>
 
-  <main class="canvas-wrapper" #canvasContainer></main>
+      <button class="px-4 py-2 rounded-lg bg-amber-600 text-white" (click)="lockCell()">
+        Lock Cell
+      </button>
+
+      <button class="px-4 py-2 rounded-lg bg-slate-600 text-white" (click)="unlockCell()">
+        Unlock Cell
+      </button>
+
+      <button class="px-4 py-2 rounded-lg bg-cyan-600 text-white" (click)="moveLive()">
+        Move Live
+      </button>
+
+      <button class="px-4 py-2 rounded-lg bg-indigo-600 text-white" (click)="moveCommit()">
+        Move Commit
+      </button>
+
+      <button class="px-4 py-2 rounded-lg bg-green-600 text-white" (click)="updateNode()">
+        Update Node
+      </button>
+
+      <button class="px-4 py-2 rounded-lg bg-purple-600 text-white" (click)="createLink()">
+        Create Link
+      </button>
+
+      <button class="px-4 py-2 rounded-lg bg-red-600 text-white" (click)="deleteCell()">
+        Delete Cell
+      </button>
+
+      <button class="px-4 py-2 rounded-lg bg-gray-700 text-white" (click)="sendPing()">
+        Send Ping
+      </button>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 text-fr-black">
+    <div class="border rounded-xl p-4 bg-white shadow-sm">
+      <h2 class="font-bold text-lg mb-3">Snapshot local</h2>
+      <pre class="text-xs bg-slate-50 p-3 rounded-lg overflow-auto max-h-125">{{
+        snapshotCells() | json
+      }}</pre>
+    </div>
+
+    <div class="border rounded-xl p-4 bg-white shadow-sm">
+      <h2 class="font-bold text-lg mb-3">Log de eventos</h2>
+      <div class="bg-slate-50 rounded-lg p-3 max-h-125 overflow-auto text-xs space-y-2">
+        @for (item of logs(); track item) {
+          <div>{{ item }}</div>
+        }
+      </div>
+    </div>
+  </div>
 </div>
