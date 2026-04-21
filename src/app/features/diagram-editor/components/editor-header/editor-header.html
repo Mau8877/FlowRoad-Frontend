@@ -1,0 +1,52 @@
+<header
+  class="sticky top-0 z-40 flex w-full items-center justify-between gap-4 rounded-2xl border border-white/10 bg-[linear-gradient(135deg,#020304_0%,#2c2c31_100%)] px-5 py-4 text-white shadow-[0_10px_24px_rgba(2,3,4,0.16)]"
+>
+  <div class="min-w-0">
+    <h1 class="truncate font-(--font-display) text-3xl leading-none tracking-[0.08em] text-white">
+      {{ diagramName }}
+    </h1>
+
+    <div
+      class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold uppercase tracking-[0.08em]"
+    >
+      <span class="text-fr-gold">Session</span>
+      <span class="truncate text-white/90">{{ sessionToken || 'Sin sesión' }}</span>
+
+      <span class="hidden text-white/30 sm:inline">•</span>
+
+      <span class="text-fr-gold">Estado</span>
+      <span
+        class="inline-flex items-center gap-2 rounded-full px-2 py-1 text-[11px] normal-case tracking-normal"
+        [class]="
+          isConnected
+            ? 'bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-400/25'
+            : 'bg-red-500/15 text-red-300 ring-1 ring-red-400/25'
+        "
+      >
+        <span
+          class="h-2 w-2 rounded-full"
+          [class]="isConnected ? 'bg-emerald-400' : 'bg-red-400'"
+        ></span>
+        {{ isConnected ? 'Conectado' : 'Desconectado' }}
+      </span>
+    </div>
+  </div>
+
+  <div class="flex shrink-0 items-center gap-2">
+    <button
+      type="button"
+      (click)="onDebugClick()"
+      class="inline-flex items-center rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
+    >
+      Debug
+    </button>
+
+    <button
+      type="button"
+      (click)="onSettingsClick()"
+      class="inline-flex items-center rounded-xl bg-fr-gold px-3 py-2 text-sm font-bold text-fr-black transition hover:brightness-105"
+    >
+      Settings
+    </button>
+  </div>
+</header>

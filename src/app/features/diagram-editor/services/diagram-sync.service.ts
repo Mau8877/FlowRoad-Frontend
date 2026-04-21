@@ -22,6 +22,8 @@ export class DiagramSyncService {
 
     const token = this.authService.getToken();
 
+    console.log('[SYNC][CONNECT] sessionToken=', sessionToken);
+
     this.stompClient = new Client({
       webSocketFactory: () => new SockJS(`${environment.BASE_URL}/ws-flowroad`),
       connectHeaders: {
@@ -36,16 +38,17 @@ export class DiagramSyncService {
     });
 
     this.stompClient.onConnect = () => {
-      console.log('[STOMP] conectado');
+      console.log('[SYNC][CONNECTED]');
       this.SUBSCRIBE_TO_TOPICS();
       this.onConnectionState$.next('CONNECTED');
     };
 
     this.stompClient.onStompError = (frame) => {
-      console.error('[STOMP ERROR]', frame);
+      console.error('[SYNC][STOMP ERROR]', frame);
     };
 
     this.stompClient.onWebSocketClose = () => {
+      console.warn('[SYNC][WS CLOSED]');
       this.onConnectionState$.next('DISCONNECTED');
     };
 
@@ -57,13 +60,19 @@ export class DiagramSyncService {
       `/topic/session/${this.sessionToken}/cambios`,
       (message: Message) => {
         const payload = JSON.parse(message.body) as SocketOperationMessage;
+        console.log('[SYNC][RECV]', payload.opType, payload.cellId, payload.dragId, payload);
         this.onMessage$.next(payload);
       },
     );
   }
 
   SEND_OPERATION(message: SocketOperationMessage): void {
-    if (!this.stompClient?.connected) return;
+    if (!this.stompClient?.connected) {
+      console.warn('[SYNC][SEND_BLOCKED_NOT_CONNECTED]', message);
+      return;
+    }
+
+    console.log('[SYNC][SEND]', message.opType, message.cellId, message.dragId, message);
 
     this.stompClient.publish({
       destination: `/app/session/${this.sessionToken}/operacion`,
@@ -72,7 +81,10 @@ export class DiagramSyncService {
   }
 
   SEND_PING(userId: string, cursorX: number, cursorY: number): void {
-    if (!this.stompClient?.connected) return;
+    if (!this.stompClient?.connected) {
+      console.warn('[SYNC][PING_BLOCKED_NOT_CONNECTED]');
+      return;
+    }
 
     const payload = {
       opType: 'CURSOR',
@@ -87,21 +99,23 @@ export class DiagramSyncService {
     });
   }
 
-  LOCK_CELL(cellId: string, userId: string): void {
+  LOCK_CELL(cellId: string, userId: string, dragId: string): void {
     this.SEND_OPERATION({
       opType: 'LOCK_CELL',
       cellId,
       delta: {},
       userId,
+      dragId,
     });
   }
 
-  UNLOCK_CELL(cellId: string, userId: string): void {
+  UNLOCK_CELL(cellId: string, userId: string, dragId: string): void {
     this.SEND_OPERATION({
       opType: 'UNLOCK_CELL',
       cellId,
       delta: {},
       userId,
+      dragId,
     });
   }
 
@@ -138,11 +152,12 @@ export class DiagramSyncService {
     });
   }
 
-  UPDATE_NODE(cellId: string, userId: string, label: string): void {
+  UPDATE_NODE(cellId: string, userId: string, label: string, dragId?: string): void {
     this.SEND_OPERATION({
       opType: 'UPDATE_NODE',
       cellId,
       userId,
+      dragId,
       delta: {
         attrs: {
           body: {
@@ -165,20 +180,22 @@ export class DiagramSyncService {
     });
   }
 
-  MOVE_LIVE(cellId: string, userId: string, x: number, y: number): void {
+  MOVE_LIVE(cellId: string, userId: string, x: number, y: number, dragId: string): void {
     this.SEND_OPERATION({
       opType: 'MOVE_LIVE',
       cellId,
       userId,
+      dragId,
       delta: { x, y },
     });
   }
 
-  MOVE_COMMIT(cellId: string, userId: string, x: number, y: number): void {
+  MOVE_COMMIT(cellId: string, userId: string, x: number, y: number, dragId: string): void {
     this.SEND_OPERATION({
       opType: 'MOVE_COMMIT',
       cellId,
       userId,
+      dragId,
       delta: { x, y },
     });
   }
@@ -208,20 +225,21 @@ export class DiagramSyncService {
     });
   }
 
-  DELETE_CELL(cellId: string, userId: string): void {
+  DELETE_CELL(cellId: string, userId: string, dragId?: string): void {
     this.SEND_OPERATION({
       opType: 'DELETE_CELL',
       cellId,
       userId,
+      dragId,
       delta: {},
     });
   }
 
   DISCONNECT(): void {
     if (this.stompClient) {
+      console.log('[SYNC][DISCONNECT]');
       this.stompClient.deactivate();
       this.onConnectionState$.next('DISCONNECTED');
-      console.log('🔌 WebSocket desconectado');
     }
   }
 }

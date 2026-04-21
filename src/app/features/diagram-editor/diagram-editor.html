@@ -1,89 +1,42 @@
-<div class="fr-editor-shell">
-  <div class="fr-editor-topbar">
-    <div>
-      <h1 class="fr-editor-title">DIAGRAMA DE ACTIVIDADES</h1>
-      <p class="fr-editor-subtitle">Edición colaborativa · FlowRoad</p>
+<div class="flex min-h-full w-full flex-col gap-4 bg-zinc-100 p-4">
+  <div class="relative">
+    <app-editor-header
+      [diagramName]="ui.diagramName()"
+      [sessionToken]="collab.sessionToken()"
+      [isConnected]="collab.isConnected()"
+      (debugClick)="openDebugModal()"
+      (settingsClick)="toggleSettingsPopover()"
+    />
+
+    <app-editor-settings-popover
+      [isOpen]="ui.isSettingsOpen()"
+      [currentName]="ui.diagramName()"
+      [currentDescription]="ui.diagramDescription()"
+      [isSaving]="ui.isSavingSettings()"
+      (closeRequested)="closeSettingsPopover()"
+      (saveRequested)="saveDiagramSettings($event)"
+    />
+  </div>
+
+  <div
+    class="relative h-[calc(100vh-180px)] min-h-140 overflow-hidden rounded-3xl border border-black/5 bg-white shadow-[0_16px_40px_rgba(2,3,4,0.08)]"
+  >
+    <div
+      class="pointer-events-none absolute inset-0 z-0 bg-[linear-gradient(to_right,rgba(204,158,97,0.08)_1px,transparent_1px),linear-gradient(to_bottom,rgba(204,158,97,0.08)_1px,transparent_1px)] bg-size-[24px_24px]"
+    ></div>
+
+    <div class="absolute inset-0 z-10 overflow-hidden">
+      <div #paperHost class="h-full w-full"></div>
     </div>
 
-    <div class="fr-editor-status">
-      <div><span>Diagram:</span> {{ diagramId() }}</div>
-      <div><span>Session:</span> {{ sessionToken() }}</div>
-      <div>
-        <span>Socket:</span>
-        <strong [class]="isConnected() ? 'text-green-600' : 'text-red-600'">
-          {{ isConnected() ? 'CONECTADO' : 'DESCONECTADO' }}
-        </strong>
-      </div>
+    <div class="pointer-events-none absolute bottom-4 right-4 z-20">
+      <app-editor-minimap [cells]="collab.snapshotCells()" [title]="'Mapa'"></app-editor-minimap>
     </div>
   </div>
 
-  <div class="fr-main-grid">
-    <aside class="fr-left-panel">
-      <div class="fr-card">
-        <h2 class="fr-card-title">Herramientas</h2>
-
-        <div class="fr-form-group">
-          <label>Cell ID actual</label>
-          <input
-            [ngModel]="selectedCellId()"
-            (ngModelChange)="selectedCellId.set($event)"
-            class="fr-input"
-          />
-        </div>
-
-        <div class="fr-form-group">
-          <label>Target ID para link</label>
-          <input
-            [ngModel]="selectedTargetId()"
-            (ngModelChange)="selectedTargetId.set($event)"
-            class="fr-input"
-          />
-        </div>
-
-        <div class="fr-form-group">
-          <label>Texto update node</label>
-          <input [ngModel]="labelText()" (ngModelChange)="labelText.set($event)" class="fr-input" />
-        </div>
-
-        <div class="fr-actions">
-          <button class="fr-btn fr-btn-primary" (click)="createNode()">Nuevo nodo</button>
-          <button class="fr-btn fr-btn-accent" (click)="lockCell()">Bloquear</button>
-          <button class="fr-btn fr-btn-muted" (click)="unlockCell()">Desbloquear</button>
-          <button class="fr-btn fr-btn-success" (click)="updateNode()">Actualizar</button>
-          <button class="fr-btn fr-btn-secondary" (click)="createLink()">Crear link</button>
-          <button class="fr-btn fr-btn-danger" (click)="deleteCell()">Eliminar</button>
-          <button class="fr-btn fr-btn-muted" (click)="sendPing()">Ping</button>
-        </div>
-
-        <p class="fr-tip">
-          Doble click en el canvas para crear un nodo. Arrastrar solicita lock automáticamente.
-        </p>
-      </div>
-
-      <div class="fr-card fr-log-card">
-        <h2 class="fr-card-title">Log</h2>
-        <div class="fr-log">
-          @for (item of logs(); track item) {
-            <div>{{ item }}</div>
-          }
-        </div>
-      </div>
-    </aside>
-
-    <section class="fr-right-panel">
-      <div class="fr-editor-canvas-panel">
-        <div class="fr-canvas-header">
-          <div class="fr-canvas-title">Canvas UML</div>
-          <div class="fr-canvas-help">Lock estricto + sincronización en tiempo real</div>
-        </div>
-
-        <div #paperHost class="fr-paper-host"></div>
-      </div>
-
-      <div class="fr-card fr-snapshot-card">
-        <h2 class="fr-card-title">Snapshot local</h2>
-        <pre class="fr-json">{{ snapshotCells() | json }}</pre>
-      </div>
-    </section>
-  </div>
+  <app-editor-debug-modal
+    [isOpen]="ui.isDebugOpen()"
+    [logs]="collab.logs()"
+    (closeRequested)="closeDebugModal()"
+  />
 </div>

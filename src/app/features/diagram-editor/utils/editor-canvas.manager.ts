@@ -2,18 +2,21 @@ import { dia, shapes } from '@joint/core';
 import { DiagramCell } from '../interfaces/diagram.models';
 
 export interface CanvasManagerCallbacks {
-  onCellSelected: (cellId: string, label: string) => void;
-  onBlankDoubleClick: (x: number, y: number) => void;
-  onElementPointerDown: (cellId: string, position: { x: number; y: number }) => void;
-  onElementPositionChanged: (cellId: string, x: number, y: number) => void;
-  onElementPointerUp: (cellId: string, x: number, y: number) => void;
-  isCellRemotelyLocked: (cellId: string) => boolean;
+  onCellSelected(cellId: string, label: string): void;
+  onBlankDoubleClick(x: number, y: number): void;
+  onElementPointerDown(cellId: string, position: { x: number; y: number }): void;
+  onElementPositionChanged(cellId: string, x: number, y: number): void;
+  onElementPointerUp(cellId: string, x: number, y: number): void;
+  isCellRemotelyLocked(cellId: string): boolean;
+  getActiveDraggingCellId(): string | null;
+  isDragTransitionLocked(): boolean;
 }
 
 export class EditorCanvasManager {
   private graph!: dia.Graph;
   private paper!: dia.Paper;
   private resizeObserver?: ResizeObserver;
+  private resizeFrame: number | null = null;
 
   constructor(
     private readonly host: HTMLDivElement,
@@ -22,6 +25,9 @@ export class EditorCanvasManager {
 
   init(): void {
     this.graph = new dia.Graph({}, { cellNamespace: shapes });
+
+    this.host.style.width = '100%';
+    this.host.style.height = '100%';
 
     this.paper = new dia.Paper({
       el: this.host,
@@ -40,7 +46,7 @@ export class EditorCanvasManager {
         ],
       },
       background: {
-        color: '#f8f9fb',
+        color: 'transparent',
       },
       interactive: (cellView) => {
         const cellId = String(cellView.model.id);
@@ -49,17 +55,35 @@ export class EditorCanvasManager {
           return false;
         }
 
-        return !this.callbacks.isCellRemotelyLocked(cellId);
+        if (this.callbacks.isCellRemotelyLocked(cellId)) {
+          return false;
+        }
+
+        const activeDraggingCellId = this.callbacks.getActiveDraggingCellId();
+
+        // Si hay un drag activo o cerrándose, solo dejamos interactuar
+        // con la celda que ya estaba en drag.
+        if (this.callbacks.isDragTransitionLocked()) {
+          return activeDraggingCellId === cellId;
+        }
+
+        return true;
       },
     });
 
     this.registerEvents();
     this.observeResize();
-    this.resize();
+    this.scheduleResize();
   }
 
   destroy(): void {
     this.resizeObserver?.disconnect();
+
+    if (this.resizeFrame !== null) {
+      cancelAnimationFrame(this.resizeFrame);
+      this.resizeFrame = null;
+    }
+
     this.paper?.remove();
   }
 
@@ -72,6 +96,8 @@ export class EditorCanvasManager {
         this.graph.addCell(jointCell);
       }
     }
+
+    this.scheduleResize();
   }
 
   addCell(cell: DiagramCell): void {
@@ -145,6 +171,19 @@ export class EditorCanvasManager {
     element.position(x, y);
   }
 
+  getElementPosition(cellId: string): { x: number; y: number } | null {
+    const cell = this.graph.getCell(cellId);
+    if (!cell || cell.isLink()) return null;
+
+    const element = cell as dia.Element;
+    const position = element.position();
+
+    return {
+      x: position.x,
+      y: position.y,
+    };
+  }
+
   paintLockState(cellId: string, owner: 'local' | 'remote'): void {
     const cell = this.graph.getCell(cellId);
     if (!cell || cell.isLink()) return;
@@ -212,16 +251,35 @@ export class EditorCanvasManager {
   }
 
   private observeResize(): void {
+    const target = this.host.parentElement ?? this.host;
+
     this.resizeObserver = new ResizeObserver(() => {
-      this.resize();
+      this.scheduleResize();
     });
 
-    this.resizeObserver.observe(this.host);
+    this.resizeObserver.observe(target);
+  }
+
+  private scheduleResize(): void {
+    if (this.resizeFrame !== null) {
+      cancelAnimationFrame(this.resizeFrame);
+    }
+
+    this.resizeFrame = requestAnimationFrame(() => {
+      this.resize();
+      this.resizeFrame = null;
+    });
   }
 
   private resize(): void {
-    const width = this.host.clientWidth || 900;
-    const height = this.host.clientHeight || 620;
+    const target = this.host.parentElement ?? this.host;
+    const rect = target.getBoundingClientRect();
+
+    const width = Math.max(1, Math.floor(rect.width));
+    const height = Math.max(1, Math.floor(rect.height));
+
+    this.host.style.width = '100%';
+    this.host.style.height = '100%';
 
     if (this.paper) {
       this.paper.setDimensions(width, height);

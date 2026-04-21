@@ -1,0 +1,73 @@
+@if (isOpen) {
+  <div class="absolute right-0 top-full z-50 mt-3 w-95 max-w-[90vw]">
+    <div
+      class="overflow-hidden rounded-2xl border border-black/5 bg-white shadow-[0_20px_40px_rgba(2,3,4,0.18)] ring-1 ring-black/5"
+    >
+      <div class="bg-[linear-gradient(135deg,#020304_0%,#2c2c31_100%)] px-5 py-4 text-white">
+        <div class="font-(--font-display) text-2xl leading-none tracking-[0.08em]">SETTINGS</div>
+        <p class="mt-2 text-xs font-semibold uppercase tracking-[0.08em] text-white/70">
+          Configuración del diagrama
+        </p>
+      </div>
+
+      <div class="space-y-4 p-5">
+        <div class="space-y-2">
+          <label
+            for="diagram-name"
+            class="block text-xs font-bold uppercase tracking-[0.08em] text-fr-taupe"
+          >
+            Nombre del diagrama
+          </label>
+          <input
+            id="diagram-name"
+            type="text"
+            class="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-fr-black outline-none transition focus:border-fr-gold focus:ring-3 focus:ring-[rgba(204,158,97,0.18)]"
+            [ngModel]="draftName()"
+            (ngModelChange)="draftName.set($event)"
+            placeholder="Ej. Proceso de atención"
+          />
+        </div>
+
+        <div class="space-y-2">
+          <label
+            for="diagram-description"
+            class="block text-xs font-bold uppercase tracking-[0.08em] text-fr-taupe"
+          >
+            Descripción
+          </label>
+          <textarea
+            id="diagram-description"
+            rows="4"
+            class="w-full resize-none rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-fr-black outline-none transition focus:border-fr-gold focus:ring-3 focus:ring-[rgba(204,158,97,0.18)]"
+            [ngModel]="draftDescription()"
+            (ngModelChange)="draftDescription.set($event)"
+            placeholder="Describe brevemente este flujo..."
+          ></textarea>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-2">
+          <button
+            type="button"
+            (click)="onClose()"
+            class="inline-flex items-center rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-fr-gray transition hover:bg-zinc-50"
+          >
+            Cancelar
+          </button>
+
+          <button
+            type="button"
+            (click)="onSave()"
+            [disabled]="!draftName().trim() || isSaving"
+            class="inline-flex items-center rounded-xl bg-fr-gold px-4 py-2.5 text-sm font-bold text-fr-black transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            @if (isSaving) {
+              Guardando...
+            } @else {
+              Guardar cambios
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}

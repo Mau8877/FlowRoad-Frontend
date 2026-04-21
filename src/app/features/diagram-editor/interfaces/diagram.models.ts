@@ -94,4 +94,5 @@ export interface SocketOperationMessage {
   cellId: string;
   delta: Record<string, any>;
   userId: string;
+  dragId?: string;
 }
