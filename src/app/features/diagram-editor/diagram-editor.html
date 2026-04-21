@@ -1,114 +1,89 @@
-<div class="p-6 space-y-6">
-  <div class="border rounded-xl p-4 bg-white shadow-sm">
-    <h1 class="text-xl font-bold text-fr-black">FlowRoad · Tester mínimo del editor</h1>
-    <p class="text-sm text-fr-black mt-1">Pruebas directas del backend colaborativo</p>
+<div class="fr-editor-shell">
+  <div class="fr-editor-topbar">
+    <div>
+      <h1 class="fr-editor-title">DIAGRAMA DE ACTIVIDADES</h1>
+      <p class="fr-editor-subtitle">Edición colaborativa · FlowRoad</p>
+    </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 text-sm text-fr-black">
+    <div class="fr-editor-status">
+      <div><span>Diagram:</span> {{ diagramId() }}</div>
+      <div><span>Session:</span> {{ sessionToken() }}</div>
       <div>
-        <span class="font-semibold text-fr-black">Diagram ID:</span>
-        {{ diagramId() }}
-      </div>
-      <div>
-        <span class="font-semibold text-fr-black">Session Token:</span>
-        {{ sessionToken() }}
-      </div>
-      <div>
-        <span class="font-semibold text-fr-black">Socket:</span>
-        <span
-          [class]="isConnected() ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'"
-        >
+        <span>Socket:</span>
+        <strong [class]="isConnected() ? 'text-green-600' : 'text-red-600'">
           {{ isConnected() ? 'CONECTADO' : 'DESCONECTADO' }}
-        </span>
+        </strong>
       </div>
     </div>
   </div>
 
-  <div class="border rounded-xl p-4 bg-white shadow-sm space-y-4 text-fr-black">
-    <h2 class="font-bold text-lg">Controles</h2>
+  <div class="fr-main-grid">
+    <aside class="fr-left-panel">
+      <div class="fr-card">
+        <h2 class="fr-card-title">Herramientas</h2>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div>
-        <label class="block text-sm font-medium mb-1">Cell ID actual</label>
-        <input
-          class="w-full border rounded-lg px-3 py-2"
-          [ngModel]="selectedCellId()"
-          (ngModelChange)="selectedCellId.set($event)"
-        />
+        <div class="fr-form-group">
+          <label>Cell ID actual</label>
+          <input
+            [ngModel]="selectedCellId()"
+            (ngModelChange)="selectedCellId.set($event)"
+            class="fr-input"
+          />
+        </div>
+
+        <div class="fr-form-group">
+          <label>Target ID para link</label>
+          <input
+            [ngModel]="selectedTargetId()"
+            (ngModelChange)="selectedTargetId.set($event)"
+            class="fr-input"
+          />
+        </div>
+
+        <div class="fr-form-group">
+          <label>Texto update node</label>
+          <input [ngModel]="labelText()" (ngModelChange)="labelText.set($event)" class="fr-input" />
+        </div>
+
+        <div class="fr-actions">
+          <button class="fr-btn fr-btn-primary" (click)="createNode()">Nuevo nodo</button>
+          <button class="fr-btn fr-btn-accent" (click)="lockCell()">Bloquear</button>
+          <button class="fr-btn fr-btn-muted" (click)="unlockCell()">Desbloquear</button>
+          <button class="fr-btn fr-btn-success" (click)="updateNode()">Actualizar</button>
+          <button class="fr-btn fr-btn-secondary" (click)="createLink()">Crear link</button>
+          <button class="fr-btn fr-btn-danger" (click)="deleteCell()">Eliminar</button>
+          <button class="fr-btn fr-btn-muted" (click)="sendPing()">Ping</button>
+        </div>
+
+        <p class="fr-tip">
+          Doble click en el canvas para crear un nodo. Arrastrar solicita lock automáticamente.
+        </p>
       </div>
 
-      <div>
-        <label class="block text-sm font-medium mb-1">Target ID para link</label>
-        <input
-          class="w-full border rounded-lg px-3 py-2"
-          [ngModel]="selectedTargetId()"
-          (ngModelChange)="selectedTargetId.set($event)"
-        />
+      <div class="fr-card fr-log-card">
+        <h2 class="fr-card-title">Log</h2>
+        <div class="fr-log">
+          @for (item of logs(); track item) {
+            <div>{{ item }}</div>
+          }
+        </div>
+      </div>
+    </aside>
+
+    <section class="fr-right-panel">
+      <div class="fr-editor-canvas-panel">
+        <div class="fr-canvas-header">
+          <div class="fr-canvas-title">Canvas UML</div>
+          <div class="fr-canvas-help">Lock estricto + sincronización en tiempo real</div>
+        </div>
+
+        <div #paperHost class="fr-paper-host"></div>
       </div>
 
-      <div>
-        <label class="block text-sm font-medium mb-1">Texto update node</label>
-        <input
-          class="w-full border rounded-lg px-3 py-2"
-          [ngModel]="labelText()"
-          (ngModelChange)="labelText.set($event)"
-        />
+      <div class="fr-card fr-snapshot-card">
+        <h2 class="fr-card-title">Snapshot local</h2>
+        <pre class="fr-json">{{ snapshotCells() | json }}</pre>
       </div>
-    </div>
-
-    <div class="flex flex-wrap gap-2">
-      <button class="px-4 py-2 rounded-lg bg-blue-600 text-white" (click)="createNode()">
-        Create Node
-      </button>
-
-      <button class="px-4 py-2 rounded-lg bg-amber-600 text-white" (click)="lockCell()">
-        Lock Cell
-      </button>
-
-      <button class="px-4 py-2 rounded-lg bg-slate-600 text-white" (click)="unlockCell()">
-        Unlock Cell
-      </button>
-
-      <button class="px-4 py-2 rounded-lg bg-cyan-600 text-white" (click)="moveLive()">
-        Move Live
-      </button>
-
-      <button class="px-4 py-2 rounded-lg bg-indigo-600 text-white" (click)="moveCommit()">
-        Move Commit
-      </button>
-
-      <button class="px-4 py-2 rounded-lg bg-green-600 text-white" (click)="updateNode()">
-        Update Node
-      </button>
-
-      <button class="px-4 py-2 rounded-lg bg-purple-600 text-white" (click)="createLink()">
-        Create Link
-      </button>
-
-      <button class="px-4 py-2 rounded-lg bg-red-600 text-white" (click)="deleteCell()">
-        Delete Cell
-      </button>
-
-      <button class="px-4 py-2 rounded-lg bg-gray-700 text-white" (click)="sendPing()">
-        Send Ping
-      </button>
-    </div>
-  </div>
-
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 text-fr-black">
-    <div class="border rounded-xl p-4 bg-white shadow-sm">
-      <h2 class="font-bold text-lg mb-3">Snapshot local</h2>
-      <pre class="text-xs bg-slate-50 p-3 rounded-lg overflow-auto max-h-125">{{
-        snapshotCells() | json
-      }}</pre>
-    </div>
-
-    <div class="border rounded-xl p-4 bg-white shadow-sm">
-      <h2 class="font-bold text-lg mb-3">Log de eventos</h2>
-      <div class="bg-slate-50 rounded-lg p-3 max-h-125 overflow-auto text-xs space-y-2">
-        @for (item of logs(); track item) {
-          <div>{{ item }}</div>
-        }
-      </div>
-    </div>
+    </section>
   </div>
 </div>
