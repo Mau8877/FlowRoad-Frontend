@@ -119,7 +119,7 @@ export class DiagramSyncService {
     });
   }
 
-  CREATE_NODE(cellId: string, userId: string, x: number, y: number): void {
+  CREATE_NODE(cellId: string, userId: string, x: number, y: number, laneId: string): void {
     this.SEND_OPERATION({
       opType: 'CREATE_NODE',
       cellId,
@@ -146,6 +146,7 @@ export class DiagramSyncService {
           customData: {
             nombre: 'Nueva Actividad',
             tipo: 'ACTION',
+            laneId,
           },
         },
       },

@@ -6,29 +6,20 @@ import {
   CreateDepartmentRequest,
   UpdateDepartmentRequest,
 } from '#/app/features/config-org/interfaces/departamentos.model';
-import { AuthService } from '#/app/features/auth/services/auth.service';
-import { Observable, throwError } from 'rxjs';
+import { Observable } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
 })
 export class DepartmentService {
   private http = inject(HttpClient);
-  private authService = inject(AuthService);
   private readonly URL = `${environment.BASE_URL}/departments`;
 
   /**
    * Obtiene todos los departamentos de la organización del usuario logueado
    */
   GET_BY_ORGANIZATION(): Observable<DepartmentResponse[]> {
-    const orgId = this.authService.currentUser()?.orgId;
-
-    if (!orgId) {
-      console.error('Error: No se pudo obtener el orgId del usuario actual');
-      return throwError(() => new Error('Organización no identificada'));
-    }
-
-    return this.http.get<DepartmentResponse[]>(`${this.URL}/organization/${orgId}`);
+    return this.http.get<DepartmentResponse[]>(`${this.URL}/my-organization`);
   }
 
   /**

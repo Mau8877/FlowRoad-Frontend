@@ -23,9 +23,27 @@ export interface Diagram {
   version: number;
   isActive: boolean;
   cells: DiagramCell[];
+  lanes?: DiagramLane[];
   createdAt: string;
   createdBy: string;
   updatedAt: string;
+}
+
+export type DiagramNodeType =
+  | 'INITIAL'
+  | 'ACTION'
+  | 'DECISION'
+  | 'MERGE'
+  | 'FORK'
+  | 'JOIN'
+  | 'FINAL'
+  | 'OBJECT_SIGNAL';
+
+export interface DiagramCellCustomData {
+  nombre?: string;
+  tipo?: DiagramNodeType | string;
+  laneId?: string;
+  [key: string]: any;
 }
 
 export interface DiagramCell {
@@ -39,7 +57,7 @@ export interface DiagramCell {
   target?: CellReference;
 
   attrs?: Record<string, any>;
-  customData?: Record<string, any>;
+  customData?: DiagramCellCustomData;
 }
 
 export interface Position {
@@ -55,6 +73,13 @@ export interface Size {
 export interface CellReference {
   id: string;
   port?: string;
+}
+
+export interface DiagramLane {
+  id: string;
+  departmentId: string;
+  departmentName: string;
+  order: number;
 }
 
 // ==========================================

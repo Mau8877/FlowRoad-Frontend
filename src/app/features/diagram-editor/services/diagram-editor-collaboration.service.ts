@@ -4,6 +4,7 @@ import { Subscription } from 'rxjs';
 import { AuthService } from '../../auth/services/auth.service';
 import {
   DiagramCell,
+  DiagramLane,
   JoinSessionResponse,
   SocketOperationMessage,
 } from '../interfaces/diagram.models';
@@ -17,6 +18,7 @@ import {
 } from '../utils/editor-snapshot.utils';
 import { DiagramSyncService } from './diagram-sync.service';
 import { DiagramService } from './diagram.service';
+import { DiagramEditorUiService } from './diagram-editor-ui.service';
 
 type DragPhase = 'idle' | 'locking' | 'dragging' | 'committing';
 
@@ -25,6 +27,7 @@ export class DiagramEditorCollaborationService {
   private readonly diagramService = inject(DiagramService);
   private readonly syncService = inject(DiagramSyncService);
   private readonly authService = inject(AuthService);
+  private readonly uiService = inject(DiagramEditorUiService);
 
   private subscriptions: Subscription[] = [];
   private canvasManager?: EditorCanvasManager;
@@ -48,6 +51,11 @@ export class DiagramEditorCollaborationService {
 
   private lastLiveSentAt = 0;
   private readonly liveThrottleMs = 50;
+
+  private readonly defaultNodeWidth = 160;
+  private readonly defaultNodeHeight = 60;
+  private readonly laneHorizontalPadding = 24;
+  private readonly laneVerticalPadding = 24;
 
   private readonly handleWindowPointerUp = () => {
     if (this.dragPhase === 'locking' && this.draggingCellId) {
@@ -213,7 +221,17 @@ export class DiagramEditorCollaborationService {
   }
 
   createNode(): void {
-    this.createNodeAt(140, 80);
+    const lanes = this.getOrderedLanes();
+    if (lanes.length === 0) {
+      this.addLog('No hay lanes configuradas para crear nodos.');
+      return;
+    }
+
+    const firstLaneX = 0;
+    const x = firstLaneX + this.laneHorizontalPadding;
+    const y = this.uiService.laneHeaderHeightPx + this.laneVerticalPadding;
+
+    this.createNodeAt(x, y);
   }
 
   lockCell(): void {
@@ -492,9 +510,24 @@ export class DiagramEditorCollaborationService {
   }
 
   private createNodeAt(x: number, y: number): void {
+    const lane = this.resolveLaneForX(x);
+    if (!lane) {
+      this.addLog('No se pudo crear nodo: no hay una lane válida en esa posición.');
+      return;
+    }
+
+    const normalizedPosition = this.normalizeNodePositionToLane(x, y, lane);
     const cellId = `node-${Date.now()}`;
+
     this.selectedCellId.set(cellId);
-    this.syncService.CREATE_NODE(cellId, this.currentUserId(), x, y);
+
+    this.syncService.CREATE_NODE(
+      cellId,
+      this.currentUserId(),
+      normalizedPosition.x,
+      normalizedPosition.y,
+      lane.id,
+    );
   }
 
   private finishActiveDrag(forceX?: number, forceY?: number): void {
@@ -527,6 +560,47 @@ export class DiagramEditorCollaborationService {
 
     this.addLog(`MOVE_COMMIT_SEND => ${cellId} | drag=${dragId} | x=${x} | y=${y}`);
     this.syncService.MOVE_COMMIT(cellId, this.currentUserId(), x, y, dragId);
+  }
+
+  private getOrderedLanes(): DiagramLane[] {
+    return [...this.uiService.lanes()].sort((a, b) => a.order - b.order);
+  }
+
+  private resolveLaneForX(x: number): DiagramLane | null {
+    const lanes = this.getOrderedLanes();
+    if (lanes.length === 0) return null;
+
+    const laneWidth = this.uiService.laneWidthPx;
+    const laneIndex = Math.floor(Math.max(0, x) / laneWidth);
+    const safeIndex = Math.min(laneIndex, lanes.length - 1);
+
+    return lanes[safeIndex] ?? null;
+  }
+
+  private normalizeNodePositionToLane(x: number, y: number, lane: DiagramLane): { x: number; y: number } {
+    const lanes = this.getOrderedLanes();
+    const laneIndex = lanes.findIndex((item) => item.id === lane.id);
+    const safeLaneIndex = Math.max(0, laneIndex);
+
+    const laneLeft = safeLaneIndex * this.uiService.laneWidthPx;
+    const laneRight = laneLeft + this.uiService.laneWidthPx;
+
+    const minX = laneLeft + this.laneHorizontalPadding;
+    const maxX = laneRight - this.defaultNodeWidth - this.laneHorizontalPadding;
+
+    const minY = this.uiService.laneHeaderHeightPx + this.laneVerticalPadding;
+    const maxY = Math.max(
+      minY,
+      this.uiService.canvasHeightPx() - this.defaultNodeHeight - this.laneVerticalPadding,
+    );
+
+    const normalizedX = Math.min(Math.max(x, minX), Math.max(minX, maxX));
+    const normalizedY = Math.min(Math.max(y, minY), maxY);
+
+    return {
+      x: normalizedX,
+      y: normalizedY,
+    };
   }
 
   private registerGlobalDragSafety(): void {
