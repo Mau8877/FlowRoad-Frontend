@@ -36,15 +36,7 @@ export class EditorCanvasManager {
       async: true,
       frozen: false,
       gridSize: 20,
-      drawGrid: {
-        name: 'mesh',
-        args: [
-          {
-            color: '#e7e8eb',
-            thickness: 1,
-          },
-        ],
-      },
+      drawGrid: false,
       background: {
         color: 'transparent',
       },

@@ -50,18 +50,8 @@ export class DiagramEditorCollaborationService {
   private readonly liveThrottleMs = 50;
 
   private readonly handleWindowPointerUp = () => {
-    this.addLog(
-      `POINTER_UP_WINDOW => dragging=${this.draggingCellId ?? '-'} | phase=${this.dragPhase}`,
-    );
-
     if (this.dragPhase === 'locking' && this.draggingCellId) {
-      const position = this.canvasManager?.getElementPosition(this.draggingCellId) ?? null;
-      this.pendingReleaseWhileLocking = true;
-      this.pendingReleasePosition = position;
-
-      this.addLog(
-        `WINDOW_RELEASE_BUFFERED_WHILE_LOCKING => ${this.draggingCellId} | x=${position?.x ?? '-'} | y=${position?.y ?? '-'}`,
-      );
+      this.bufferReleaseWhileLocking();
       return;
     }
 
@@ -69,18 +59,8 @@ export class DiagramEditorCollaborationService {
   };
 
   private readonly handleWindowPointerCancel = () => {
-    this.addLog(
-      `POINTER_CANCEL_WINDOW => dragging=${this.draggingCellId ?? '-'} | phase=${this.dragPhase}`,
-    );
-
     if (this.dragPhase === 'locking' && this.draggingCellId) {
-      const position = this.canvasManager?.getElementPosition(this.draggingCellId) ?? null;
-      this.pendingReleaseWhileLocking = true;
-      this.pendingReleasePosition = position;
-
-      this.addLog(
-        `WINDOW_CANCEL_BUFFERED_WHILE_LOCKING => ${this.draggingCellId} | x=${position?.x ?? '-'} | y=${position?.y ?? '-'}`,
-      );
+      this.bufferReleaseWhileLocking();
       return;
     }
 
@@ -88,16 +68,8 @@ export class DiagramEditorCollaborationService {
   };
 
   private readonly handleWindowBlur = () => {
-    this.addLog(`WINDOW_BLUR => dragging=${this.draggingCellId ?? '-'} | phase=${this.dragPhase}`);
-
     if (this.dragPhase === 'locking' && this.draggingCellId) {
-      const position = this.canvasManager?.getElementPosition(this.draggingCellId) ?? null;
-      this.pendingReleaseWhileLocking = true;
-      this.pendingReleasePosition = position;
-
-      this.addLog(
-        `WINDOW_BLUR_BUFFERED_WHILE_LOCKING => ${this.draggingCellId} | x=${position?.x ?? '-'} | y=${position?.y ?? '-'}`,
-      );
+      this.bufferReleaseWhileLocking();
       return;
     }
 
@@ -134,7 +106,6 @@ export class DiagramEditorCollaborationService {
         if (label.trim()) {
           this.labelText.set(label);
         }
-        this.addLog(`Seleccionada: ${cellId}`);
       },
 
       onBlankDoubleClick: (x: number, y: number) => {
@@ -142,8 +113,6 @@ export class DiagramEditorCollaborationService {
       },
 
       onElementPointerDown: (cellId: string, position: { x: number; y: number }) => {
-        this.addLog(`POINTER_DOWN => ${cellId} | phase=${this.dragPhase}`);
-
         if (
           this.dragPhase !== 'idle' ||
           this.draggingCellId !== null ||
@@ -157,7 +126,6 @@ export class DiagramEditorCollaborationService {
         }
 
         if (this.remoteLockedCellIds.has(cellId)) {
-          this.addLog(`Celda bloqueada por otro usuario: ${cellId}`);
           return;
         }
 
@@ -171,6 +139,7 @@ export class DiagramEditorCollaborationService {
         this.pendingLockCellId = cellId;
         this.pendingLockDragId = dragId;
         this.dragPhase = 'locking';
+        this.lastLiveSentAt = 0;
 
         this.pendingReleaseWhileLocking = false;
         this.pendingReleasePosition = null;
@@ -198,14 +167,11 @@ export class DiagramEditorCollaborationService {
       },
 
       onElementPointerUp: (cellId: string, x: number, y: number) => {
-        this.addLog(`POINTER_UP_ELEMENT => ${cellId} | phase=${this.dragPhase}`);
-
         if (this.draggingCellId !== cellId) return;
 
         if (this.dragPhase === 'locking') {
           this.pendingReleaseWhileLocking = true;
           this.pendingReleasePosition = { x, y };
-          this.addLog(`RELEASE_BUFFERED_WHILE_LOCKING => ${cellId} | x=${x} | y=${y}`);
           return;
         }
 
@@ -261,6 +227,7 @@ export class DiagramEditorCollaborationService {
     this.pendingLockCellId = this.selectedCellId();
     this.pendingLockDragId = dragId;
     this.dragPhase = 'locking';
+    this.lastLiveSentAt = 0;
 
     this.pendingReleaseWhileLocking = false;
     this.pendingReleasePosition = null;
@@ -410,9 +377,6 @@ export class DiagramEditorCollaborationService {
         const releasePos = this.pendingReleasePosition;
         this.pendingReleaseWhileLocking = false;
         this.pendingReleasePosition = null;
-
-        this.addLog(`LOCK_CONFIRMED_WITH_BUFFERED_RELEASE => ${cellId} | drag=${dragId}`);
-
         this.finishActiveDrag(releasePos?.x, releasePos?.y);
         return;
       }
@@ -438,20 +402,11 @@ export class DiagramEditorCollaborationService {
     this.preDragPositions.delete(cellId);
 
     if (msg.userId === this.currentUserId()) {
-      if (this.draggingCellId === cellId && this.activeDragId === dragId) {
-        this.draggingCellId = null;
-        this.activeDragId = null;
-        this.dragPhase = 'idle';
-        this.pendingReleaseWhileLocking = false;
-        this.pendingReleasePosition = null;
-      }
-
-      if (this.pendingLockCellId === cellId && this.pendingLockDragId === dragId) {
-        this.pendingLockCellId = null;
-        this.pendingLockDragId = null;
-        this.dragPhase = 'idle';
-        this.pendingReleaseWhileLocking = false;
-        this.pendingReleasePosition = null;
+      if (
+        (this.draggingCellId === cellId && this.activeDragId === dragId) ||
+        (this.pendingLockCellId === cellId && this.pendingLockDragId === dragId)
+      ) {
+        this.resetDragState();
       }
     }
   }
@@ -482,14 +437,7 @@ export class DiagramEditorCollaborationService {
     this.canvasManager?.clearLockState(snapshotCell);
 
     this.addLog(msg.delta?.['reason'] || 'Lock rechazado');
-
-    this.pendingLockCellId = null;
-    this.pendingLockDragId = null;
-    this.draggingCellId = null;
-    this.activeDragId = null;
-    this.dragPhase = 'idle';
-    this.pendingReleaseWhileLocking = false;
-    this.pendingReleasePosition = null;
+    this.resetDragState();
   }
 
   private handleCreateMessage(msg: SocketOperationMessage): void {
@@ -537,20 +485,10 @@ export class DiagramEditorCollaborationService {
       this.selectedCellId.set('');
     }
 
-    if (this.draggingCellId === msg.cellId) {
-      this.draggingCellId = null;
-      this.activeDragId = null;
-      this.dragPhase = 'idle';
+    if (this.draggingCellId === msg.cellId || this.pendingLockCellId === msg.cellId) {
+      this.resetDragState();
+      return;
     }
-
-    if (this.pendingLockCellId === msg.cellId) {
-      this.pendingLockCellId = null;
-      this.pendingLockDragId = null;
-      this.dragPhase = 'idle';
-    }
-
-    this.pendingReleaseWhileLocking = false;
-    this.pendingReleasePosition = null;
   }
 
   private createNodeAt(x: number, y: number): void {
@@ -560,10 +498,6 @@ export class DiagramEditorCollaborationService {
   }
 
   private finishActiveDrag(forceX?: number, forceY?: number): void {
-    this.addLog(
-      `FINISH_DRAG_CALLED => cell=${this.draggingCellId ?? '-'} | drag=${this.activeDragId ?? '-'} | phase=${this.dragPhase}`,
-    );
-
     const cellId = this.draggingCellId;
     const dragId = this.activeDragId;
 
@@ -571,11 +505,7 @@ export class DiagramEditorCollaborationService {
     if (this.dragPhase !== 'dragging') return;
 
     if (!this.localLockedCellIds.has(cellId)) {
-      this.draggingCellId = null;
-      this.activeDragId = null;
-      this.dragPhase = 'idle';
-      this.pendingReleaseWhileLocking = false;
-      this.pendingReleasePosition = null;
+      this.resetDragState();
       return;
     }
 
@@ -585,11 +515,7 @@ export class DiagramEditorCollaborationService {
     if (x === undefined || y === undefined) {
       const position = this.canvasManager?.getElementPosition(cellId);
       if (!position) {
-        this.draggingCellId = null;
-        this.activeDragId = null;
-        this.dragPhase = 'idle';
-        this.pendingReleaseWhileLocking = false;
-        this.pendingReleasePosition = null;
+        this.resetDragState();
         return;
       }
 
@@ -600,7 +526,6 @@ export class DiagramEditorCollaborationService {
     this.dragPhase = 'committing';
 
     this.addLog(`MOVE_COMMIT_SEND => ${cellId} | drag=${dragId} | x=${x} | y=${y}`);
-
     this.syncService.MOVE_COMMIT(cellId, this.currentUserId(), x, y, dragId);
   }
 
@@ -618,6 +543,26 @@ export class DiagramEditorCollaborationService {
     window.removeEventListener('pointerup', this.handleWindowPointerUp);
     window.removeEventListener('pointercancel', this.handleWindowPointerCancel);
     window.removeEventListener('blur', this.handleWindowBlur);
+  }
+
+  private bufferReleaseWhileLocking(): void {
+    const position = this.draggingCellId
+      ? (this.canvasManager?.getElementPosition(this.draggingCellId) ?? null)
+      : null;
+
+    this.pendingReleaseWhileLocking = true;
+    this.pendingReleasePosition = position;
+  }
+
+  private resetDragState(): void {
+    this.draggingCellId = null;
+    this.activeDragId = null;
+    this.dragPhase = 'idle';
+    this.pendingLockCellId = null;
+    this.pendingLockDragId = null;
+    this.pendingReleaseWhileLocking = false;
+    this.pendingReleasePosition = null;
+    this.lastLiveSentAt = 0;
   }
 
   private generateDragId(): string {
