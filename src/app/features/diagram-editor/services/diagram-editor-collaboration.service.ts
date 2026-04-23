@@ -482,7 +482,30 @@ export class DiagramEditorCollaborationService {
     }
 
     this.snapshotCells.update((cells) =>
-      updateSnapshotCellPosition(cells, msg.cellId, msg.delta['x'], msg.delta['y']),
+      cells.map((cell) => {
+        if (cell.id !== msg.cellId) return cell;
+
+        if (cell.type === 'standard.Link') {
+          return cell;
+        }
+
+        const nextLaneId =
+          msg.opType === 'MOVE_COMMIT'
+            ? (msg.delta['laneId'] as string | undefined) ?? cell.customData?.laneId
+            : cell.customData?.laneId;
+
+        return {
+          ...cell,
+          position: {
+            x: msg.delta['x'],
+            y: msg.delta['y'],
+          },
+          customData: {
+            ...(cell.customData ?? {}),
+            ...(nextLaneId ? { laneId: nextLaneId } : {}),
+          },
+        };
+      }),
     );
   }
 
@@ -556,10 +579,49 @@ export class DiagramEditorCollaborationService {
       y = position.y;
     }
 
+    const resolvedLane = this.resolveLaneForX(x);
+    if (!resolvedLane) {
+      this.addLog(`MOVE_COMMIT_BLOCKED_NO_LANE => ${cellId}`);
+      this.resetDragState();
+      return;
+    }
+
+    const normalizedPosition = this.normalizeNodePositionToLane(x, y, resolvedLane);
+
+    this.snapshotCells.update((cells) =>
+      cells.map((cell) => {
+        if (cell.id !== cellId || cell.type === 'standard.Link') return cell;
+
+        return {
+          ...cell,
+          position: {
+            x: normalizedPosition.x,
+            y: normalizedPosition.y,
+          },
+          customData: {
+            ...(cell.customData ?? {}),
+            laneId: resolvedLane.id,
+          },
+        };
+      }),
+    );
+
+    this.canvasManager?.applyMove(cellId, normalizedPosition.x, normalizedPosition.y);
+
     this.dragPhase = 'committing';
 
-    this.addLog(`MOVE_COMMIT_SEND => ${cellId} | drag=${dragId} | x=${x} | y=${y}`);
-    this.syncService.MOVE_COMMIT(cellId, this.currentUserId(), x, y, dragId);
+    this.addLog(
+      `MOVE_COMMIT_SEND => ${cellId} | drag=${dragId} | x=${normalizedPosition.x} | y=${normalizedPosition.y} | lane=${resolvedLane.id}`,
+    );
+
+    this.syncService.MOVE_COMMIT(
+      cellId,
+      this.currentUserId(),
+      normalizedPosition.x,
+      normalizedPosition.y,
+      dragId,
+      resolvedLane.id,
+    );
   }
 
   private getOrderedLanes(): DiagramLane[] {
@@ -641,6 +703,13 @@ export class DiagramEditorCollaborationService {
 
   private generateDragId(): string {
     return `drag-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  private getCellLaneId(cellId: string): string | null {
+    const cell = findSnapshotCell(this.snapshotCells(), cellId);
+    if (!cell || cell.type === 'standard.Link') return null;
+
+    return cell.customData?.laneId ?? null;
   }
 
   private addLog(text: string): void {

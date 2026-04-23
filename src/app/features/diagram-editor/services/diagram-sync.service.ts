@@ -191,13 +191,24 @@ export class DiagramSyncService {
     });
   }
 
-  MOVE_COMMIT(cellId: string, userId: string, x: number, y: number, dragId: string): void {
+  MOVE_COMMIT(
+    cellId: string,
+    userId: string,
+    x: number,
+    y: number,
+    dragId: string,
+    laneId?: string,
+  ): void {
     this.SEND_OPERATION({
       opType: 'MOVE_COMMIT',
       cellId,
       userId,
       dragId,
-      delta: { x, y },
+      delta: {
+        x,
+        y,
+        ...(laneId ? { laneId } : {}),
+      },
     });
   }
 
