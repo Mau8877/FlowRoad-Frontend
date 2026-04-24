@@ -19,6 +19,11 @@ import {
   type EditorSettingsSubmitPayload,
 } from './components/editor-settings-popover/editor-settings-popover';
 import { DiagramEditorCollaborationService } from './services/diagram-editor-collaboration.service';
+import { DiagramEditorDragSessionService } from './services/diagram-editor-drag-session.service';
+import { DiagramEditorLaneService } from './services/diagram-editor-lane.service';
+import { DiagramEditorLockStateService } from './services/diagram-editor-lock-state.service';
+import { DiagramEditorMessageHandlerService } from './services/diagram-editor-message-handler.service';
+import { DiagramEditorSnapshotStoreService } from './services/diagram-editor-snapshot-store.service';
 import { DiagramEditorUiService } from './services/diagram-editor-ui.service';
 import { DiagramService } from './services/diagram.service';
 
@@ -34,7 +39,15 @@ import { DiagramService } from './services/diagram.service';
   ],
   templateUrl: './diagram-editor.html',
   styleUrl: './diagram-editor.css',
-  providers: [DiagramEditorUiService, DiagramEditorCollaborationService],
+  providers: [
+    DiagramEditorUiService,
+    DiagramEditorDragSessionService,
+    DiagramEditorLaneService,
+    DiagramEditorLockStateService,
+    DiagramEditorSnapshotStoreService,
+    DiagramEditorMessageHandlerService,
+    DiagramEditorCollaborationService,
+  ],
 })
 export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('paperHost', { static: true }) paperHost!: ElementRef<HTMLDivElement>;
