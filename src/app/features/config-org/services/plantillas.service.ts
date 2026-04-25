@@ -1,4 +1,3 @@
-import { AuthService } from '#/app/features/auth/services/auth.service';
 import { environment } from '#/environments/environment';
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
@@ -6,6 +5,7 @@ import { Observable } from 'rxjs';
 import {
   CreateTemplateRequest,
   TemplateResponse,
+  TemplateSummaryResponse,
   UpdateTemplateRequest,
 } from '../interfaces/plantillas.models';
 
@@ -14,7 +14,6 @@ import {
 })
 export class TemplateService {
   private http = inject(HttpClient);
-  private authService = inject(AuthService); // Buena práctica tenerlo aquí inyectado
   private readonly URL = `${environment.BASE_URL}/templates`;
 
   /**
@@ -22,6 +21,14 @@ export class TemplateService {
    */
   GET_ALL_BY_ORGANIZATION(): Observable<TemplateResponse[]> {
     return this.http.get<TemplateResponse[]>(this.URL);
+  }
+
+  /**
+   * Obtiene resumen liviano de plantillas activas de la organización
+   * Ideal para selects del editor de diagramas
+   */
+  GET_SUMMARY_BY_MY_ORGANIZATION(): Observable<TemplateSummaryResponse[]> {
+    return this.http.get<TemplateSummaryResponse[]>(`${this.URL}/my-organization/summary`);
   }
 
   /**

@@ -11,13 +11,17 @@ import {
 import { ActivatedRoute } from '@angular/router';
 
 import { DepartmentService } from '#/app/features/config-org/services/departamento.service';
+import { TemplateService } from '#/app/features/config-org/services/plantillas.service';
 import { EditorDebugModalComponent } from './components/editor-debug-modal/editor-debug-modal';
 import { EditorHeaderComponent } from './components/editor-header/editor-header';
 import { EditorMinimapComponent } from './components/editor-minimap/editor-minimap';
+import { EditorNodeInspectorComponent } from './components/editor-node-inspector/editor-node-inspector';
 import {
   EditorSettingsPopoverComponent,
   type EditorSettingsSubmitPayload,
 } from './components/editor-settings-popover/editor-settings-popover';
+import { EditorToolbarComponent } from './components/editor-toolbar/editor-toolbar';
+import { DiagramCell, EditorTool } from './interfaces/diagram.models';
 import { DiagramEditorCollaborationService } from './services/diagram-editor-collaboration.service';
 import { DiagramEditorDragSessionService } from './services/diagram-editor-drag-session.service';
 import { DiagramEditorLaneService } from './services/diagram-editor-lane.service';
@@ -33,7 +37,9 @@ import { DiagramService } from './services/diagram.service';
   imports: [
     CommonModule,
     EditorHeaderComponent,
+    EditorToolbarComponent,
     EditorSettingsPopoverComponent,
+    EditorNodeInspectorComponent,
     EditorDebugModalComponent,
     EditorMinimapComponent,
   ],
@@ -51,13 +57,21 @@ import { DiagramService } from './services/diagram.service';
 })
 export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('paperHost', { static: true }) paperHost!: ElementRef<HTMLDivElement>;
+  @ViewChild('canvasViewport', { static: true }) canvasViewport!: ElementRef<HTMLDivElement>;
 
   private readonly route = inject(ActivatedRoute);
   private readonly diagramService = inject(DiagramService);
   private readonly departmentService = inject(DepartmentService);
+  private readonly templateService = inject(TemplateService);
 
   protected readonly ui = inject(DiagramEditorUiService);
   protected readonly collab = inject(DiagramEditorCollaborationService);
+
+  private isPanning = false;
+  private panStartX = 0;
+  private panStartY = 0;
+  private scrollStartLeft = 0;
+  private scrollStartTop = 0;
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id') || '';
@@ -65,6 +79,7 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
 
     this.loadDiagram(id);
     this.loadDepartments();
+    this.loadTemplates();
     this.collab.initDiagram(id);
   }
 
@@ -90,6 +105,66 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
 
   protected closeSettingsPopover(): void {
     this.ui.closeSettingsPopover();
+  }
+
+  protected onToolSelected(tool: EditorTool): void {
+    this.ui.setActiveTool(tool);
+  }
+
+  protected onAiRequested(): void {
+    this.collab.logs.update((current) => [
+      `${new Date().toLocaleTimeString()} - IA aún no implementada, pero el botón ya está listo 😎`,
+      ...current,
+    ]);
+  }
+
+  protected onViewportMouseDown(event: MouseEvent): void {
+    if (this.ui.activeTool() !== 'PAN') return;
+
+    this.isPanning = true;
+    this.panStartX = event.clientX;
+    this.panStartY = event.clientY;
+    this.scrollStartLeft = this.canvasViewport.nativeElement.scrollLeft;
+    this.scrollStartTop = this.canvasViewport.nativeElement.scrollTop;
+  }
+
+  protected onViewportMouseMove(event: MouseEvent): void {
+    if (!this.isPanning) return;
+
+    const deltaX = event.clientX - this.panStartX;
+    const deltaY = event.clientY - this.panStartY;
+
+    this.canvasViewport.nativeElement.scrollLeft = this.scrollStartLeft - deltaX;
+    this.canvasViewport.nativeElement.scrollTop = this.scrollStartTop - deltaY;
+  }
+
+  protected onViewportMouseUp(): void {
+    this.isPanning = false;
+  }
+
+  protected onViewportMouseLeave(): void {
+    this.isPanning = false;
+  }
+
+  protected getSelectedCell(): DiagramCell | null {
+    return this.collab.getSelectedCell();
+  }
+
+  protected onInspectorSave(payload: {
+    label: string;
+    width: number;
+    height: number;
+    templateDocumentId: string;
+  }): void {
+    this.collab.updateNode(payload);
+    this.collab.logs.update((current) => [
+      `${new Date().toLocaleTimeString()} - Nodo actualizado: ${payload.label}`,
+      ...current,
+    ]);
+  }
+
+  protected onInspectorDelete(): void {
+    this.collab.deleteCell();
   }
 
   protected saveDiagramSettings(payload: EditorSettingsSubmitPayload): void {
@@ -151,6 +226,21 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
         console.error(error);
         this.collab.logs.update((current) => [
           `${new Date().toLocaleTimeString()} - Error al cargar departments de la organización`,
+          ...current,
+        ]);
+      },
+    });
+  }
+
+  private loadTemplates(): void {
+    this.templateService.GET_SUMMARY_BY_MY_ORGANIZATION().subscribe({
+      next: (templates) => {
+        this.ui.setAvailableTemplates(templates);
+      },
+      error: (error) => {
+        console.error(error);
+        this.collab.logs.update((current) => [
+          `${new Date().toLocaleTimeString()} - Error al cargar plantillas de la organización`,
           ...current,
         ]);
       },

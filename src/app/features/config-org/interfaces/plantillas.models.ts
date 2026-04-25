@@ -44,6 +44,17 @@ export interface FieldDefinition {
 }
 
 /**
+ * Resumen liviano para selects del editor
+ */
+export interface TemplateSummaryResponse {
+  id: string;
+  name: string;
+  departmentId: string;
+  departmentName: string;
+  isActive: boolean;
+}
+
+/**
  * Respuesta del servidor (GET /templates)
  */
 export interface TemplateResponse {

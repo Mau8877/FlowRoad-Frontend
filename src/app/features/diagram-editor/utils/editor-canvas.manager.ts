@@ -3,13 +3,14 @@ import { DiagramCell } from '../interfaces/diagram.models';
 
 export interface CanvasManagerCallbacks {
   onCellSelected(cellId: string, label: string): void;
-  onBlankDoubleClick(x: number, y: number): void;
+  onBlankPointerDown(x: number, y: number): void;
   onElementPointerDown(cellId: string, position: { x: number; y: number }): void;
   onElementPositionChanged(cellId: string, x: number, y: number): void;
   onElementPointerUp(cellId: string, x: number, y: number): void;
   isCellRemotelyLocked(cellId: string): boolean;
   getActiveDraggingCellId(): string | null;
   isDragTransitionLocked(): boolean;
+  isPanMode(): boolean;
 }
 
 export class EditorCanvasManager {
@@ -43,6 +44,10 @@ export class EditorCanvasManager {
       interactive: (cellView) => {
         const cellId = String(cellView.model.id);
 
+        if (this.callbacks.isPanMode()) {
+          return false;
+        }
+
         if (cellView.model.isLink()) {
           return false;
         }
@@ -53,8 +58,6 @@ export class EditorCanvasManager {
 
         const activeDraggingCellId = this.callbacks.getActiveDraggingCellId();
 
-        // Si hay un drag activo o cerrándose, solo dejamos interactuar
-        // con la celda que ya estaba en drag.
         if (this.callbacks.isDragTransitionLocked()) {
           return activeDraggingCellId === cellId;
         }
@@ -209,8 +212,8 @@ export class EditorCanvasManager {
       this.callbacks.onCellSelected(cellId, String(label));
     });
 
-    this.paper.on('blank:pointerdblclick', (_evt, x, y) => {
-      this.callbacks.onBlankDoubleClick(x, y);
+    this.paper.on('blank:pointerdown', (_evt, x, y) => {
+      this.callbacks.onBlankPointerDown(x, y);
     });
 
     this.paper.on('element:pointerdown', (elementView) => {
@@ -294,6 +297,50 @@ export class EditorCanvasManager {
 
       link.set('customData', cell.customData || {});
       return link;
+    }
+
+    if (cell.type === 'standard.Circle') {
+      const circle = new shapes.standard.Circle({
+        id: cell.id,
+        position: cell.position || { x: 100, y: 100 },
+        size: cell.size || { width: 40, height: 40 },
+        attrs: cell.attrs || {
+          body: {
+            fill: '#ffffff',
+            stroke: '#111827',
+            strokeWidth: 2,
+          },
+          label: {
+            text: '',
+          },
+        },
+      });
+
+      circle.set('customData', cell.customData || {});
+      return circle;
+    }
+
+    if (cell.type === 'standard.Polygon') {
+      const polygon = new shapes.standard.Polygon({
+        id: cell.id,
+        position: cell.position || { x: 100, y: 100 },
+        size: cell.size || { width: 90, height: 90 },
+        attrs: cell.attrs || {
+          body: {
+            refPoints: '50,0 100,50 50,100 0,50',
+            fill: '#ffffff',
+            stroke: '#2563eb',
+            strokeWidth: 2,
+          },
+          label: {
+            text: 'Decisión',
+            fill: '#111827',
+          },
+        },
+      });
+
+      polygon.set('customData', cell.customData || {});
+      return polygon;
     }
 
     const rect = new shapes.standard.Rectangle({

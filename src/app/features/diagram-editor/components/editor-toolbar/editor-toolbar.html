@@ -1,0 +1,29 @@
+<div
+  class="sticky top-0 z-30 flex w-full flex-wrap items-center gap-2 rounded-2xl border border-black/5 bg-white/90 px-3 py-3 shadow-[0_8px_22px_rgba(2,3,4,0.08)] backdrop-blur-sm"
+>
+
+  <button
+    type="button"
+    (click)="onAi()"
+    class="inline-flex items-center rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-bold text-violet-700 transition hover:bg-violet-100"
+  >
+    🤖 IA
+  </button>
+
+  <div class="mx-1 h-8 w-px bg-zinc-200"></div>
+
+  @for (tool of tools; track tool.key) {
+    <button
+      type="button"
+      (click)="onSelectTool(tool.key)"
+      class="inline-flex items-center rounded-xl px-3 py-2 text-sm font-semibold transition"
+      [class]="
+        activeTool === tool.key
+          ? 'bg-fr-gold text-fr-black shadow-[0_4px_12px_rgba(204,158,97,0.22)]'
+          : 'border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'
+      "
+    >
+      {{ tool.label }}
+    </button>
+  }
+</div>

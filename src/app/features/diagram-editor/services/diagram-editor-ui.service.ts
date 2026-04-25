@@ -1,7 +1,8 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { DepartmentResponse } from '#/app/features/config-org/interfaces/departamentos.model';
+import { TemplateSummaryResponse } from '#/app/features/config-org/interfaces/plantillas.models';
 import { EditorSettingsSubmitPayload } from '../components/editor-settings-popover/editor-settings-popover';
-import { DiagramLane } from '../interfaces/diagram.models';
+import { DiagramLane, EditorTool } from '../interfaces/diagram.models';
 import { DiagramService } from './diagram.service';
 
 @Injectable()
@@ -17,6 +18,8 @@ export class DiagramEditorUiService {
   public diagramDescription = signal('');
   public lanes = signal<DiagramLane[]>([]);
   public availableDepartments = signal<DepartmentResponse[]>([]);
+  public availableTemplates = signal<TemplateSummaryResponse[]>([]);
+  public activeTool = signal<EditorTool>('PAN');
 
   public isSettingsOpen = signal(false);
   public isDebugOpen = signal(false);
@@ -48,6 +51,10 @@ export class DiagramEditorUiService {
     this.isSettingsOpen.set(false);
   }
 
+  setActiveTool(tool: EditorTool): void {
+    this.activeTool.set(tool);
+  }
+
   setMetadata(name: string, description: string): void {
     this.diagramName.set(name || 'Diagrama de actividades');
     this.diagramDescription.set(description || '');
@@ -63,6 +70,13 @@ export class DiagramEditorUiService {
       .filter((dept) => dept.isActive)
       .sort((a, b) => a.name.localeCompare(b.name));
     this.availableDepartments.set(normalized);
+  }
+
+  setAvailableTemplates(templates: TemplateSummaryResponse[] | null | undefined): void {
+    const normalized = [...(templates ?? [])]
+      .filter((template) => template.isActive)
+      .sort((a, b) => a.name.localeCompare(b.name));
+    this.availableTemplates.set(normalized);
   }
 
   saveDiagramSettings(

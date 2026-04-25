@@ -20,15 +20,27 @@
     />
   </div>
 
+  <app-editor-toolbar
+    [activeTool]="ui.activeTool()"
+    (toolSelected)="onToolSelected($event)"
+    (aiRequested)="onAiRequested()"
+  />
+
   <div
-    class="relative h-[calc(100vh-180px)] min-h-140 overflow-auto rounded-3xl border border-black/5 bg-[#fcfcfb] shadow-[0_16px_40px_rgba(2,3,4,0.08)]"
+    #canvasViewport
+    class="relative h-[calc(100vh-235px)] min-h-140 overflow-auto rounded-3xl border border-black/5 bg-[#fcfcfb] shadow-[0_16px_40px_rgba(2,3,4,0.08)]"
+    [class.cursor-grab]="ui.activeTool() === 'PAN'"
+    [class.cursor-grabbing]="ui.activeTool() === 'PAN'"
+    (mousedown)="onViewportMouseDown($event)"
+    (mousemove)="onViewportMouseMove($event)"
+    (mouseup)="onViewportMouseUp()"
+    (mouseleave)="onViewportMouseLeave()"
   >
     <div
       class="relative"
       [style.width.px]="ui.canvasWidthPx()"
       [style.height.px]="ui.canvasHeightPx()"
     >
-      <!-- fondo -->
       <div class="pointer-events-none absolute inset-0 z-0">
         <div class="absolute inset-0 bg-[#fcfcfb]"></div>
 
@@ -55,7 +67,6 @@
         ></div>
       </div>
 
-      <!-- lanes -->
       <div class="pointer-events-none absolute inset-0 z-[1] flex">
         @for (lane of ui.lanes(); track lane.id) {
           <div
@@ -72,13 +83,25 @@
         }
       </div>
 
-      <!-- paper -->
       <div class="absolute inset-0 z-10 overflow-hidden">
         <div #paperHost class="h-full w-full"></div>
       </div>
 
       <div class="pointer-events-none absolute bottom-4 right-4 z-20">
         <app-editor-minimap [cells]="collab.snapshotCells()" [title]="'Mapa'"></app-editor-minimap>
+      </div>
+    </div>
+
+    <!-- inspector fijo al viewport visible -->
+    <div class="pointer-events-none absolute right-4 top-4 z-30">
+      <div class="pointer-events-auto">
+        <app-editor-node-inspector
+          [selectedCell]="getSelectedCell()"
+          [availableTemplates]="ui.availableTemplates()"
+          [isSaving]="false"
+          (saveRequested)="onInspectorSave($event)"
+          (deleteRequested)="onInspectorDelete()"
+        />
       </div>
     </div>
   </div>

@@ -1,0 +1,100 @@
+@if (selectedCell && selectedCell.type !== 'standard.Link') {
+  <aside
+    class="w-80 max-w-[calc(100vw-3rem)] overflow-hidden rounded-2xl border border-black/5 bg-white/96 shadow-[0_20px_40px_rgba(2,3,4,0.16)] ring-1 ring-black/5 backdrop-blur-sm"
+  >
+    <div class="bg-[linear-gradient(135deg,#020304_0%,#2c2c31_100%)] px-4 py-3 text-white">
+      <div class="text-sm font-bold uppercase tracking-[0.08em] text-fr-gold">Nodo</div>
+      <div class="mt-1 text-xs text-white/70">
+        {{ selectedCell.customData?.['tipo'] || selectedCell.type }}
+      </div>
+      <div class="mt-1 truncate text-xs text-white/60">
+        {{ selectedCell.id }}
+      </div>
+    </div>
+
+    <div class="space-y-4 p-4">
+      <div class="space-y-2">
+        <label class="block text-xs font-bold uppercase tracking-[0.08em] text-fr-taupe">
+          Label
+        </label>
+        <input
+          type="text"
+          class="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-fr-black outline-none transition focus:border-fr-gold focus:ring-3 focus:ring-[rgba(204,158,97,0.18)]"
+          [ngModel]="draftLabel()"
+          (ngModelChange)="draftLabel.set($event)"
+          placeholder="Nombre del nodo"
+        />
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div class="space-y-2">
+          <label class="block text-xs font-bold uppercase tracking-[0.08em] text-fr-taupe">
+            Ancho
+          </label>
+          <input
+            type="number"
+            min="24"
+            class="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-fr-black outline-none transition focus:border-fr-gold focus:ring-3 focus:ring-[rgba(204,158,97,0.18)]"
+            [ngModel]="draftWidth()"
+            (ngModelChange)="draftWidth.set(+$event)"
+          />
+        </div>
+
+        <div class="space-y-2">
+          <label class="block text-xs font-bold uppercase tracking-[0.08em] text-fr-taupe">
+            Alto
+          </label>
+          <input
+            type="number"
+            min="18"
+            class="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-fr-black outline-none transition focus:border-fr-gold focus:ring-3 focus:ring-[rgba(204,158,97,0.18)]"
+            [ngModel]="draftHeight()"
+            (ngModelChange)="draftHeight.set(+$event)"
+          />
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <label class="block text-xs font-bold uppercase tracking-[0.08em] text-fr-taupe">
+          Documento plantilla
+        </label>
+        <select
+          class="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-fr-black outline-none transition focus:border-fr-gold focus:ring-3 focus:ring-[rgba(204,158,97,0.18)]"
+          [ngModel]="draftTemplateDocumentId()"
+          (ngModelChange)="draftTemplateDocumentId.set($event)"
+        >
+          <option value="">Sin plantilla</option>
+
+          @for (template of availableTemplates; track template.id) {
+            <option [value]="template.id">
+              {{ template.name }} — {{ template.departmentName }}
+            </option>
+          }
+        </select>
+      </div>
+
+      <div class="pt-2">
+        <button
+          type="button"
+          (click)="onDelete()"
+          class="inline-flex w-full items-center justify-center rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-100"
+        >
+          🗑 Eliminar
+        </button>
+      </div>
+
+      <button
+        type="button"
+        (click)="onSave()"
+        [disabled]="isSaving"
+        class="inline-flex w-full items-center justify-center rounded-xl bg-fr-gold px-4 py-3 text-sm font-bold text-fr-black transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        @if (isSaving) {
+          Guardando...
+        } @else {
+          Guardar nodo
+        }
+      </button>
+    </div>
+  </aside>
+}

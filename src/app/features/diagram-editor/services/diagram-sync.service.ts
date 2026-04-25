@@ -4,7 +4,7 @@ import { Client, Message } from '@stomp/stompjs';
 import { Subject } from 'rxjs';
 import SockJS from 'sockjs-client';
 import { AuthService } from '../../auth/services/auth.service';
-import { SocketOperationMessage } from '../interfaces/diagram.models';
+import { DiagramNodeType, SocketOperationMessage } from '../interfaces/diagram.models';
 
 @Injectable({
   providedIn: 'root',
@@ -119,63 +119,62 @@ export class DiagramSyncService {
     });
   }
 
-  CREATE_NODE(cellId: string, userId: string, x: number, y: number, laneId: string): void {
+  CREATE_NODE(
+    cellId: string,
+    userId: string,
+    x: number,
+    y: number,
+    laneId: string,
+    nodeType: DiagramNodeType,
+  ): void {
+    const cell = this.buildNodeCell(cellId, x, y, laneId, nodeType);
+
     this.SEND_OPERATION({
       opType: 'CREATE_NODE',
       cellId,
       userId,
       delta: {
-        cell: {
-          id: cellId,
-          type: 'standard.Rectangle',
-          position: { x, y },
-          size: { width: 160, height: 60 },
-          attrs: {
-            body: {
-              fill: '#ffffff',
-              stroke: '#2563eb',
-              strokeWidth: 2,
-              rx: 12,
-              ry: 12,
-            },
-            label: {
-              text: 'Nueva Actividad',
-              fill: '#111827',
-            },
-          },
-          customData: {
-            nombre: 'Nueva Actividad',
-            tipo: 'ACTION',
-            laneId,
-          },
-        },
+        cell,
       },
     });
   }
 
-  UPDATE_NODE(cellId: string, userId: string, label: string, dragId?: string): void {
+    UPDATE_NODE(
+    cellId: string,
+    userId: string,
+    payload: {
+      label: string;
+      width?: number;
+      height?: number;
+      templateDocumentId?: string;
+    },
+    dragId?: string,
+  ): void {
     this.SEND_OPERATION({
       opType: 'UPDATE_NODE',
       cellId,
       userId,
       dragId,
       delta: {
+        ...(payload.width !== undefined && payload.height !== undefined
+          ? {
+              size: {
+                width: payload.width,
+                height: payload.height,
+              },
+            }
+          : {}),
         attrs: {
-          body: {
-            fill: '#ffffff',
-            stroke: '#16a34a',
-            strokeWidth: 2,
-            rx: 12,
-            ry: 12,
-          },
           label: {
-            text: label,
+            text: payload.label,
             fill: '#111827',
           },
         },
         customData: {
-          nombre: label,
-          tipo: 'ACTION',
+          nombre: payload.label,
+          ...(payload.templateDocumentId !== undefined
+            ? { templateDocumentId: payload.templateDocumentId }
+            : {}),
         },
       },
     });
@@ -252,6 +251,140 @@ export class DiagramSyncService {
       console.log('[SYNC][DISCONNECT]');
       this.stompClient.deactivate();
       this.onConnectionState$.next('DISCONNECTED');
+    }
+  }
+
+  private buildNodeCell(
+    cellId: string,
+    x: number,
+    y: number,
+    laneId: string,
+    nodeType: DiagramNodeType,
+  ): Record<string, any> {
+    switch (nodeType) {
+      case 'INITIAL':
+        return {
+          id: cellId,
+          type: 'standard.Circle',
+          position: { x, y },
+          size: { width: 36, height: 36 },
+          attrs: {
+            body: {
+              fill: '#111827',
+              stroke: '#111827',
+              strokeWidth: 2,
+            },
+            label: {
+              text: '',
+            },
+          },
+          customData: {
+            nombre: 'Inicio',
+            tipo: 'INITIAL',
+            laneId,
+          },
+        };
+
+      case 'DECISION':
+        return {
+          id: cellId,
+          type: 'standard.Polygon',
+          position: { x, y },
+          size: { width: 90, height: 90 },
+          attrs: {
+            body: {
+              refPoints: '50,0 100,50 50,100 0,50',
+              fill: '#ffffff',
+              stroke: '#2563eb',
+              strokeWidth: 2,
+            },
+            label: {
+              text: 'Decisión',
+              fill: '#111827',
+            },
+          },
+          customData: {
+            nombre: 'Decisión',
+            tipo: 'DECISION',
+            laneId,
+          },
+        };
+
+      case 'FORK':
+      case 'JOIN':
+        return {
+          id: cellId,
+          type: 'standard.Rectangle',
+          position: { x, y },
+          size: { width: 160, height: 18 },
+          attrs: {
+            body: {
+              fill: '#111827',
+              stroke: '#111827',
+              strokeWidth: 1,
+              rx: 4,
+              ry: 4,
+            },
+            label: {
+              text: '',
+            },
+          },
+          customData: {
+            nombre: nodeType === 'FORK' ? 'Fork' : 'Join',
+            tipo: nodeType,
+            laneId,
+          },
+        };
+
+      case 'FINAL':
+        return {
+          id: cellId,
+          type: 'standard.Circle',
+          position: { x, y },
+          size: { width: 40, height: 40 },
+          attrs: {
+            body: {
+              fill: '#ffffff',
+              stroke: '#111827',
+              strokeWidth: 4,
+            },
+            label: {
+              text: '',
+            },
+          },
+          customData: {
+            nombre: 'Final',
+            tipo: 'FINAL',
+            laneId,
+          },
+        };
+
+      case 'ACTION':
+      default:
+        return {
+          id: cellId,
+          type: 'standard.Rectangle',
+          position: { x, y },
+          size: { width: 160, height: 60 },
+          attrs: {
+            body: {
+              fill: '#ffffff',
+              stroke: '#2563eb',
+              strokeWidth: 2,
+              rx: 12,
+              ry: 12,
+            },
+            label: {
+              text: 'Nueva Actividad',
+              fill: '#111827',
+            },
+          },
+          customData: {
+            nombre: 'Nueva Actividad',
+            tipo: 'ACTION',
+            laneId,
+          },
+        };
     }
   }
 }

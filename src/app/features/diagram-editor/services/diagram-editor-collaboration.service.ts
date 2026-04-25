@@ -3,6 +3,7 @@ import { Subscription } from 'rxjs';
 
 import { AuthService } from '../../auth/services/auth.service';
 import {
+  DiagramNodeType,
   JoinSessionResponse,
   SocketOperationMessage,
 } from '../interfaces/diagram.models';
@@ -15,6 +16,7 @@ import {
   DiagramEditorMessageHandlerService,
 } from './diagram-editor-message-handler.service';
 import { DiagramEditorSnapshotStoreService } from './diagram-editor-snapshot-store.service';
+import { DiagramEditorUiService } from './diagram-editor-ui.service';
 import { DiagramSyncService } from './diagram-sync.service';
 import { DiagramService } from './diagram.service';
 
@@ -23,6 +25,7 @@ export class DiagramEditorCollaborationService {
   private readonly diagramService = inject(DiagramService);
   private readonly syncService = inject(DiagramSyncService);
   private readonly authService = inject(AuthService);
+  private readonly uiService = inject(DiagramEditorUiService);
 
   private readonly dragSession = inject(DiagramEditorDragSessionService);
   private readonly laneService = inject(DiagramEditorLaneService);
@@ -83,8 +86,8 @@ export class DiagramEditorCollaborationService {
         }
       },
 
-      onBlankDoubleClick: (x: number, y: number) => {
-        this.createNodeAt(x, y);
+      onBlankPointerDown: (x: number, y: number) => {
+        this.handleBlankPointerDown(x, y);
       },
 
       onElementPointerDown: (cellId: string, position: { x: number; y: number }) => {
@@ -109,6 +112,10 @@ export class DiagramEditorCollaborationService {
 
       isDragTransitionLocked: () => {
         return this.dragSession.isTransitionLocked();
+      },
+
+      isPanMode: () => {
+        return this.uiService.activeTool() === 'PAN';
       },
     });
 
@@ -139,7 +146,7 @@ export class DiagramEditorCollaborationService {
       return;
     }
 
-    this.createNodeAt(initialPosition.x, initialPosition.y);
+    this.createNodeAt(initialPosition.x, initialPosition.y, 'ACTION');
   }
 
   lockCell(): void {
@@ -162,9 +169,43 @@ export class DiagramEditorCollaborationService {
     this.syncService.UNLOCK_CELL(cellId, this.currentUserId(), dragId);
   }
 
-  updateNode(): void {
-    if (!this.selectedCellId()) return;
-    this.syncService.UPDATE_NODE(this.selectedCellId(), this.currentUserId(), this.labelText());
+    updateNode(payload?: {
+      label: string;
+      width?: number;
+      height?: number;
+      templateDocumentId?: string;
+    }): void {
+      const cellId = this.selectedCellId();
+      if (!cellId) return;
+
+      const selectedCell = this.snapshotStore.findCell(cellId);
+      if (!selectedCell || selectedCell.type === 'standard.Link') return;
+
+      const nextLabel = payload?.label ?? this.labelText();
+      const nextWidth = payload?.width ?? selectedCell.size?.width;
+      const nextHeight = payload?.height ?? selectedCell.size?.height;
+      const nextTemplateDocumentId =
+        payload?.templateDocumentId ?? selectedCell.customData?.['templateDocumentId'] ?? '';
+
+      this.labelText.set(nextLabel);
+
+      this.syncService.UPDATE_NODE(
+        cellId,
+        this.currentUserId(),
+        {
+          label: nextLabel,
+          ...(nextWidth !== undefined ? { width: nextWidth } : {}),
+          ...(nextHeight !== undefined ? { height: nextHeight } : {}),
+          templateDocumentId: nextTemplateDocumentId,
+        },
+      );
+    }
+
+  getSelectedCell(): any | null {
+    const cellId = this.selectedCellId();
+    if (!cellId) return null;
+
+    return this.snapshotStore.findCell(cellId) ?? null;
   }
 
   createLink(): void {
@@ -186,6 +227,35 @@ export class DiagramEditorCollaborationService {
 
   sendPing(): void {
     this.syncService.SEND_PING(this.currentUserId(), 320, 220);
+  }
+
+  private handleBlankPointerDown(x: number, y: number): void {
+    const activeTool = this.uiService.activeTool();
+
+    switch (activeTool) {
+      case 'INITIAL':
+        this.createNodeAt(x, y, 'INITIAL');
+        return;
+
+      case 'ACTION':
+        this.createNodeAt(x, y, 'ACTION');
+        return;
+
+      case 'DECISION':
+        this.createNodeAt(x, y, 'DECISION');
+        return;
+
+      case 'FORK_JOIN':
+        this.createNodeAt(x, y, 'FORK');
+        return;
+
+      case 'FINAL':
+        this.createNodeAt(x, y, 'FINAL');
+        return;
+
+      default:
+        return;
+    }
   }
 
   private startDragLock(cellId: string, position: { x: number; y: number }): void {
@@ -331,7 +401,7 @@ export class DiagramEditorCollaborationService {
     }
   }
 
-  private createNodeAt(x: number, y: number): void {
+  private createNodeAt(x: number, y: number, nodeType: DiagramNodeType): void {
     const lane = this.laneService.resolveLaneForX(x);
     if (!lane) {
       this.addLog('No se pudo crear nodo: no hay una lane válida en esa posición.');
@@ -349,6 +419,7 @@ export class DiagramEditorCollaborationService {
       normalizedPosition.x,
       normalizedPosition.y,
       lane.id,
+      nodeType,
     );
   }
 

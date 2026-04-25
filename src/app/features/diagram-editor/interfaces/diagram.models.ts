@@ -39,6 +39,18 @@ export type DiagramNodeType =
   | 'FINAL'
   | 'OBJECT_SIGNAL';
 
+export type EditorTool =
+  | 'PAN'
+  | 'SELECT'
+  | 'INITIAL'
+  | 'ACTION'
+  | 'DECISION'
+  | 'FORK_JOIN'
+  | 'FINAL'
+  | 'LINK'
+  | 'DELETE'
+  | 'AI';
+
 export interface DiagramCellCustomData {
   nombre?: string;
   tipo?: DiagramNodeType | string;
