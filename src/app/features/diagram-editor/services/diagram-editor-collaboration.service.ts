@@ -3,6 +3,7 @@ import { Subscription } from 'rxjs';
 
 import { AuthService } from '../../auth/services/auth.service';
 import {
+  DiagramLane,
   DiagramNodeType,
   JoinSessionResponse,
   SocketOperationMessage,
@@ -169,37 +170,33 @@ export class DiagramEditorCollaborationService {
     this.syncService.UNLOCK_CELL(cellId, this.currentUserId(), dragId);
   }
 
-    updateNode(payload?: {
-      label: string;
-      width?: number;
-      height?: number;
-      templateDocumentId?: string;
-    }): void {
-      const cellId = this.selectedCellId();
-      if (!cellId) return;
+  updateNode(payload?: {
+    label: string;
+    width?: number;
+    height?: number;
+    templateDocumentId?: string;
+  }): void {
+    const cellId = this.selectedCellId();
+    if (!cellId) return;
 
-      const selectedCell = this.snapshotStore.findCell(cellId);
-      if (!selectedCell || selectedCell.type === 'standard.Link') return;
+    const selectedCell = this.snapshotStore.findCell(cellId);
+    if (!selectedCell || selectedCell.type === 'standard.Link') return;
 
-      const nextLabel = payload?.label ?? this.labelText();
-      const nextWidth = payload?.width ?? selectedCell.size?.width;
-      const nextHeight = payload?.height ?? selectedCell.size?.height;
-      const nextTemplateDocumentId =
-        payload?.templateDocumentId ?? selectedCell.customData?.['templateDocumentId'] ?? '';
+    const nextLabel = payload?.label ?? this.labelText();
+    const nextWidth = payload?.width ?? selectedCell.size?.width;
+    const nextHeight = payload?.height ?? selectedCell.size?.height;
+    const nextTemplateDocumentId =
+      payload?.templateDocumentId ?? selectedCell.customData?.['templateDocumentId'] ?? '';
 
-      this.labelText.set(nextLabel);
+    this.labelText.set(nextLabel);
 
-      this.syncService.UPDATE_NODE(
-        cellId,
-        this.currentUserId(),
-        {
-          label: nextLabel,
-          ...(nextWidth !== undefined ? { width: nextWidth } : {}),
-          ...(nextHeight !== undefined ? { height: nextHeight } : {}),
-          templateDocumentId: nextTemplateDocumentId,
-        },
-      );
-    }
+    this.syncService.UPDATE_NODE(cellId, this.currentUserId(), {
+      label: nextLabel,
+      ...(nextWidth !== undefined ? { width: nextWidth } : {}),
+      ...(nextHeight !== undefined ? { height: nextHeight } : {}),
+      templateDocumentId: nextTemplateDocumentId,
+    });
+  }
 
   getSelectedCell(): any | null {
     const cellId = this.selectedCellId();
@@ -229,10 +226,40 @@ export class DiagramEditorCollaborationService {
     this.syncService.SEND_PING(this.currentUserId(), 320, 220);
   }
 
+  applyLaneResize(laneId: string, nextWidth: number): void {
+    const previousLanes = [...this.uiService.lanes()].map((lane) => ({ ...lane }));
+    const nextLanes = this.uiService.resizeLaneWidth(laneId, nextWidth);
+
+    this.syncNodesWithLaneLayout(previousLanes, nextLanes);
+  }
+
+  applyLaneReorder(laneId: string, pointerCanvasX: number): void {
+    const previousLanes = [...this.uiService.lanes()].map((lane) => ({ ...lane }));
+    const nextLanes = this.uiService.reorderLaneByPointer(laneId, pointerCanvasX);
+
+    this.syncNodesWithLaneLayout(previousLanes, nextLanes);
+  }
+
+  recomputeLaneHeightsFromNodes(persist = false): void {
+    const before = [...this.uiService.lanes()].map((lane) => ({ ...lane }));
+    const nodeBottoms = this.snapshotStore.getLaneNodeBottoms();
+    const after = this.uiService.applyAutoHeightsFromNodeBottoms(nodeBottoms);
+
+    this.snapshotStore.clampNodesIntoLanes(after, this.uiService.laneHeaderHeightPx);
+
+    if (persist && this.didLaneLayoutChange(before, after)) {
+      this.persistCurrentLanes('Altura automática de lanes actualizada');
+    }
+  }
+
   private handleBlankPointerDown(x: number, y: number): void {
     const activeTool = this.uiService.activeTool();
 
     switch (activeTool) {
+      case 'LANE':
+        this.createLane();
+        return;
+
       case 'INITIAL':
         this.createNodeAt(x, y, 'INITIAL');
         return;
@@ -256,6 +283,30 @@ export class DiagramEditorCollaborationService {
       default:
         return;
     }
+  }
+
+  private createLane(): void {
+    const departmentId = this.uiService.selectedLaneDepartmentId();
+
+    if (!departmentId) {
+      this.addLog('Selecciona un department antes de crear la lane');
+      return;
+    }
+
+    const department = this.uiService.getDepartmentById(departmentId);
+    if (!department) {
+      this.addLog('Department no encontrado para crear lane');
+      return;
+    }
+
+    const lane = this.uiService.addLaneFromDepartment(department);
+
+    if (!lane) {
+      this.addLog('Ese department ya tiene lane en el diagrama');
+      return;
+    }
+
+    this.persistCurrentLanes(`Lane creada: ${lane.departmentName}`);
   }
 
   private startDragLock(cellId: string, position: { x: number; y: number }): void {
@@ -374,6 +425,7 @@ export class DiagramEditorCollaborationService {
 
   private renderSnapshot(): void {
     this.canvasManager?.clearAndRender(this.snapshotCells());
+    this.recomputeLaneHeightsFromNodes(false);
   }
 
   private applyIncomingMessage(msg: SocketOperationMessage): void {
@@ -385,6 +437,15 @@ export class DiagramEditorCollaborationService {
     });
 
     this.applyMessageHandlerResult(result);
+
+    if (
+      msg.opType === 'CREATE_NODE' ||
+      msg.opType === 'MOVE_COMMIT' ||
+      msg.opType === 'UPDATE_NODE' ||
+      msg.opType === 'DELETE_CELL'
+    ) {
+      this.recomputeLaneHeightsFromNodes(msg.userId === this.currentUserId());
+    }
   }
 
   private applyMessageHandlerResult(result: DiagramEditorMessageHandlerResult): void {
@@ -402,7 +463,7 @@ export class DiagramEditorCollaborationService {
   }
 
   private createNodeAt(x: number, y: number, nodeType: DiagramNodeType): void {
-    const lane = this.laneService.resolveLaneForX(x);
+    const lane = this.laneService.resolveLaneForPoint(x, y);
     if (!lane) {
       this.addLog('No se pudo crear nodo: no hay una lane válida en esa posición.');
       return;
@@ -451,7 +512,7 @@ export class DiagramEditorCollaborationService {
       y = position.y;
     }
 
-    const resolvedLane = this.laneService.resolveLaneForX(x);
+    const resolvedLane = this.laneService.resolveLaneForPoint(x, y);
     if (!resolvedLane) {
       this.addLog(`MOVE_COMMIT_BLOCKED_NO_LANE => ${cellId}`);
       this.dragSession.reset();
@@ -494,6 +555,56 @@ export class DiagramEditorCollaborationService {
       normalizedPosition.y,
       dragId,
       resolvedLane.id,
+    );
+  }
+
+  private syncNodesWithLaneLayout(previousLanes: DiagramLane[], nextLanes: DiagramLane[]): void {
+    const previousById = new Map(previousLanes.map((lane) => [lane.id, lane]));
+    const offsetsByLaneId: Record<string, number> = {};
+
+    for (const lane of nextLanes) {
+      const previous = previousById.get(lane.id);
+      if (!previous) continue;
+
+      offsetsByLaneId[lane.id] = lane.x - previous.x;
+    }
+
+    this.snapshotStore.moveNodesByLaneOffsets(offsetsByLaneId);
+    this.snapshotStore.clampNodesIntoLanes(nextLanes, this.uiService.laneHeaderHeightPx);
+    this.recomputeLaneHeightsFromNodes(false);
+  }
+
+  private didLaneLayoutChange(previousLanes: DiagramLane[], nextLanes: DiagramLane[]): boolean {
+    if (previousLanes.length !== nextLanes.length) return true;
+
+    return previousLanes.some((previous, index) => {
+      const next = nextLanes[index];
+      if (!next) return true;
+
+      return (
+        previous.id !== next.id ||
+        previous.x !== next.x ||
+        previous.y !== next.y ||
+        previous.width !== next.width ||
+        previous.height !== next.height ||
+        previous.order !== next.order
+      );
+    });
+  }
+
+  private persistCurrentLanes(successLog: string): void {
+    const diagramId = this.diagramId();
+    if (!diagramId) return;
+
+    this.uiService.saveDiagramLanes(
+      diagramId,
+      this.uiService.lanes(),
+      () => {
+        this.addLog(successLog);
+      },
+      () => {
+        this.addLog('Error al guardar lanes');
+      },
     );
   }
 

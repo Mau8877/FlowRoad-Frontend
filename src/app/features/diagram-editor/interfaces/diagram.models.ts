@@ -42,6 +42,7 @@ export type DiagramNodeType =
 export type EditorTool =
   | 'PAN'
   | 'SELECT'
+  | 'LANE'
   | 'INITIAL'
   | 'ACTION'
   | 'DECISION'
@@ -92,6 +93,10 @@ export interface DiagramLane {
   departmentId: string;
   departmentName: string;
   order: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 // ==========================================

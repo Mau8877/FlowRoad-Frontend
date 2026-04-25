@@ -1,178 +1,192 @@
 @if (isOpen) {
-  <div class="absolute right-0 top-full z-50 mt-3 w-[34rem] max-w-[95vw]">
+  <div class="fixed inset-0 z-100 flex items-center justify-center bg-black/35 p-4">
     <div
-      class="overflow-hidden rounded-2xl border border-black/5 bg-white shadow-[0_20px_40px_rgba(2,3,4,0.18)] ring-1 ring-black/5"
+      class="flex h-[88vh] w-275 max-w-[96vw] flex-col overflow-hidden rounded-3xl border border-black/5 bg-white shadow-[0_24px_60px_rgba(2,3,4,0.25)]"
     >
-      <div class="bg-[linear-gradient(135deg,#020304_0%,#2c2c31_100%)] px-5 py-4 text-white">
-        <div class="font-(--font-display) text-2xl leading-none tracking-[0.08em]">SETTINGS</div>
-        <p class="mt-2 text-xs font-semibold uppercase tracking-[0.08em] text-white/70">
-          Configuración del diagrama
-        </p>
+      <div
+        class="flex shrink-0 items-start justify-between bg-[linear-gradient(135deg,#020304_0%,#2c2c31_100%)] px-6 py-5 text-white"
+      >
+        <div>
+          <div class="font-(--font-display) text-3xl leading-none tracking-[0.08em]">SETTINGS</div>
+          <p class="mt-2 text-xs font-semibold uppercase tracking-[0.08em] text-white/70">
+            Configuración del diagrama
+          </p>
+        </div>
+
+        <button
+          type="button"
+          (click)="onClose()"
+          class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-lg font-bold text-white transition hover:bg-white/10"
+        >
+          ×
+        </button>
       </div>
 
-      <div class="max-h-[75vh] space-y-6 overflow-y-auto p-5">
-        <div class="space-y-4">
-          <div class="space-y-2">
-            <label
-              for="diagram-name"
-              class="block text-xs font-bold uppercase tracking-[0.08em] text-fr-taupe"
-            >
-              Nombre del diagrama
-            </label>
-            <input
-              id="diagram-name"
-              type="text"
-              class="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-fr-black outline-none transition focus:border-fr-gold focus:ring-3 focus:ring-[rgba(204,158,97,0.18)]"
-              [ngModel]="draftName()"
-              (ngModelChange)="draftName.set($event)"
-              placeholder="Ej. Proceso de atención"
-            />
-          </div>
+      <div class="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[1.1fr_0.9fr]">
+        <!-- IZQUIERDA -->
+        <div class="flex min-h-0 flex-col border-b border-zinc-200 lg:border-b-0 lg:border-r">
+          <div class="min-h-0 flex-1 overflow-y-auto p-6">
+            <div class="space-y-5">
+              <div class="space-y-2">
+                <label
+                  for="diagram-name"
+                  class="block text-xs font-bold uppercase tracking-[0.08em] text-fr-taupe"
+                >
+                  Nombre del diagrama
+                </label>
+                <input
+                  id="diagram-name"
+                  type="text"
+                  class="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-fr-black outline-none transition focus:border-fr-gold focus:ring-3 focus:ring-[rgba(204,158,97,0.18)]"
+                  [ngModel]="draftName()"
+                  (ngModelChange)="draftName.set($event)"
+                  placeholder="Ej. Proceso de atención"
+                />
+              </div>
 
-          <div class="space-y-2">
-            <label
-              for="diagram-description"
-              class="block text-xs font-bold uppercase tracking-[0.08em] text-fr-taupe"
-            >
-              Descripción
-            </label>
-            <textarea
-              id="diagram-description"
-              rows="3"
-              class="w-full resize-none rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-fr-black outline-none transition focus:border-fr-gold focus:ring-3 focus:ring-[rgba(204,158,97,0.18)]"
-              [ngModel]="draftDescription()"
-              (ngModelChange)="draftDescription.set($event)"
-              placeholder="Describe brevemente este flujo..."
-            ></textarea>
+              <div class="space-y-2">
+                <label
+                  for="diagram-description"
+                  class="block text-xs font-bold uppercase tracking-[0.08em] text-fr-taupe"
+                >
+                  Descripción
+                </label>
+                <textarea
+                  id="diagram-description"
+                  rows="4"
+                  class="w-full resize-none rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-fr-black outline-none transition focus:border-fr-gold focus:ring-3 focus:ring-[rgba(204,158,97,0.18)]"
+                  [ngModel]="draftDescription()"
+                  (ngModelChange)="draftDescription.set($event)"
+                  placeholder="Describe brevemente este flujo..."
+                ></textarea>
+              </div>
+
+              <div class="border-t border-zinc-200 pt-5">
+                <div class="mb-3 text-xs font-bold uppercase tracking-[0.08em] text-fr-taupe">
+                  Departments disponibles
+                </div>
+
+                <div class="space-y-3">
+                  @for (department of availableDepartments; track department.id) {
+                    <div
+                      class="flex items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3"
+                    >
+                      <div class="min-w-0">
+                        <div class="truncate text-sm font-bold text-zinc-800">
+                          {{ department.name }}
+                        </div>
+                        <div class="text-xs uppercase tracking-[0.08em] text-zinc-500">
+                          {{ department.code }}
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        (click)="onAddDepartment(department)"
+                        [disabled]="isDepartmentAlreadyAdded(department.id)"
+                        class="shrink-0 rounded-xl border px-4 py-2 text-sm font-semibold transition"
+                        [class]="
+                          isDepartmentAlreadyAdded(department.id)
+                            ? 'cursor-not-allowed border-zinc-200 bg-zinc-100 text-zinc-400'
+                            : 'border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-100'
+                        "
+                      >
+                        {{ isDepartmentAlreadyAdded(department.id) ? 'Agregado' : 'Agregar' }}
+                      </button>
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div class="h-px bg-zinc-200"></div>
-
-        <div class="space-y-3">
-          <div>
-            <h3 class="text-xs font-bold uppercase tracking-[0.08em] text-fr-taupe">
-              Departments disponibles
-            </h3>
-            <p class="mt-1 text-xs text-zinc-500">
-              Selecciona qué departments formarán las calles del diagrama.
-            </p>
+        <!-- DERECHA -->
+        <div class="flex min-h-0 flex-col">
+          <div class="shrink-0 border-b border-zinc-200 px-6 py-5">
+            <div class="text-xs font-bold uppercase tracking-[0.08em] text-fr-taupe">
+              Calles actuales
+            </div>
+            <p class="mt-2 text-sm text-zinc-500">Ordena las calles de izquierda a derecha.</p>
           </div>
 
-          <div class="grid gap-2">
-            @for (department of availableDepartments; track trackDepartment($index, department)) {
+          <div class="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+            @if (draftLanes().length === 0) {
               <div
-                class="flex items-center justify-between rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2"
+                class="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-center text-sm text-zinc-500"
               >
-                <div class="min-w-0">
-                  <div class="truncate text-sm font-semibold text-zinc-800">
-                    {{ department.name }}
-                  </div>
-                  <div class="text-xs uppercase tracking-[0.06em] text-zinc-500">
-                    {{ department.code }}
-                  </div>
-                </div>
+                Aún no agregaste departamentos al diagrama.
+              </div>
+            } @else {
+              <div class="space-y-3">
+                @for (lane of draftLanes(); track lane.id) {
+                  <div class="rounded-2xl border border-zinc-200 bg-white px-4 py-4 shadow-sm">
+                    <div class="flex items-center justify-between gap-3">
+                      <div class="min-w-0">
+                        <div class="truncate text-sm font-bold text-zinc-800">
+                          {{ lane.departmentName }}
+                        </div>
+                        <div class="text-xs uppercase tracking-[0.08em] text-zinc-500">
+                          Orden {{ lane.order + 1 }}
+                        </div>
+                      </div>
 
-                <button
-                  type="button"
-                  class="ml-3 inline-flex items-center rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
-                  [disabled]="isDepartmentAlreadyUsed(department.id)"
-                  (click)="addLaneFromDepartment(department)"
-                >
-                  @if (isDepartmentAlreadyUsed(department.id)) {
-                    Agregado
-                  } @else {
-                    Agregar
-                  }
-                </button>
+                      <div class="flex shrink-0 items-center gap-2">
+                        <button
+                          type="button"
+                          (click)="onMoveLaneUp(lane.id)"
+                          class="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50"
+                        >
+                          ↑
+                        </button>
+
+                        <button
+                          type="button"
+                          (click)="onMoveLaneDown(lane.id)"
+                          class="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50"
+                        >
+                          ↓
+                        </button>
+
+                        <button
+                          type="button"
+                          (click)="onRemoveLane(lane.id)"
+                          class="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
+                        >
+                          Quitar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                }
               </div>
             }
           </div>
-        </div>
 
-        <div class="h-px bg-zinc-200"></div>
-
-        <div class="space-y-3">
-          <div>
-            <h3 class="text-xs font-bold uppercase tracking-[0.08em] text-fr-taupe">
-              Calles actuales
-            </h3>
-            <p class="mt-1 text-xs text-zinc-500">Ordena las calles de izquierda a derecha.</p>
-          </div>
-
-          @if (draftLanes().length === 0) {
-            <div
-              class="rounded-xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-4 text-sm text-zinc-500"
+          <div
+            class="flex shrink-0 items-center justify-end gap-3 border-t border-zinc-200 px-6 py-5"
+          >
+            <button
+              type="button"
+              (click)="onClose()"
+              class="inline-flex items-center rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-fr-gray transition hover:bg-zinc-50"
             >
-              Aún no agregaste ninguna calle.
-            </div>
-          } @else {
-            <div class="space-y-2">
-              @for (lane of draftLanes(); track trackLane($index, lane)) {
-                <div
-                  class="flex items-center justify-between rounded-xl border border-zinc-200 bg-white px-3 py-3"
-                >
-                  <div class="min-w-0">
-                    <div class="truncate text-sm font-semibold text-zinc-800">
-                      {{ lane.departmentName }}
-                    </div>
-                    <div class="text-xs uppercase tracking-[0.06em] text-zinc-500">
-                      Orden {{ lane.order + 1 }}
-                    </div>
-                  </div>
+              Cancelar
+            </button>
 
-                  <div class="ml-3 flex items-center gap-2">
-                    <button
-                      type="button"
-                      class="inline-flex items-center rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
-                      (click)="moveLaneUp(lane.id)"
-                    >
-                      ↑
-                    </button>
-
-                    <button
-                      type="button"
-                      class="inline-flex items-center rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100"
-                      (click)="moveLaneDown(lane.id)"
-                    >
-                      ↓
-                    </button>
-
-                    <button
-                      type="button"
-                      class="inline-flex items-center rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-100"
-                      (click)="removeLane(lane.id)"
-                    >
-                      Quitar
-                    </button>
-                  </div>
-                </div>
+            <button
+              type="button"
+              (click)="onSave()"
+              [disabled]="!draftName().trim() || isSaving"
+              class="inline-flex items-center rounded-xl bg-fr-gold px-4 py-2.5 text-sm font-bold text-fr-black transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              @if (isSaving) {
+                Guardando...
+              } @else {
+                Guardar cambios
               }
-            </div>
-          }
-        </div>
-
-        <div class="flex items-center justify-end gap-3 pt-2">
-          <button
-            type="button"
-            (click)="onClose()"
-            class="inline-flex items-center rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-fr-gray transition hover:bg-zinc-50"
-          >
-            Cancelar
-          </button>
-
-          <button
-            type="button"
-            (click)="onSave()"
-            [disabled]="!draftName().trim() || isSaving"
-            class="inline-flex items-center rounded-xl bg-fr-gold px-4 py-2.5 text-sm font-bold text-fr-black transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            @if (isSaving) {
-              Guardando...
-            } @else {
-              Guardar cambios
-            }
-          </button>
+            </button>
+          </div>
         </div>
       </div>
     </div>

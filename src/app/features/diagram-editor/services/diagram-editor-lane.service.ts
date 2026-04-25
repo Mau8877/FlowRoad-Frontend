@@ -16,15 +16,32 @@ export class DiagramEditorLaneService {
     return [...this.uiService.lanes()].sort((a, b) => a.order - b.order);
   }
 
+  resolveLaneForPoint(x: number, y: number): DiagramLane | null {
+    const lanes = this.getOrderedLanes();
+
+    for (const lane of lanes) {
+      const insideX = x >= lane.x && x <= lane.x + lane.width;
+      const insideY = y >= lane.y && y <= lane.y + lane.height;
+
+      if (insideX && insideY) {
+        return lane;
+      }
+    }
+
+    return null;
+  }
+
   resolveLaneForX(x: number): DiagramLane | null {
     const lanes = this.getOrderedLanes();
-    if (lanes.length === 0) return null;
 
-    const laneWidth = this.uiService.laneWidthPx;
-    const laneIndex = Math.floor(Math.max(0, x) / laneWidth);
-    const safeIndex = Math.min(laneIndex, lanes.length - 1);
+    for (const lane of lanes) {
+      const insideX = x >= lane.x && x <= lane.x + lane.width;
+      if (insideX) {
+        return lane;
+      }
+    }
 
-    return lanes[safeIndex] ?? null;
+    return null;
   }
 
   normalizeNodePositionToLane(
@@ -34,25 +51,15 @@ export class DiagramEditorLaneService {
     nodeWidth = this.defaultNodeWidth,
     nodeHeight = this.defaultNodeHeight,
   ): { x: number; y: number } {
-    const lanes = this.getOrderedLanes();
-    const laneIndex = lanes.findIndex((item) => item.id === lane.id);
-    const safeLaneIndex = Math.max(0, laneIndex);
+    const minX = lane.x + this.laneHorizontalPadding;
+    const maxX = lane.x + lane.width - nodeWidth - this.laneHorizontalPadding;
 
-    const laneLeft = safeLaneIndex * this.uiService.laneWidthPx;
-    const laneRight = laneLeft + this.uiService.laneWidthPx;
-
-    const minX = laneLeft + this.laneHorizontalPadding;
-    const maxX = laneRight - nodeWidth - this.laneHorizontalPadding;
-
-    const minY = this.uiService.laneHeaderHeightPx + this.laneVerticalPadding;
-    const maxY = Math.max(
-      minY,
-      this.uiService.canvasHeightPx() - nodeHeight - this.laneVerticalPadding,
-    );
+    const minY = lane.y + this.uiService.laneHeaderHeightPx + this.laneVerticalPadding;
+    const maxY = lane.y + lane.height - nodeHeight - this.laneVerticalPadding;
 
     return {
       x: Math.min(Math.max(x, minX), Math.max(minX, maxX)),
-      y: Math.min(Math.max(y, minY), maxY),
+      y: Math.min(Math.max(y, minY), Math.max(minY, maxY)),
     };
   }
 
@@ -60,9 +67,11 @@ export class DiagramEditorLaneService {
     const lanes = this.getOrderedLanes();
     if (lanes.length === 0) return null;
 
+    const firstLane = lanes[0];
+
     return {
-      x: this.laneHorizontalPadding,
-      y: this.uiService.laneHeaderHeightPx + this.laneVerticalPadding,
+      x: firstLane.x + this.laneHorizontalPadding,
+      y: firstLane.y + this.uiService.laneHeaderHeightPx + this.laneVerticalPadding,
     };
   }
 

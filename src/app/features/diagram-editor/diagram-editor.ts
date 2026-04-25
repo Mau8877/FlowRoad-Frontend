@@ -73,6 +73,12 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
   private scrollStartLeft = 0;
   private scrollStartTop = 0;
 
+  private resizingLaneId: string | null = null;
+  private resizeStartClientX = 0;
+  private resizeStartWidth = 0;
+
+  private draggingLaneId: string | null = null;
+
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id') || '';
     if (!id) return;
@@ -111,6 +117,10 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
     this.ui.setActiveTool(tool);
   }
 
+  protected onLaneDepartmentChanged(departmentId: string): void {
+    this.ui.setSelectedLaneDepartmentId(departmentId);
+  }
+
   protected onAiRequested(): void {
     this.collab.logs.update((current) => [
       `${new Date().toLocaleTimeString()} - IA aún no implementada, pero el botón ya está listo 😎`,
@@ -119,6 +129,7 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
   }
 
   protected onViewportMouseDown(event: MouseEvent): void {
+    if (this.resizingLaneId || this.draggingLaneId) return;
     if (this.ui.activeTool() !== 'PAN') return;
 
     this.isPanning = true;
@@ -129,6 +140,21 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
   }
 
   protected onViewportMouseMove(event: MouseEvent): void {
+    if (this.resizingLaneId) {
+      const deltaX = event.clientX - this.resizeStartClientX;
+      this.ui.resizeLaneWidth(this.resizingLaneId, this.resizeStartWidth + deltaX);
+      return;
+    }
+
+    if (this.draggingLaneId) {
+      const viewportRect = this.canvasViewport.nativeElement.getBoundingClientRect();
+      const canvasX =
+        event.clientX - viewportRect.left + this.canvasViewport.nativeElement.scrollLeft;
+
+      this.ui.reorderLaneByPointer(this.draggingLaneId, canvasX);
+      return;
+    }
+
     if (!this.isPanning) return;
 
     const deltaX = event.clientX - this.panStartX;
@@ -140,10 +166,50 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
 
   protected onViewportMouseUp(): void {
     this.isPanning = false;
+
+    if (this.resizingLaneId) {
+      const laneId = this.resizingLaneId;
+      this.resizingLaneId = null;
+      this.persistLanes(`Lane redimensionada: ${laneId}`);
+    }
+
+    if (this.draggingLaneId) {
+      const laneId = this.draggingLaneId;
+      this.draggingLaneId = null;
+      this.persistLanes(`Lane reordenada: ${laneId}`);
+    }
   }
 
   protected onViewportMouseLeave(): void {
     this.isPanning = false;
+
+    if (this.resizingLaneId) {
+      const laneId = this.resizingLaneId;
+      this.resizingLaneId = null;
+      this.persistLanes(`Lane redimensionada: ${laneId}`);
+    }
+
+    if (this.draggingLaneId) {
+      const laneId = this.draggingLaneId;
+      this.draggingLaneId = null;
+      this.persistLanes(`Lane reordenada: ${laneId}`);
+    }
+  }
+
+  protected onLaneResizeStart(event: MouseEvent, laneId: string, currentWidth: number): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    this.resizingLaneId = laneId;
+    this.resizeStartClientX = event.clientX;
+    this.resizeStartWidth = currentWidth;
+  }
+
+  protected onLaneHeaderMouseDown(event: MouseEvent, laneId: string): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    this.draggingLaneId = laneId;
   }
 
   protected getSelectedCell(): DiagramCell | null {
@@ -195,6 +261,28 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
       () => {
         this.collab.logs.update((current) => [
           `${new Date().toLocaleTimeString()} - Error al actualizar nombre/descripción`,
+          ...current,
+        ]);
+      },
+    );
+  }
+
+  private persistLanes(successLog: string): void {
+    const diagramId = this.collab.diagramId();
+    if (!diagramId) return;
+
+    this.ui.saveDiagramLanes(
+      diagramId,
+      this.ui.lanes(),
+      () => {
+        this.collab.logs.update((current) => [
+          `${new Date().toLocaleTimeString()} - ${successLog}`,
+          ...current,
+        ]);
+      },
+      () => {
+        this.collab.logs.update((current) => [
+          `${new Date().toLocaleTimeString()} - Error al guardar lanes`,
           ...current,
         ]);
       },

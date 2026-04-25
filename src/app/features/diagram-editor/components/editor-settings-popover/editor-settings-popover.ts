@@ -1,3 +1,4 @@
+import { DepartmentResponse } from '#/app/features/config-org/interfaces/departamentos.model';
 import { CommonModule } from '@angular/common';
 import {
   Component,
@@ -9,7 +10,6 @@ import {
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { DepartmentResponse } from '#/app/features/config-org/interfaces/departamentos.model';
 import { DiagramLane } from '../../interfaces/diagram.models';
 
 export interface EditorSettingsSubmitPayload {
@@ -58,38 +58,37 @@ export class EditorSettingsPopoverComponent implements OnChanges {
   onSave(): void {
     const name = this.draftName().trim();
     const description = this.draftDescription().trim();
-    const lanes = [...this.draftLanes()].map((lane, index) => ({
-      ...lane,
-      order: index,
-    }));
 
     if (!name) return;
 
     this.saveRequested.emit({
       name,
       description,
-      lanes,
+      lanes: this.draftLanes(),
     });
   }
 
-  addLaneFromDepartment(department: DepartmentResponse): void {
-    const alreadyExists = this.draftLanes().some((lane) => lane.departmentId === department.id);
-    if (alreadyExists) return;
+  onAddDepartment(department: DepartmentResponse): void {
+    const exists = this.draftLanes().some((lane) => lane.departmentId === department.id);
+    if (exists) return;
 
-    this.draftLanes.update((current) => [
-      ...current,
-      {
-        id: `lane-${department.id}`,
-        departmentId: department.id,
-        departmentName: department.name,
-        order: current.length,
-      },
-    ]);
+    const nextLane: DiagramLane = {
+      id: `lane-${department.id}`,
+      departmentId: department.id,
+      departmentName: department.name,
+      order: this.draftLanes().length,
+      x: 80,
+      y: 80,
+      width: 320,
+      height: 720,
+    };
+
+    this.draftLanes.update((lanes) => [...lanes, nextLane]);
   }
 
-  removeLane(laneId: string): void {
-    this.draftLanes.update((current) =>
-      current
+  onRemoveLane(laneId: string): void {
+    this.draftLanes.update((lanes) =>
+      lanes
         .filter((lane) => lane.id !== laneId)
         .map((lane, index) => ({
           ...lane,
@@ -98,46 +97,38 @@ export class EditorSettingsPopoverComponent implements OnChanges {
     );
   }
 
-  moveLaneUp(laneId: string): void {
-    const current = [...this.draftLanes()];
-    const index = current.findIndex((lane) => lane.id === laneId);
+  onMoveLaneUp(laneId: string): void {
+    const lanes = [...this.draftLanes()];
+    const index = lanes.findIndex((lane) => lane.id === laneId);
     if (index <= 0) return;
 
-    [current[index - 1], current[index]] = [current[index], current[index - 1]];
+    [lanes[index - 1], lanes[index]] = [lanes[index], lanes[index - 1]];
 
     this.draftLanes.set(
-      current.map((lane, idx) => ({
+      lanes.map((lane, idx) => ({
         ...lane,
         order: idx,
       })),
     );
   }
 
-  moveLaneDown(laneId: string): void {
-    const current = [...this.draftLanes()];
-    const index = current.findIndex((lane) => lane.id === laneId);
-    if (index === -1 || index >= current.length - 1) return;
+  onMoveLaneDown(laneId: string): void {
+    const lanes = [...this.draftLanes()];
+    const index = lanes.findIndex((lane) => lane.id === laneId);
+    if (index < 0 || index >= lanes.length - 1) return;
 
-    [current[index], current[index + 1]] = [current[index + 1], current[index]];
+    [lanes[index], lanes[index + 1]] = [lanes[index + 1], lanes[index]];
 
     this.draftLanes.set(
-      current.map((lane, idx) => ({
+      lanes.map((lane, idx) => ({
         ...lane,
         order: idx,
       })),
     );
   }
 
-  isDepartmentAlreadyUsed(departmentId: string): boolean {
+  isDepartmentAlreadyAdded(departmentId: string): boolean {
     return this.draftLanes().some((lane) => lane.departmentId === departmentId);
-  }
-
-  trackDepartment(_index: number, department: DepartmentResponse): string {
-    return department.id;
-  }
-
-  trackLane(_index: number, lane: DiagramLane): string {
-    return lane.id;
   }
 
   private resetDrafts(): void {
@@ -146,9 +137,12 @@ export class EditorSettingsPopoverComponent implements OnChanges {
     this.draftLanes.set(
       [...(this.currentLanes ?? [])]
         .sort((a, b) => a.order - b.order)
-        .map((lane, index) => ({
+        .map((lane) => ({
           ...lane,
-          order: index,
+          x: lane.x ?? 80,
+          y: lane.y ?? 80,
+          width: lane.width ?? 320,
+          height: lane.height ?? 720,
         })),
     );
   }

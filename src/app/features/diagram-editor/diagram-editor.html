@@ -22,7 +22,10 @@
 
   <app-editor-toolbar
     [activeTool]="ui.activeTool()"
+    [availableDepartments]="ui.availableDepartments()"
+    [selectedLaneDepartmentId]="ui.selectedLaneDepartmentId()"
     (toolSelected)="onToolSelected($event)"
+    (laneDepartmentChanged)="onLaneDepartmentChanged($event)"
     (aiRequested)="onAiRequested()"
   />
 
@@ -31,16 +34,17 @@
     class="relative h-[calc(100vh-235px)] min-h-140 overflow-auto rounded-3xl border border-black/5 bg-[#fcfcfb] shadow-[0_16px_40px_rgba(2,3,4,0.08)]"
     [class.cursor-grab]="ui.activeTool() === 'PAN'"
     [class.cursor-grabbing]="ui.activeTool() === 'PAN'"
-    (mousedown)="onViewportMouseDown($event)"
-    (mousemove)="onViewportMouseMove($event)"
-    (mouseup)="onViewportMouseUp()"
-    (mouseleave)="onViewportMouseLeave()"
   >
     <div
       class="relative"
       [style.width.px]="ui.canvasWidthPx()"
       [style.height.px]="ui.canvasHeightPx()"
+      (mousedown)="onViewportMouseDown($event)"
+      (mousemove)="onViewportMouseMove($event)"
+      (mouseup)="onViewportMouseUp()"
+      (mouseleave)="onViewportMouseLeave()"
     >
+      <!-- Fondo -->
       <div class="pointer-events-none absolute inset-0 z-0">
         <div class="absolute inset-0 bg-[#fcfcfb]"></div>
 
@@ -67,14 +71,18 @@
         ></div>
       </div>
 
-      <div class="pointer-events-none absolute inset-0 z-[1] flex">
+      <!-- Lanes visuales conectadas -->
+      <div class="pointer-events-none absolute inset-0 z-0">
         @for (lane of ui.lanes(); track lane.id) {
           <div
-            class="relative h-full shrink-0 border-r border-black/8 bg-[rgba(255,255,255,0.18)]"
-            [style.width.px]="ui.laneWidthPx"
+            class="pointer-events-none absolute overflow-hidden rounded-2xl border border-black/10 bg-[rgba(255,255,255,0.55)] shadow-[0_8px_24px_rgba(2,3,4,0.05)]"
+            [style.left.px]="lane.x"
+            [style.top.px]="lane.y"
+            [style.width.px]="lane.width"
+            [style.height.px]="lane.height"
           >
             <div
-              class="flex items-center justify-center border-b border-black/8 bg-[rgba(255,255,255,0.78)] px-3 text-center text-sm font-semibold text-zinc-700 backdrop-blur-sm"
+              class="pointer-events-none flex items-center justify-center border-b border-black/10 bg-[rgba(255,255,255,0.92)] px-3 text-center text-sm font-semibold text-zinc-700 backdrop-blur-sm"
               [style.height.px]="ui.laneHeaderHeightPx"
             >
               {{ lane.departmentName }}
@@ -83,6 +91,36 @@
         }
       </div>
 
+      <!-- Controles interactivos de lanes -->
+      <div class="pointer-events-none absolute inset-0 z-20">
+        @for (lane of ui.lanes(); track lane.id) {
+          <div
+            class="pointer-events-none absolute"
+            [style.left.px]="lane.x"
+            [style.top.px]="lane.y"
+            [style.width.px]="lane.width"
+            [style.height.px]="lane.height"
+          >
+            <!-- Header drag -->
+            <div
+              class="pointer-events-auto absolute left-0 top-0 flex cursor-grab items-center justify-center rounded-t-2xl border-b border-transparent bg-transparent text-sm font-semibold text-transparent hover:bg-fr-gold/8"
+              [style.width.px]="lane.width"
+              [style.height.px]="ui.laneHeaderHeightPx"
+              (mousedown)="onLaneHeaderMouseDown($event, lane.id)"
+              [title]="'Arrastrar para reordenar ' + lane.departmentName"
+            ></div>
+
+            <!-- Handle resize -->
+            <div
+              class="pointer-events-auto absolute right-0 top-0 h-full w-3 cursor-col-resize bg-fr-gold/10 hover:bg-fr-gold/25"
+              (mousedown)="onLaneResizeStart($event, lane.id, ui.getLaneWidth(lane))"
+              [title]="'Redimensionar ' + lane.departmentName"
+            ></div>
+          </div>
+        }
+      </div>
+
+      <!-- Paper real -->
       <div class="absolute inset-0 z-10 overflow-hidden">
         <div #paperHost class="h-full w-full"></div>
       </div>
@@ -92,7 +130,6 @@
       </div>
     </div>
 
-    <!-- inspector fijo al viewport visible -->
     <div class="pointer-events-none absolute right-4 top-4 z-30">
       <div class="pointer-events-auto">
         <app-editor-node-inspector
