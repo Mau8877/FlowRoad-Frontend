@@ -1,14 +1,14 @@
-@if (selectedCell && selectedCell.type !== 'standard.Link') {
+@if (isNodeSelected()) {
   <aside
     class="w-80 max-w-[calc(100vw-3rem)] overflow-hidden rounded-2xl border border-black/5 bg-white/96 shadow-[0_20px_40px_rgba(2,3,4,0.16)] ring-1 ring-black/5 backdrop-blur-sm"
   >
     <div class="bg-[linear-gradient(135deg,#020304_0%,#2c2c31_100%)] px-4 py-3 text-white">
       <div class="text-sm font-bold uppercase tracking-[0.08em] text-fr-gold">Nodo</div>
       <div class="mt-1 text-xs text-white/70">
-        {{ selectedCell.customData?.['tipo'] || selectedCell.type }}
+        {{ selectedCell?.customData?.['tipo'] || selectedCell?.type }}
       </div>
       <div class="mt-1 truncate text-xs text-white/60">
-        {{ selectedCell.id }}
+        {{ selectedCell?.id }}
       </div>
     </div>
 
@@ -94,6 +94,32 @@
         } @else {
           Guardar nodo
         }
+      </button>
+    </div>
+  </aside>
+} @else if (isLinkSelected()) {
+  <aside
+    class="w-80 max-w-[calc(100vw-3rem)] overflow-hidden rounded-2xl border border-black/5 bg-white/96 shadow-[0_20px_40px_rgba(2,3,4,0.16)] ring-1 ring-black/5 backdrop-blur-sm"
+  >
+    <div class="bg-[linear-gradient(135deg,#020304_0%,#2c2c31_100%)] px-4 py-3 text-white">
+      <div class="text-sm font-bold uppercase tracking-[0.08em] text-fr-gold">Conector</div>
+      <div class="mt-1 text-xs text-white/70">standard.Link</div>
+      <div class="mt-1 truncate text-xs text-white/60">
+        {{ selectedCell?.id }}
+      </div>
+    </div>
+
+    <div class="space-y-4 p-4">
+      <div class="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-700">
+        Este elemento conecta dos nodos del flujo.
+      </div>
+
+      <button
+        type="button"
+        (click)="onDelete()"
+        class="inline-flex w-full items-center justify-center rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-100"
+      >
+        🗑 Eliminar conector
       </button>
     </div>
   </aside>

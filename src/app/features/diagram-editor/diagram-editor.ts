@@ -3,6 +3,7 @@ import {
   AfterViewInit,
   Component,
   ElementRef,
+  HostListener,
   OnDestroy,
   OnInit,
   ViewChild,
@@ -97,6 +98,22 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
     this.collab.destroy();
   }
 
+  @HostListener('window:keydown', ['$event'])
+  protected onWindowKeyDown(event: KeyboardEvent): void {
+    if (this.shouldIgnoreKeyboardShortcut(event)) return;
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.collab.cancelCurrentAction();
+      return;
+    }
+
+    if (event.key === 'Delete' || event.key === 'Backspace') {
+      event.preventDefault();
+      this.collab.deleteSelectedCell();
+    }
+  }
+
   protected openDebugModal(): void {
     this.ui.openDebugModal();
   }
@@ -115,6 +132,7 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
 
   protected onToolSelected(tool: EditorTool): void {
     this.ui.setActiveTool(tool);
+    this.collab.cancelCurrentAction({ clearSelectionInLink: true });
   }
 
   protected onLaneDepartmentChanged(departmentId: string): void {
@@ -142,7 +160,7 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
   protected onViewportMouseMove(event: MouseEvent): void {
     if (this.resizingLaneId) {
       const deltaX = event.clientX - this.resizeStartClientX;
-      this.ui.resizeLaneWidth(this.resizingLaneId, this.resizeStartWidth + deltaX);
+      this.collab.previewLaneResize(this.resizingLaneId, this.resizeStartWidth + deltaX);
       return;
     }
 
@@ -151,7 +169,7 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
       const canvasX =
         event.clientX - viewportRect.left + this.canvasViewport.nativeElement.scrollLeft;
 
-      this.ui.reorderLaneByPointer(this.draggingLaneId, canvasX);
+      this.collab.previewLaneReorder(this.draggingLaneId, canvasX);
       return;
     }
 
@@ -168,32 +186,30 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
     this.isPanning = false;
 
     if (this.resizingLaneId) {
-      const laneId = this.resizingLaneId;
-      this.resizingLaneId = null;
-      this.persistLanes(`Lane redimensionada: ${laneId}`);
+      this.collab.commitLaneLayoutChange('Resize colaborativo de lanes');
     }
 
     if (this.draggingLaneId) {
-      const laneId = this.draggingLaneId;
-      this.draggingLaneId = null;
-      this.persistLanes(`Lane reordenada: ${laneId}`);
+      this.collab.commitLaneLayoutChange('Reorden colaborativo de lanes');
     }
+
+    this.resizingLaneId = null;
+    this.draggingLaneId = null;
   }
 
   protected onViewportMouseLeave(): void {
     this.isPanning = false;
 
     if (this.resizingLaneId) {
-      const laneId = this.resizingLaneId;
-      this.resizingLaneId = null;
-      this.persistLanes(`Lane redimensionada: ${laneId}`);
+      this.collab.commitLaneLayoutChange('Resize colaborativo de lanes');
     }
 
     if (this.draggingLaneId) {
-      const laneId = this.draggingLaneId;
-      this.draggingLaneId = null;
-      this.persistLanes(`Lane reordenada: ${laneId}`);
+      this.collab.commitLaneLayoutChange('Reorden colaborativo de lanes');
     }
+
+    this.resizingLaneId = null;
+    this.draggingLaneId = null;
   }
 
   protected onLaneResizeStart(event: MouseEvent, laneId: string, currentWidth: number): void {
@@ -267,26 +283,14 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
     );
   }
 
-  private persistLanes(successLog: string): void {
-    const diagramId = this.collab.diagramId();
-    if (!diagramId) return;
+  private shouldIgnoreKeyboardShortcut(event: KeyboardEvent): boolean {
+    const target = event.target as HTMLElement | null;
+    if (!target) return false;
 
-    this.ui.saveDiagramLanes(
-      diagramId,
-      this.ui.lanes(),
-      () => {
-        this.collab.logs.update((current) => [
-          `${new Date().toLocaleTimeString()} - ${successLog}`,
-          ...current,
-        ]);
-      },
-      () => {
-        this.collab.logs.update((current) => [
-          `${new Date().toLocaleTimeString()} - Error al guardar lanes`,
-          ...current,
-        ]);
-      },
-    );
+    const tagName = target.tagName?.toLowerCase();
+    const isEditable = target.isContentEditable;
+
+    return tagName === 'input' || tagName === 'textarea' || tagName === 'select' || isEditable;
   }
 
   private loadDiagram(id: string): void {

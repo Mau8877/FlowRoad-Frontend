@@ -127,19 +127,19 @@ export class DiagramSyncService {
     laneId: string,
     nodeType: DiagramNodeType,
   ): void {
-    const cell = this.buildNodeCell(cellId, x, y, laneId, nodeType);
+    const payload = this.buildNodeCell(cellId, x, y, laneId, nodeType);
 
     this.SEND_OPERATION({
       opType: 'CREATE_NODE',
       cellId,
       userId,
       delta: {
-        cell,
+        cell: payload,
       },
     });
   }
 
-    UPDATE_NODE(
+  UPDATE_NODE(
     cellId: string,
     userId: string,
     payload: {
@@ -156,11 +156,11 @@ export class DiagramSyncService {
       userId,
       dragId,
       delta: {
-        ...(payload.width !== undefined && payload.height !== undefined
+        ...(payload.width !== undefined || payload.height !== undefined
           ? {
               size: {
-                width: payload.width,
-                height: payload.height,
+                width: payload.width ?? 160,
+                height: payload.height ?? 60,
               },
             }
           : {}),
@@ -172,9 +172,7 @@ export class DiagramSyncService {
         },
         customData: {
           nombre: payload.label,
-          ...(payload.templateDocumentId !== undefined
-            ? { templateDocumentId: payload.templateDocumentId }
-            : {}),
+          templateDocumentId: payload.templateDocumentId ?? '',
         },
       },
     });
@@ -222,10 +220,29 @@ export class DiagramSyncService {
           type: 'standard.Link',
           source: { id: sourceId },
           target: { id: targetId },
+          router: {
+            name: 'manhattan',
+            args: {
+              padding: 24,
+              step: 20,
+            },
+          },
+          connector: {
+            name: 'rounded',
+            args: {
+              radius: 8,
+            },
+          },
           attrs: {
             line: {
-              stroke: '#334155',
-              strokeWidth: 2,
+              stroke: '#475569',
+              strokeWidth: 2.5,
+              strokeLinecap: 'round',
+              strokeLinejoin: 'round',
+              targetMarker: {
+                type: 'path',
+                d: 'M 10 -5 0 0 10 5 z',
+              },
             },
           },
           customData: {
@@ -246,6 +263,18 @@ export class DiagramSyncService {
     });
   }
 
+  SYNC_LANES(userId: string, lanes: unknown[], cells: unknown[]): void {
+    this.SEND_OPERATION({
+      opType: 'SYNC_LANES',
+      cellId: 'lanes',
+      userId,
+      delta: {
+        lanes,
+        cells,
+      },
+    });
+  }
+
   DISCONNECT(): void {
     if (this.stompClient) {
       console.log('[SYNC][DISCONNECT]');
@@ -260,7 +289,7 @@ export class DiagramSyncService {
     y: number,
     laneId: string,
     nodeType: DiagramNodeType,
-  ): Record<string, any> {
+  ): Record<string, unknown> {
     switch (nodeType) {
       case 'INITIAL':
         return {
@@ -281,6 +310,29 @@ export class DiagramSyncService {
           customData: {
             nombre: 'Inicio',
             tipo: 'INITIAL',
+            laneId,
+          },
+        };
+
+      case 'FINAL':
+        return {
+          id: cellId,
+          type: 'standard.Circle',
+          position: { x, y },
+          size: { width: 42, height: 42 },
+          attrs: {
+            body: {
+              fill: '#ffffff',
+              stroke: '#111827',
+              strokeWidth: 3,
+            },
+            label: {
+              text: '',
+            },
+          },
+          customData: {
+            nombre: 'Fin',
+            tipo: 'FINAL',
             laneId,
           },
         };
@@ -316,7 +368,7 @@ export class DiagramSyncService {
           id: cellId,
           type: 'standard.Rectangle',
           position: { x, y },
-          size: { width: 160, height: 18 },
+          size: { width: 140, height: 18 },
           attrs: {
             body: {
               fill: '#111827',
@@ -327,34 +379,12 @@ export class DiagramSyncService {
             },
             label: {
               text: '',
+              fill: '#111827',
             },
           },
           customData: {
-            nombre: nodeType === 'FORK' ? 'Fork' : 'Join',
-            tipo: nodeType,
-            laneId,
-          },
-        };
-
-      case 'FINAL':
-        return {
-          id: cellId,
-          type: 'standard.Circle',
-          position: { x, y },
-          size: { width: 40, height: 40 },
-          attrs: {
-            body: {
-              fill: '#ffffff',
-              stroke: '#111827',
-              strokeWidth: 4,
-            },
-            label: {
-              text: '',
-            },
-          },
-          customData: {
-            nombre: 'Final',
-            tipo: 'FINAL',
+            nombre: 'Fork/Join',
+            tipo: 'FORK',
             laneId,
           },
         };

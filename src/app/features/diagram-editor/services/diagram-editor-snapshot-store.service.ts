@@ -67,7 +67,11 @@ export class DiagramEditorSnapshotStoreService {
     );
   }
 
-  moveNodesByLaneOffsets(offsetsByLaneId: Record<string, number>): void {
+  moveNodesByLaneOffsets(
+    offsetsByLaneId: Record<string, number>,
+  ): { cellId: string; x: number; y: number }[] {
+    const moved: { cellId: string; x: number; y: number }[] = [];
+
     this.cells.update((cells) =>
       cells.map((cell) => {
         if (cell.type === 'standard.Link') return cell;
@@ -79,15 +83,25 @@ export class DiagramEditorSnapshotStoreService {
         const deltaX = offsetsByLaneId[laneId] ?? 0;
         if (!deltaX) return cell;
 
-        return {
+        const next = {
           ...cell,
           position: {
             x: cell.position.x + deltaX,
             y: cell.position.y,
           },
         };
+
+        moved.push({
+          cellId: cell.id,
+          x: next.position.x,
+          y: next.position.y,
+        });
+
+        return next;
       }),
     );
+
+    return moved;
   }
 
   clampNodesIntoLanes(
@@ -95,7 +109,8 @@ export class DiagramEditorSnapshotStoreService {
     laneHeaderHeightPx: number,
     horizontalPadding = 24,
     verticalPadding = 24,
-  ): void {
+  ): { cellId: string; x: number; y: number }[] {
+    const moved: { cellId: string; x: number; y: number }[] = [];
     const laneById = new Map(lanes.map((lane) => [lane.id, lane]));
 
     this.cells.update((cells) =>
@@ -125,15 +140,25 @@ export class DiagramEditorSnapshotStoreService {
           return cell;
         }
 
-        return {
+        const next = {
           ...cell,
           position: {
             x: nextX,
             y: nextY,
           },
         };
+
+        moved.push({
+          cellId: cell.id,
+          x: next.position.x,
+          y: next.position.y,
+        });
+
+        return next;
       }),
     );
+
+    return moved;
   }
 
   getLaneNodeBottoms(): Record<string, number> {

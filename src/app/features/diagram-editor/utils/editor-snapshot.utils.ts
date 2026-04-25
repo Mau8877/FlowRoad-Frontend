@@ -41,7 +41,10 @@ export function updateSnapshotCellFromMessage(
       ...(msg.delta['size'] ? { size: msg.delta['size'] } : {}),
       ...(msg.delta['source'] ? { source: msg.delta['source'] } : {}),
       ...(msg.delta['target'] ? { target: msg.delta['target'] } : {}),
+      ...(msg.delta['vertices'] ? { vertices: msg.delta['vertices'] } : {}),
       ...(msg.delta['attrs'] ? { attrs: msg.delta['attrs'] } : {}),
+      ...(msg.delta['router'] ? { router: msg.delta['router'] } : {}),
+      ...(msg.delta['connector'] ? { connector: msg.delta['connector'] } : {}),
       ...(msg.delta['customData'] ? { customData: msg.delta['customData'] } : {}),
     };
   });

@@ -3,6 +3,7 @@ import { Subscription } from 'rxjs';
 
 import { AuthService } from '../../auth/services/auth.service';
 import {
+  DiagramCell,
   DiagramLane,
   DiagramNodeType,
   JoinSessionResponse,
@@ -50,8 +51,12 @@ export class DiagramEditorCollaborationService {
   public logs = signal<string[]>([]);
 
   public selectedCellId = signal('');
+  public inspectorCellId = signal('');
   public selectedTargetId = signal('');
   public labelText = signal('Actividad Editada');
+
+  // Estado exclusivo para LINK
+  public linkDraftSourceId = signal('');
 
   public currentUserId = () => this.authService.currentUser()?.id || '';
 
@@ -81,10 +86,11 @@ export class DiagramEditorCollaborationService {
   attachCanvas(host: HTMLDivElement): void {
     this.canvasManager = new EditorCanvasManager(host, {
       onCellSelected: (cellId: string, label: string) => {
-        this.selectedCellId.set(cellId);
-        if (label.trim()) {
-          this.labelText.set(label);
-        }
+        this.handleElementSelection(cellId, label);
+      },
+
+      onCellDoubleClicked: (cellId: string, label: string) => {
+        this.handleElementDoubleClick(cellId, label);
       },
 
       onBlankPointerDown: (x: number, y: number) => {
@@ -92,6 +98,10 @@ export class DiagramEditorCollaborationService {
       },
 
       onElementPointerDown: (cellId: string, position: { x: number; y: number }) => {
+        this.handleElementPointerDown(cellId, position);
+      },
+
+      onElementDragStart: (cellId: string, position: { x: number; y: number }) => {
         this.startDragLock(cellId, position);
       },
 
@@ -118,6 +128,17 @@ export class DiagramEditorCollaborationService {
       isPanMode: () => {
         return this.uiService.activeTool() === 'PAN';
       },
+
+      isSelectMode: () => {
+        return this.uiService.activeTool() === 'SELECT';
+      },
+
+      getDebugLinkState: () => ({
+        activeTool: this.uiService.activeTool(),
+        selectedCellId: this.selectedCellId(),
+        linkDraftSourceId: this.linkDraftSourceId(),
+        selectedTargetId: this.selectedTargetId(),
+      }),
     });
 
     this.canvasManager.init();
@@ -138,6 +159,7 @@ export class DiagramEditorCollaborationService {
     this.dragSession.reset();
     this.lockState.reset();
     this.snapshotStore.clear();
+    this.linkDraftSourceId.set('');
   }
 
   createNode(): void {
@@ -148,6 +170,33 @@ export class DiagramEditorCollaborationService {
     }
 
     this.createNodeAt(initialPosition.x, initialPosition.y, 'ACTION');
+  }
+
+  clearSelection(): void {
+    const selectedId = this.selectedCellId();
+    const selectedCell = selectedId ? this.snapshotStore.findCell(selectedId) : undefined;
+
+    this.canvasManager?.clearSelection(selectedCell);
+    this.selectedCellId.set('');
+    this.inspectorCellId.set('');
+    this.selectedTargetId.set('');
+  }
+
+  cancelCurrentAction(options?: { clearSelectionInLink?: boolean }): void {
+    if (this.uiService.activeTool() === 'LINK') {
+      this.resetLinkDraft(options?.clearSelectionInLink ?? false);
+      return;
+    }
+
+    this.clearSelection();
+  }
+
+  deleteSelectedCell(): void {
+    const activeTool = this.uiService.activeTool();
+    if (activeTool === 'PAN') return;
+    if (!this.selectedCellId()) return;
+
+    this.deleteCell();
   }
 
   lockCell(): void {
@@ -198,23 +247,30 @@ export class DiagramEditorCollaborationService {
     });
   }
 
-  getSelectedCell(): any | null {
-    const cellId = this.selectedCellId();
+  getSelectedCell(): DiagramCell | null {
+    const cellId = this.inspectorCellId();
     if (!cellId) return null;
 
     return this.snapshotStore.findCell(cellId) ?? null;
   }
 
-  createLink(): void {
-    if (!this.selectedCellId() || !this.selectedTargetId()) return;
+  createLink(sourceId: string, targetId: string): void {
+    if (!sourceId || !targetId) return;
+
+    if (sourceId === targetId) {
+      this.addLog('No se permiten self-links (A→A).');
+      return;
+    }
+
+    if (this.hasLinkBetween(sourceId, targetId)) {
+      this.addLog(`Link duplicado evitado: ${sourceId} → ${targetId}`);
+      return;
+    }
 
     const linkId = `link-${Date.now()}`;
-    this.syncService.CREATE_LINK(
-      linkId,
-      this.selectedCellId(),
-      this.selectedTargetId(),
-      this.currentUserId(),
-    );
+    this.syncService.CREATE_LINK(linkId, sourceId, targetId, this.currentUserId());
+
+    this.resetLinkDraft(false);
   }
 
   deleteCell(): void {
@@ -226,18 +282,23 @@ export class DiagramEditorCollaborationService {
     this.syncService.SEND_PING(this.currentUserId(), 320, 220);
   }
 
-  applyLaneResize(laneId: string, nextWidth: number): void {
+  previewLaneResize(laneId: string, nextWidth: number): void {
     const previousLanes = [...this.uiService.lanes()].map((lane) => ({ ...lane }));
     const nextLanes = this.uiService.resizeLaneWidth(laneId, nextWidth);
 
-    this.syncNodesWithLaneLayout(previousLanes, nextLanes);
+    this.syncNodesWithLaneLayout(previousLanes, nextLanes, false);
   }
 
-  applyLaneReorder(laneId: string, pointerCanvasX: number): void {
+  previewLaneReorder(laneId: string, pointerCanvasX: number): void {
     const previousLanes = [...this.uiService.lanes()].map((lane) => ({ ...lane }));
     const nextLanes = this.uiService.reorderLaneByPointer(laneId, pointerCanvasX);
 
-    this.syncNodesWithLaneLayout(previousLanes, nextLanes);
+    this.syncNodesWithLaneLayout(previousLanes, nextLanes, false);
+  }
+
+  commitLaneLayoutChange(successLog = 'Lanes actualizadas'): void {
+    this.recomputeLaneHeightsFromNodes(false);
+    this.syncCurrentLanes(successLog);
   }
 
   recomputeLaneHeightsFromNodes(persist = false): void {
@@ -248,12 +309,30 @@ export class DiagramEditorCollaborationService {
     this.snapshotStore.clampNodesIntoLanes(after, this.uiService.laneHeaderHeightPx);
 
     if (persist && this.didLaneLayoutChange(before, after)) {
-      this.persistCurrentLanes('Altura automática de lanes actualizada');
+      this.syncCurrentLanes('Altura automática de lanes actualizada');
+    }
+  }
+
+  public syncCurrentLanes(successLog?: string): void {
+    this.syncService.SYNC_LANES(this.currentUserId(), this.uiService.lanes(), this.snapshotCells());
+
+    if (successLog) {
+      this.addLog(successLog);
     }
   }
 
   private handleBlankPointerDown(x: number, y: number): void {
     const activeTool = this.uiService.activeTool();
+
+    if (activeTool === 'SELECT') {
+      this.clearSelection();
+      return;
+    }
+
+    if (activeTool === 'LINK') {
+      this.resetLinkDraft();
+      return;
+    }
 
     switch (activeTool) {
       case 'LANE':
@@ -281,7 +360,107 @@ export class DiagramEditorCollaborationService {
         return;
 
       default:
+        void x;
+        void y;
         return;
+    }
+  }
+
+  private handleElementPointerDown(cellId: string, position: { x: number; y: number }): void {
+    const activeTool = this.uiService.activeTool();
+    const cell = this.snapshotStore.findCell(cellId);
+
+    if (!cell) {
+      return;
+    }
+
+    if (activeTool === 'SELECT') {
+      this.selectedCellId.set(cellId);
+      this.inspectorCellId.set('');
+      this.canvasManager?.selectCell(cellId, cell);
+
+      if (cell.type !== 'standard.Link') {
+        const label = String(cell.attrs?.['label']?.['text'] ?? cell.customData?.['nombre'] ?? '');
+        if (label.trim()) {
+          this.labelText.set(label);
+        }
+      }
+
+      void position;
+      return;
+    }
+
+    if (activeTool === 'LINK') {
+      if (cell.type === 'standard.Link') {
+        return;
+      }
+
+      this.handleLinkPointerDown(cellId);
+      return;
+    }
+
+    void position;
+  }
+
+  private handleElementSelection(cellId: string, label: string): void {
+    const activeTool = this.uiService.activeTool();
+    const cell = this.snapshotStore.findCell(cellId);
+
+    if (activeTool === 'PAN') {
+      return;
+    }
+
+    if (activeTool === 'SELECT') {
+      if (!cell) {
+        return;
+      }
+
+      this.selectedCellId.set(cellId);
+      this.inspectorCellId.set('');
+      this.canvasManager?.selectCell(cellId, cell);
+
+      if (cell.type !== 'standard.Link') {
+        const resolvedLabel = String(
+          cell.attrs?.['label']?.['text'] ?? cell.customData?.['nombre'] ?? label,
+        );
+        if (resolvedLabel.trim()) {
+          this.labelText.set(resolvedLabel);
+        }
+      }
+      return;
+    }
+
+    if (activeTool === 'LINK') {
+      return;
+    }
+
+    void cell;
+    void label;
+  }
+
+  private handleElementDoubleClick(cellId: string, label: string): void {
+    const activeTool = this.uiService.activeTool();
+    const cell = this.snapshotStore.findCell(cellId);
+
+    if (activeTool !== 'SELECT') {
+      return;
+    }
+
+    if (!cell) {
+      return;
+    }
+
+    this.selectedCellId.set(cellId);
+    this.inspectorCellId.set(cellId);
+    this.canvasManager?.selectCell(cellId, cell);
+
+    if (cell.type !== 'standard.Link') {
+      const resolvedLabel = String(
+        cell.attrs?.['label']?.['text'] ?? cell.customData?.['nombre'] ?? label,
+      );
+      if (resolvedLabel.trim()) {
+        this.labelText.set(resolvedLabel);
+      }
     }
   }
 
@@ -306,10 +485,19 @@ export class DiagramEditorCollaborationService {
       return;
     }
 
-    this.persistCurrentLanes(`Lane creada: ${lane.departmentName}`);
+    this.syncCurrentLanes(`Lane creada: ${lane.departmentName}`);
   }
 
   private startDragLock(cellId: string, position: { x: number; y: number }): void {
+    if (this.uiService.activeTool() !== 'SELECT') {
+      return;
+    }
+
+    const cell = this.snapshotStore.findCell(cellId);
+    if (!cell || cell.type === 'standard.Link') {
+      return;
+    }
+
     if (this.dragSession.shouldBlockNewDrag()) {
       this.addLog(
         `DRAG_BLOCKED_PENDING_PREVIOUS => requested=${cellId} current=${this.dragSession.currentDraggingCellId ?? '-'} phase=${this.dragSession.currentPhase}`,
@@ -324,6 +512,7 @@ export class DiagramEditorCollaborationService {
     const dragId = this.generateDragId();
 
     this.selectedCellId.set(cellId);
+    this.canvasManager?.selectCell(cellId, cell);
     this.lockState.rememberPreDragPosition(cellId, position);
     this.dragSession.beginLock(cellId, dragId);
     this.lastLiveSentAt = 0;
@@ -392,6 +581,13 @@ export class DiagramEditorCollaborationService {
           this.snapshotStore.setSnapshot([]);
         }
 
+        try {
+          const parsedLanes = response.lanesSnapshot ? JSON.parse(response.lanesSnapshot) : [];
+          this.uiService.setLanes(parsedLanes);
+        } catch {
+          this.uiService.setLanes([]);
+        }
+
         this.sessionLoaded = true;
         this.addLog(`Sesión iniciada: ${response.sessionToken}`);
 
@@ -425,10 +621,40 @@ export class DiagramEditorCollaborationService {
 
   private renderSnapshot(): void {
     this.canvasManager?.clearAndRender(this.snapshotCells());
+
+    const selectedId = this.selectedCellId();
+    if (selectedId) {
+      this.canvasManager?.selectCell(selectedId, this.snapshotStore.findCell(selectedId));
+    }
+
+    if (this.linkDraftSourceId()) {
+      this.canvasManager?.setLinkSource(this.linkDraftSourceId());
+      this.canvasManager?.startLinkPreview(this.linkDraftSourceId());
+    }
+
     this.recomputeLaneHeightsFromNodes(false);
   }
 
   private applyIncomingMessage(msg: SocketOperationMessage): void {
+    if (msg.opType === 'SYNC_LANES') {
+      const incomingLanes = ((msg.delta['lanes'] as DiagramLane[] | undefined) ?? []).map(
+        (lane) => ({ ...lane }),
+      );
+      const incomingCells = (msg.delta['cells'] as DiagramCell[] | undefined) ?? [];
+
+      this.uiService.setLanes(incomingLanes);
+      this.snapshotStore.setSnapshot(incomingCells);
+      this.canvasManager?.clearAndRender(this.snapshotCells());
+
+      const selectedId = this.selectedCellId();
+      if (selectedId) {
+        this.canvasManager?.selectCell(selectedId, this.snapshotStore.findCell(selectedId));
+      }
+
+      this.recomputeLaneHeightsFromNodes(false);
+      return;
+    }
+
     const result = this.messageHandler.handleIncomingMessage(msg, {
       currentUserId: this.currentUserId(),
       selectedCellId: this.selectedCellId(),
@@ -442,9 +668,17 @@ export class DiagramEditorCollaborationService {
       msg.opType === 'CREATE_NODE' ||
       msg.opType === 'MOVE_COMMIT' ||
       msg.opType === 'UPDATE_NODE' ||
-      msg.opType === 'DELETE_CELL'
+      msg.opType === 'DELETE_CELL' ||
+      msg.opType === 'CREATE_LINK' ||
+      msg.opType === 'UPDATE_LINK' ||
+      msg.opType === 'DELETE_LINK'
     ) {
       this.recomputeLaneHeightsFromNodes(msg.userId === this.currentUserId());
+    }
+
+    const selectedId = this.selectedCellId();
+    if (selectedId) {
+      this.canvasManager?.selectCell(selectedId, this.snapshotStore.findCell(selectedId));
     }
   }
 
@@ -454,7 +688,7 @@ export class DiagramEditorCollaborationService {
     }
 
     if (result.shouldClearSelectedCell) {
-      this.selectedCellId.set('');
+      this.clearSelection();
     }
 
     if (result.finishDragPosition !== undefined) {
@@ -558,7 +792,11 @@ export class DiagramEditorCollaborationService {
     );
   }
 
-  private syncNodesWithLaneLayout(previousLanes: DiagramLane[], nextLanes: DiagramLane[]): void {
+  private syncNodesWithLaneLayout(
+    previousLanes: DiagramLane[],
+    nextLanes: DiagramLane[],
+    recomputeHeights: boolean,
+  ): void {
     const previousById = new Map(previousLanes.map((lane) => [lane.id, lane]));
     const offsetsByLaneId: Record<string, number> = {};
 
@@ -569,9 +807,29 @@ export class DiagramEditorCollaborationService {
       offsetsByLaneId[lane.id] = lane.x - previous.x;
     }
 
-    this.snapshotStore.moveNodesByLaneOffsets(offsetsByLaneId);
-    this.snapshotStore.clampNodesIntoLanes(nextLanes, this.uiService.laneHeaderHeightPx);
-    this.recomputeLaneHeightsFromNodes(false);
+    const movedByOffset = this.snapshotStore.moveNodesByLaneOffsets(offsetsByLaneId);
+    const clamped = this.snapshotStore.clampNodesIntoLanes(
+      nextLanes,
+      this.uiService.laneHeaderHeightPx,
+    );
+
+    const latestByCellId = new Map<string, { x: number; y: number }>();
+
+    for (const moved of movedByOffset) {
+      latestByCellId.set(moved.cellId, { x: moved.x, y: moved.y });
+    }
+
+    for (const moved of clamped) {
+      latestByCellId.set(moved.cellId, { x: moved.x, y: moved.y });
+    }
+
+    for (const [cellId, position] of latestByCellId.entries()) {
+      this.canvasManager?.applyMove(cellId, position.x, position.y);
+    }
+
+    if (recomputeHeights) {
+      this.recomputeLaneHeightsFromNodes(false);
+    }
   }
 
   private didLaneLayoutChange(previousLanes: DiagramLane[], nextLanes: DiagramLane[]): boolean {
@@ -592,20 +850,53 @@ export class DiagramEditorCollaborationService {
     });
   }
 
-  private persistCurrentLanes(successLog: string): void {
-    const diagramId = this.diagramId();
-    if (!diagramId) return;
+  private handleLinkPointerDown(cellId: string): void {
+    const sourceId = this.linkDraftSourceId();
 
-    this.uiService.saveDiagramLanes(
-      diagramId,
-      this.uiService.lanes(),
-      () => {
-        this.addLog(successLog);
-      },
-      () => {
-        this.addLog('Error al guardar lanes');
-      },
-    );
+    if (!sourceId) {
+      if (this.selectedCellId()) {
+        this.clearSelection();
+      }
+
+      this.linkDraftSourceId.set(cellId);
+      this.selectedTargetId.set('');
+      this.canvasManager?.clearLinkDraft();
+      this.canvasManager?.setLinkSource(cellId);
+      this.canvasManager?.startLinkPreview(cellId);
+      return;
+    }
+
+    if (sourceId === cellId) {
+      this.selectedTargetId.set('');
+      this.canvasManager?.setLinkSource(cellId);
+      this.canvasManager?.startLinkPreview(cellId);
+      return;
+    }
+
+    this.selectedTargetId.set(cellId);
+    this.canvasManager?.setLinkTarget(cellId);
+    this.createLink(sourceId, cellId);
+  }
+
+  private resetLinkDraft(clearSelected = false): void {
+    this.linkDraftSourceId.set('');
+    this.selectedTargetId.set('');
+    this.canvasManager?.clearLinkDraft();
+
+    if (clearSelected) {
+      this.clearSelection();
+    }
+  }
+
+  private hasLinkBetween(sourceId: string, targetId: string): boolean {
+    return this.snapshotStore
+      .cells()
+      .some(
+        (cell) =>
+          cell.type === 'standard.Link' &&
+          cell.source?.id === sourceId &&
+          cell.target?.id === targetId,
+      );
   }
 
   private registerGlobalDragSafety(): void {

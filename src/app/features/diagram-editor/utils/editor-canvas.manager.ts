@@ -3,21 +3,54 @@ import { DiagramCell } from '../interfaces/diagram.models';
 
 export interface CanvasManagerCallbacks {
   onCellSelected(cellId: string, label: string): void;
+  onCellDoubleClicked(cellId: string, label: string): void;
   onBlankPointerDown(x: number, y: number): void;
   onElementPointerDown(cellId: string, position: { x: number; y: number }): void;
+  onElementDragStart(cellId: string, position: { x: number; y: number }): void;
   onElementPositionChanged(cellId: string, x: number, y: number): void;
   onElementPointerUp(cellId: string, x: number, y: number): void;
   isCellRemotelyLocked(cellId: string): boolean;
   getActiveDraggingCellId(): string | null;
   isDragTransitionLocked(): boolean;
   isPanMode(): boolean;
+  isSelectMode(): boolean;
+  getDebugLinkState(): {
+    activeTool: string;
+    selectedCellId: string;
+    linkDraftSourceId: string;
+    selectedTargetId: string;
+  };
 }
+
+interface PendingPointerState {
+  cellId: string;
+  originPosition: { x: number; y: number };
+  dragStarted: boolean;
+}
+
+type HighlightMode = 'selected-node' | 'selected-link' | 'link-source' | 'link-target';
 
 export class EditorCanvasManager {
   private graph!: dia.Graph;
   private paper!: dia.Paper;
   private resizeObserver?: ResizeObserver;
   private resizeFrame: number | null = null;
+
+  private pendingPointerState: PendingPointerState | null = null;
+  private selectedCellId: string | null = null;
+  private linkSourceCellId: string | null = null;
+  private linkTargetCellId: string | null = null;
+
+  private readonly previewLinkId = '__draft-link-preview__';
+
+  private readonly handleHostPointerMove = (event: PointerEvent): void => {
+    if (!this.linkSourceCellId || this.linkTargetCellId) return;
+
+    const point = this.getLocalPointFromClient(event.clientX, event.clientY);
+    if (!point) return;
+
+    this.updateLinkPreview(point.x, point.y);
+  };
 
   constructor(
     private readonly host: HTMLDivElement,
@@ -38,11 +71,16 @@ export class EditorCanvasManager {
       frozen: false,
       gridSize: 20,
       drawGrid: false,
+      moveThreshold: 6,
       background: {
         color: 'transparent',
       },
       interactive: (cellView) => {
         const cellId = String(cellView.model.id);
+
+        if (cellId === this.previewLinkId) {
+          return false;
+        }
 
         if (this.callbacks.isPanMode()) {
           return false;
@@ -59,16 +97,22 @@ export class EditorCanvasManager {
         const activeDraggingCellId = this.callbacks.getActiveDraggingCellId();
 
         if (this.callbacks.isDragTransitionLocked()) {
-          return activeDraggingCellId === cellId;
+          return activeDraggingCellId === cellId ? { elementMove: true } : { elementMove: false };
         }
 
-        return true;
+        if (!this.callbacks.isSelectMode()) {
+          return { elementMove: false };
+        }
+
+        return { elementMove: true };
       },
     });
 
     this.registerEvents();
     this.observeResize();
     this.scheduleResize();
+
+    this.host.addEventListener('pointermove', this.handleHostPointerMove);
   }
 
   destroy(): void {
@@ -79,6 +123,12 @@ export class EditorCanvasManager {
       this.resizeFrame = null;
     }
 
+    this.host.removeEventListener('pointermove', this.handleHostPointerMove);
+
+    this.pendingPointerState = null;
+    this.selectedCellId = null;
+    this.linkSourceCellId = null;
+    this.linkTargetCellId = null;
     this.paper?.remove();
   }
 
@@ -86,22 +136,33 @@ export class EditorCanvasManager {
     this.graph.clear();
 
     for (const cell of cells) {
+      if (cell.id === this.previewLinkId) continue;
+
       const jointCell = this.buildJointCell(cell);
       if (jointCell) {
         this.graph.addCell(jointCell);
       }
     }
 
+    this.reapplyHighlights();
+
+    if (this.linkSourceCellId && !this.linkTargetCellId) {
+      this.startLinkPreview(this.linkSourceCellId);
+    }
+
     this.scheduleResize();
   }
 
   addCell(cell: DiagramCell): void {
+    if (cell.id === this.previewLinkId) return;
     if (this.graph.getCell(cell.id)) return;
 
     const jointCell = this.buildJointCell(cell);
     if (jointCell) {
       this.graph.addCell(jointCell);
     }
+
+    this.reapplyHighlights();
   }
 
   applyMove(cellId: string, x: number, y: number): void {
@@ -114,6 +175,8 @@ export class EditorCanvasManager {
   }
 
   applyUpdate(cellId: string, delta: Record<string, any>): void {
+    if (cellId === this.previewLinkId) return;
+
     const jointCell = this.graph.getCell(cellId);
     if (!jointCell) return;
 
@@ -139,14 +202,32 @@ export class EditorCanvasManager {
       jointCell.set('target', delta['target']);
     }
 
+    if (delta['vertices'] && jointCell.isLink()) {
+      jointCell.set('vertices', delta['vertices']);
+    }
+
+    if (delta['router'] && jointCell.isLink()) {
+      jointCell.set('router', delta['router']);
+    }
+
+    if (delta['connector'] && jointCell.isLink()) {
+      jointCell.set('connector', delta['connector']);
+    }
+
     if (delta['customData']) {
       jointCell.set('customData', delta['customData']);
     }
+
+    this.reapplyHighlights();
   }
 
   applyDelete(cellId: string): void {
     const targetCell = this.graph.getCell(cellId);
     if (!targetCell) return;
+
+    if (this.selectedCellId === cellId) this.selectedCellId = null;
+    if (this.linkSourceCellId === cellId) this.linkSourceCellId = null;
+    if (this.linkTargetCellId === cellId) this.linkTargetCellId = null;
 
     if (targetCell.isLink()) {
       targetCell.remove();
@@ -154,7 +235,13 @@ export class EditorCanvasManager {
     }
 
     const connectedLinks = this.graph.getConnectedLinks(targetCell);
-    connectedLinks.forEach((link) => link.remove());
+    connectedLinks.forEach((link) => {
+      if (this.selectedCellId === String(link.id)) {
+        this.selectedCellId = null;
+      }
+      link.remove();
+    });
+
     targetCell.remove();
   }
 
@@ -179,6 +266,117 @@ export class EditorCanvasManager {
     };
   }
 
+  selectCell(cellId: string, snapshotCell?: DiagramCell): void {
+    if (this.selectedCellId && this.selectedCellId !== cellId) {
+      this.clearSelection(undefined, this.selectedCellId);
+    }
+
+    this.selectedCellId = cellId;
+    const mode: HighlightMode =
+      snapshotCell?.type === 'standard.Link' ? 'selected-link' : 'selected-node';
+    this.paintHighlight(cellId, mode);
+  }
+
+  clearSelection(snapshotCell?: DiagramCell, explicitCellId?: string): void {
+    const cellId = explicitCellId ?? this.selectedCellId;
+    if (!cellId) return;
+
+    this.restoreCellVisual(cellId, snapshotCell);
+
+    if (!explicitCellId || explicitCellId === this.selectedCellId) {
+      this.selectedCellId = null;
+    }
+  }
+
+  setLinkSource(cellId: string): void {
+    if (this.linkSourceCellId && this.linkSourceCellId !== cellId) {
+      this.restoreCellVisual(this.linkSourceCellId);
+    }
+
+    this.linkSourceCellId = cellId;
+    this.paintHighlight(cellId, 'link-source');
+  }
+
+  setLinkTarget(cellId: string): void {
+    if (this.linkTargetCellId && this.linkTargetCellId !== cellId) {
+      this.restoreCellVisual(this.linkTargetCellId);
+    }
+
+    this.linkTargetCellId = cellId;
+    this.paintHighlight(cellId, 'link-target');
+  }
+
+  startLinkPreview(sourceCellId: string): void {
+    const sourceCell = this.graph.getCell(sourceCellId);
+    if (!sourceCell || sourceCell.isLink()) return;
+
+    const element = sourceCell as dia.Element;
+    const bbox = element.getBBox();
+
+    const startX = bbox.x + bbox.width / 2;
+    const startY = bbox.y + bbox.height / 2;
+
+    const existing = this.graph.getCell(this.previewLinkId);
+    if (existing) {
+      existing.remove();
+    }
+
+    const previewLink = new shapes.standard.Link({
+      id: this.previewLinkId,
+      source: { x: startX, y: startY },
+      target: { x: startX, y: startY },
+      attrs: {
+        line: {
+          stroke: '#0f766e',
+          strokeWidth: 2,
+          strokeDasharray: '6 4',
+          pointerEvents: 'none',
+          targetMarker: {
+            type: 'path',
+            d: 'M 10 -5 0 0 10 5 z',
+          },
+        },
+        wrapper: {
+          pointerEvents: 'none',
+        },
+      },
+      z: 999,
+    });
+
+    previewLink.set('interactive', false);
+    previewLink.set('customData', { preview: true });
+
+    this.graph.addCell(previewLink);
+  }
+
+  updateLinkPreview(targetX: number, targetY: number): void {
+    const preview = this.graph.getCell(this.previewLinkId);
+    if (!preview || !preview.isLink()) return;
+
+    preview.set('target', {
+      x: targetX,
+      y: targetY,
+    });
+  }
+
+  clearLinkDraft(): void {
+    const sourceId = this.linkSourceCellId;
+    const targetId = this.linkTargetCellId;
+
+    this.linkSourceCellId = null;
+    this.linkTargetCellId = null;
+
+    const preview = this.graph.getCell(this.previewLinkId);
+    if (preview) {
+      preview.remove();
+    }
+
+    if (sourceId) this.restoreCellVisual(sourceId);
+    if (targetId && targetId !== sourceId) this.restoreCellVisual(targetId);
+
+    this.reapplyHighlights();
+  }
+
   paintLockState(cellId: string, owner: 'local' | 'remote'): void {
     const cell = this.graph.getCell(cellId);
     if (!cell || cell.isLink()) return;
@@ -198,28 +396,136 @@ export class EditorCanvasManager {
     const cell = this.graph.getCell(snapshotCell.id);
     if (!cell || cell.isLink()) return;
 
-    const stroke = snapshotCell.attrs?.['body']?.['stroke'] || '#2563eb';
-    const strokeWidth = snapshotCell.attrs?.['body']?.['strokeWidth'] || 2;
+    this.restoreCellVisual(snapshotCell.id, snapshotCell);
+    this.reapplyHighlights();
+  }
 
-    cell.attr('body/stroke', stroke);
-    cell.attr('body/strokeWidth', strokeWidth);
+  private reapplyHighlights(): void {
+    if (this.selectedCellId) {
+      const selected = this.graph.getCell(this.selectedCellId);
+      if (selected) {
+        this.paintHighlight(
+          this.selectedCellId,
+          selected.isLink() ? 'selected-link' : 'selected-node',
+        );
+      }
+    }
+
+    if (this.linkSourceCellId) {
+      this.paintHighlight(this.linkSourceCellId, 'link-source');
+    }
+
+    if (this.linkTargetCellId) {
+      this.paintHighlight(this.linkTargetCellId, 'link-target');
+    }
+  }
+
+  private paintHighlight(cellId: string, mode: HighlightMode): void {
+    const cell = this.graph.getCell(cellId);
+    if (!cell) return;
+
+    if (cell.isLink()) {
+      if (mode === 'selected-link') {
+        cell.attr('line/stroke', '#7c3aed');
+        cell.attr('line/strokeWidth', 4);
+      }
+      return;
+    }
+
+    if (mode === 'selected-node') {
+      cell.attr('body/stroke', '#7c3aed');
+      cell.attr('body/strokeWidth', 4);
+      return;
+    }
+
+    if (mode === 'link-source') {
+      cell.attr('body/stroke', '#0f766e');
+      cell.attr('body/strokeWidth', 4);
+      return;
+    }
+
+    if (mode === 'link-target') {
+      cell.attr('body/stroke', '#ea580c');
+      cell.attr('body/strokeWidth', 4);
+    }
+  }
+
+  private restoreCellVisual(cellId: string, snapshotCell?: DiagramCell): void {
+    const cell = this.graph.getCell(cellId);
+    if (!cell) return;
+
+    if (cell.isLink()) {
+      const stroke =
+        snapshotCell?.attrs?.['line']?.['stroke'] ??
+        snapshotCell?.attrs?.['body']?.['stroke'] ??
+        '#334155';
+      const strokeWidth =
+        snapshotCell?.attrs?.['line']?.['strokeWidth'] ??
+        snapshotCell?.attrs?.['body']?.['strokeWidth'] ??
+        2;
+
+      cell.attr('line/stroke', stroke);
+      cell.attr('line/strokeWidth', strokeWidth);
+      return;
+    }
+
+    const bodyStroke =
+      snapshotCell?.attrs?.['body']?.['stroke'] ||
+      (this.callbacks.isCellRemotelyLocked(cellId) ? '#dc2626' : '#2563eb');
+    const bodyStrokeWidth =
+      snapshotCell?.attrs?.['body']?.['strokeWidth'] ||
+      (this.callbacks.isCellRemotelyLocked(cellId) ? 3 : 2);
+
+    cell.attr('body/stroke', bodyStroke);
+    cell.attr('body/strokeWidth', bodyStrokeWidth);
   }
 
   private registerEvents(): void {
     this.paper.on('cell:pointerclick', (cellView) => {
       const cellId = String(cellView.model.id);
+
+      if (cellId === this.previewLinkId) {
+        return;
+      }
+
       const label = cellView.model.attr('label/text') || '';
       this.callbacks.onCellSelected(cellId, String(label));
     });
 
+    this.paper.on('cell:pointerdblclick', (cellView) => {
+      const cellId = String(cellView.model.id);
+
+      if (cellId === this.previewLinkId) {
+        return;
+      }
+
+      const label = cellView.model.attr('label/text') || '';
+      this.callbacks.onCellDoubleClicked(cellId, String(label));
+    });
+
     this.paper.on('blank:pointerdown', (_evt, x, y) => {
+      this.pendingPointerState = null;
       this.callbacks.onBlankPointerDown(x, y);
     });
 
     this.paper.on('element:pointerdown', (elementView) => {
       const cellId = String(elementView.model.id);
+
+      if (cellId === this.previewLinkId) {
+        return;
+      }
+
       const element = elementView.model as dia.Element;
       const position = element.position();
+
+      this.pendingPointerState = {
+        cellId,
+        originPosition: {
+          x: position.x,
+          y: position.y,
+        },
+        dragStarted: false,
+      };
 
       this.callbacks.onElementPointerDown(cellId, {
         x: position.x,
@@ -227,8 +533,43 @@ export class EditorCanvasManager {
       });
     });
 
+    this.paper.on('element:pointermove', (elementView) => {
+      const cellId = String(elementView.model.id);
+
+      if (cellId === this.previewLinkId) {
+        return;
+      }
+
+      const element = elementView.model as dia.Element;
+
+      if (this.linkSourceCellId && !this.linkTargetCellId) {
+        const bbox = element.getBBox();
+        this.updateLinkPreview(bbox.x + bbox.width / 2, bbox.y + bbox.height / 2);
+      }
+
+      if (!this.pendingPointerState) return;
+      if (this.pendingPointerState.cellId !== cellId) return;
+      if (this.pendingPointerState.dragStarted) return;
+
+      this.pendingPointerState.dragStarted = true;
+
+      this.callbacks.onElementDragStart(cellId, {
+        x: this.pendingPointerState.originPosition.x,
+        y: this.pendingPointerState.originPosition.y,
+      });
+
+      const currentPosition = element.position();
+      if (
+        currentPosition.x !== this.pendingPointerState.originPosition.x ||
+        currentPosition.y !== this.pendingPointerState.originPosition.y
+      ) {
+        this.callbacks.onElementPositionChanged(cellId, currentPosition.x, currentPosition.y);
+      }
+    });
+
     this.graph.on('change:position', (cell) => {
       if (cell.isLink()) return;
+      if (String(cell.id) === this.previewLinkId) return;
 
       const element = cell as dia.Element;
       const position = element.position();
@@ -238,10 +579,16 @@ export class EditorCanvasManager {
 
     this.paper.on('element:pointerup', (elementView) => {
       const cellId = String(elementView.model.id);
+
+      if (cellId === this.previewLinkId) {
+        return;
+      }
+
       const element = elementView.model as dia.Element;
       const position = element.position();
 
       this.callbacks.onElementPointerUp(cellId, position.x, position.y);
+      this.pendingPointerState = null;
     });
   }
 
@@ -281,16 +628,56 @@ export class EditorCanvasManager {
     }
   }
 
+  private getLocalPointFromClient(
+    clientX: number,
+    clientY: number,
+  ): { x: number; y: number } | null {
+    if (!this.paper) return null;
+
+    const rect = this.host.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+
+    return { x, y };
+  }
+
   private buildJointCell(cell: DiagramCell): dia.Cell | null {
+    if (cell.id === this.previewLinkId) {
+      return null;
+    }
+
     if (cell.type === 'standard.Link') {
+      const defaultRouter = {
+        name: 'manhattan',
+        args: {
+          padding: 24,
+          step: 20,
+        },
+      };
+      const defaultConnector = {
+        name: 'rounded',
+        args: {
+          radius: 8,
+        },
+      };
+
       const link = new shapes.standard.Link({
         id: cell.id,
         source: cell.source || {},
         target: cell.target || {},
+        vertices: cell.vertices || [],
+        router: cell.router || defaultRouter,
+        connector: cell.connector || defaultConnector,
         attrs: cell.attrs || {
           line: {
-            stroke: '#334155',
-            strokeWidth: 2,
+            stroke: '#475569',
+            strokeWidth: 2.5,
+            strokeLinecap: 'round',
+            strokeLinejoin: 'round',
+            targetMarker: {
+              type: 'path',
+              d: 'M 10 -5 0 0 10 5 z',
+            },
           },
         },
       });

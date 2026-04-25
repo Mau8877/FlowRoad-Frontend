@@ -68,8 +68,11 @@ export interface DiagramCell {
 
   source?: CellReference;
   target?: CellReference;
+  vertices?: Position[];
 
   attrs?: Record<string, any>;
+  router?: string | { name: string; args?: Record<string, any> };
+  connector?: string | { name: string; args?: Record<string, any> };
   customData?: DiagramCellCustomData;
 }
 
@@ -107,6 +110,7 @@ export interface JoinSessionResponse {
   sessionToken: string;
   diagramId: string;
   snapshot: string;
+  lanesSnapshot: string;
   currentUsers: ActiveUser[];
 }
 
@@ -131,7 +135,8 @@ export interface SocketOperationMessage {
     | 'DELETE_LINK'
     | 'LOCK_CELL'
     | 'UNLOCK_CELL'
-    | 'LOCK_REJECTED';
+    | 'LOCK_REJECTED'
+    | 'SYNC_LANES';
 
   cellId: string;
   delta: Record<string, any>;

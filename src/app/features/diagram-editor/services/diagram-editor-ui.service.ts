@@ -158,22 +158,31 @@ export class DiagramEditorUiService {
   }
 
   applyAutoHeightsFromNodeBottoms(nodeBottomsByLaneId: Record<string, number>): DiagramLane[] {
-    const updated = this.lanes().map((lane) => {
+    const lanes = this.lanes();
+    if (lanes.length === 0) {
+      return [];
+    }
+
+    let globalRequiredHeight = this.defaultLaneHeightPx;
+
+    for (const lane of lanes) {
       const maxNodeBottom = nodeBottomsByLaneId[lane.id];
+      if (maxNodeBottom === undefined) continue;
 
-      const nextHeight =
-        maxNodeBottom === undefined
-          ? this.defaultLaneHeightPx
-          : Math.max(
-              this.defaultLaneHeightPx,
-              Math.ceil(maxNodeBottom - lane.y + this.laneAutoBottomPaddingPx),
-            );
+      const requiredHeight = Math.max(
+        this.defaultLaneHeightPx,
+        Math.ceil(maxNodeBottom - lane.y + this.laneAutoBottomPaddingPx),
+      );
 
-      return {
-        ...lane,
-        height: this.clampLaneHeight(nextHeight),
-      };
-    });
+      globalRequiredHeight = Math.max(globalRequiredHeight, requiredHeight);
+    }
+
+    const clampedGlobalHeight = this.clampLaneHeight(globalRequiredHeight);
+
+    const updated = lanes.map((lane) => ({
+      ...lane,
+      height: clampedGlobalHeight,
+    }));
 
     const normalized = this.normalizeConnectedLanes(updated);
     this.lanes.set(normalized);

@@ -1,3 +1,4 @@
+import { TemplateSummaryResponse } from '#/app/features/config-org/interfaces/plantillas.models';
 import { CommonModule } from '@angular/common';
 import {
   Component,
@@ -9,7 +10,6 @@ import {
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { TemplateSummaryResponse } from '#/app/features/config-org/interfaces/plantillas.models';
 import { DiagramCell } from '../../interfaces/diagram.models';
 
 export interface NodeInspectorSubmitPayload {
@@ -39,6 +39,14 @@ export class EditorNodeInspectorComponent implements OnChanges {
   public draftHeight = signal(60);
   public draftTemplateDocumentId = signal('');
 
+  public isLinkSelected(): boolean {
+    return this.selectedCell?.type === 'standard.Link';
+  }
+
+  public isNodeSelected(): boolean {
+    return !!this.selectedCell && this.selectedCell.type !== 'standard.Link';
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['selectedCell']) {
       this.syncFromSelectedCell();
@@ -46,7 +54,7 @@ export class EditorNodeInspectorComponent implements OnChanges {
   }
 
   onSave(): void {
-    if (!this.selectedCell) return;
+    if (!this.selectedCell || this.selectedCell.type === 'standard.Link') return;
 
     this.saveRequested.emit({
       label: this.draftLabel().trim() || 'Sin nombre',
