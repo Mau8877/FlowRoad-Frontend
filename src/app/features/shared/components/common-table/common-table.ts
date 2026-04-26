@@ -1,3 +1,4 @@
+import { formatBoliviaDate } from '#/app/features/shared/components/date-format.util';
 import { CommonModule } from '@angular/common';
 import {
   ChangeDetectorRef,
@@ -107,6 +108,8 @@ export class CommonTable {
 
   public sortKey = signal<string | null>(null);
   public sortDir = signal<'asc' | 'desc' | null>(null);
+
+  protected formatBoliviaDate = formatBoliviaDate;
 
   constructor() {
     /**
