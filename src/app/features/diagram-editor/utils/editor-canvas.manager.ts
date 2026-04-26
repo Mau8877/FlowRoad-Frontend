@@ -61,6 +61,10 @@ export class EditorCanvasManager {
 
   private readonly previewLinkId = '__draft-link-preview__';
   private readonly resizeHandleSizePx = 14;
+  private readonly zoomStep = 0.1;
+  private readonly minZoom = 0.5;
+  private readonly maxZoom = 1.8;
+  private currentZoom = 1;
 
   private readonly handleWindowPointerUp = (): void => {
     this.finishResizeSession();
@@ -155,6 +159,7 @@ export class EditorCanvasManager {
         return { elementMove: true };
       },
     });
+    this.applyPaperZoom();
 
     this.registerEvents();
     this.createResizeHandle();
@@ -330,6 +335,28 @@ export class EditorCanvasManager {
     }
 
     this.reapplyHighlights();
+  }
+
+  zoomIn(): number {
+    return this.setZoom(this.currentZoom + this.zoomStep);
+  }
+
+  zoomOut(): number {
+    return this.setZoom(this.currentZoom - this.zoomStep);
+  }
+
+  setZoom(nextZoom: number): number {
+    const clamped = Math.max(this.minZoom, Math.min(this.maxZoom, nextZoom));
+    if (Math.abs(clamped - this.currentZoom) < 0.001) return this.currentZoom;
+
+    this.currentZoom = clamped;
+    this.applyPaperZoom();
+    this.updateResizeHandle();
+    return this.currentZoom;
+  }
+
+  getZoom(): number {
+    return this.currentZoom;
   }
 
   applyDelete(cellId: string): void {
@@ -805,6 +832,7 @@ export class EditorCanvasManager {
 
     if (this.paper) {
       this.paper.setDimensions(width, height);
+      this.applyPaperZoom();
     }
   }
 
@@ -887,8 +915,8 @@ export class EditorCanvasManager {
     const bbox = element.getBBox();
     const half = this.resizeHandleSizePx / 2;
 
-    this.resizeHandleEl.style.left = `${bbox.x + bbox.width - half}px`;
-    this.resizeHandleEl.style.top = `${bbox.y + bbox.height - half}px`;
+    this.resizeHandleEl.style.left = `${(bbox.x + bbox.width) * this.currentZoom - half}px`;
+    this.resizeHandleEl.style.top = `${(bbox.y + bbox.height) * this.currentZoom - half}px`;
     this.resizeHandleEl.style.display = 'block';
   }
 
@@ -898,11 +926,24 @@ export class EditorCanvasManager {
   ): { x: number; y: number } | null {
     if (!this.paper) return null;
 
+    const anyPaper = this.paper as unknown as {
+      clientToLocalPoint?: (x: number, y: number) => { x: number; y: number };
+    };
+    if (typeof anyPaper.clientToLocalPoint === 'function') {
+      const point = anyPaper.clientToLocalPoint(clientX, clientY);
+      return { x: point.x, y: point.y };
+    }
+
     const rect = this.host.getBoundingClientRect();
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
+    const x = (clientX - rect.left) / this.currentZoom;
+    const y = (clientY - rect.top) / this.currentZoom;
 
     return { x, y };
+  }
+
+  private applyPaperZoom(): void {
+    if (!this.paper) return;
+    this.paper.scale(this.currentZoom, this.currentZoom);
   }
 
   private buildJointCell(cell: DiagramCell): dia.Cell | null {

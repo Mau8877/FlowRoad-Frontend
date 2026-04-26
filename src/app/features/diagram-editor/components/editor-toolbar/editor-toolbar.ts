@@ -16,6 +16,8 @@ import {
   MousePointer2,
   RectangleHorizontal,
   Sparkles,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-angular';
 import { EditorTool } from '../../interfaces/diagram.models';
 
@@ -40,6 +42,8 @@ import { EditorTool } from '../../interfaces/diagram.models';
         Diamond,
         Minus,
         CircleDot,
+        ZoomIn,
+        ZoomOut,
       }),
     },
   ],
@@ -52,6 +56,8 @@ export class EditorToolbarComponent {
   @Output() toolSelected = new EventEmitter<EditorTool>();
   @Output() aiRequested = new EventEmitter<void>();
   @Output() laneDepartmentChanged = new EventEmitter<string>();
+  @Output() zoomInRequested = new EventEmitter<void>();
+  @Output() zoomOutRequested = new EventEmitter<void>();
 
   readonly navigationTools: { key: EditorTool; label: string; icon: string }[] = [
     { key: 'SELECT', label: 'Selección', icon: 'mouse-pointer-2' },
@@ -78,6 +84,14 @@ export class EditorToolbarComponent {
 
   onLaneDepartmentChange(value: string): void {
     this.laneDepartmentChanged.emit(value);
+  }
+
+  onZoomIn(): void {
+    this.zoomInRequested.emit();
+  }
+
+  onZoomOut(): void {
+    this.zoomOutRequested.emit();
   }
 
   isToolActive(tool: EditorTool): boolean {

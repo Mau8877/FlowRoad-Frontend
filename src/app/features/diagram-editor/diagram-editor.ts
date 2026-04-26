@@ -156,6 +156,14 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
     ]);
   }
 
+  protected onZoomInRequested(): void {
+    this.collab.zoomIn();
+  }
+
+  protected onZoomOutRequested(): void {
+    this.collab.zoomOut();
+  }
+
   protected onViewportMouseDown(event: MouseEvent): void {
     if (this.resizingLaneId || this.draggingLaneId) return;
     if (this.ui.activeTool() !== 'PAN') return;
@@ -168,8 +176,10 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
   }
 
   protected onViewportMouseMove(event: MouseEvent): void {
+    const zoom = this.collab.canvasZoom() || 1;
+
     if (this.resizingLaneId) {
-      const deltaX = event.clientX - this.resizeStartClientX;
+      const deltaX = (event.clientX - this.resizeStartClientX) / zoom;
       this.collab.previewLaneResize(this.resizingLaneId, this.resizeStartWidth + deltaX);
       return;
     }
@@ -177,7 +187,7 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
     if (this.draggingLaneId) {
       const viewportRect = this.canvasViewport.nativeElement.getBoundingClientRect();
       const canvasX =
-        event.clientX - viewportRect.left + this.canvasViewport.nativeElement.scrollLeft;
+        (event.clientX - viewportRect.left + this.canvasViewport.nativeElement.scrollLeft) / zoom;
 
       this.collab.previewLaneReorder(this.draggingLaneId, canvasX);
       return;

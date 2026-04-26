@@ -15,6 +15,34 @@
 
   <div class="toolbar-body">
     <div class="tool-group">
+      <div class="tool-group-title">Zoom</div>
+
+      <button
+        type="button"
+        (click)="onZoomIn()"
+        class="tool-btn"
+        title="Acercar"
+        aria-label="Acercar"
+      >
+        <lucide-icon name="zoom-in" class="tool-icon"></lucide-icon>
+        <span class="tool-text">Zoom In</span>
+      </button>
+
+      <button
+        type="button"
+        (click)="onZoomOut()"
+        class="tool-btn"
+        title="Alejar"
+        aria-label="Alejar"
+      >
+        <lucide-icon name="zoom-out" class="tool-icon"></lucide-icon>
+        <span class="tool-text">Zoom Out</span>
+      </button>
+    </div>
+
+    <div class="tool-divider"></div>
+
+    <div class="tool-group">
       <div class="tool-group-title">Navegación</div>
 
       @for (tool of navigationTools; track tool.key) {

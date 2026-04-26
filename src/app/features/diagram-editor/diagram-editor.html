@@ -34,6 +34,8 @@
         (toolSelected)="onToolSelected($event)"
         (laneDepartmentChanged)="onLaneDepartmentChanged($event)"
         (aiRequested)="onAiRequested()"
+        (zoomInRequested)="onZoomInRequested()"
+        (zoomOutRequested)="onZoomOutRequested()"
       />
     </aside>
 
@@ -52,7 +54,11 @@
         (mouseup)="onViewportMouseUp()"
         (mouseleave)="onViewportMouseLeave()"
       >
-        <div class="pointer-events-none absolute inset-0 z-0">
+        <div
+          class="pointer-events-none absolute inset-0 z-0"
+          [style.transform]="'scale(' + collab.canvasZoom() + ')'"
+          style="transform-origin: top left"
+        >
           <div class="absolute inset-0 bg-[#fcfcfb]"></div>
 
           <div
@@ -78,7 +84,11 @@
           ></div>
         </div>
 
-        <div class="pointer-events-none absolute inset-0 z-0">
+        <div
+          class="pointer-events-none absolute inset-0 z-0"
+          [style.transform]="'scale(' + collab.canvasZoom() + ')'"
+          style="transform-origin: top left"
+        >
           @for (lane of ui.lanes(); track lane.id) {
             <div
               class="pointer-events-none absolute overflow-hidden rounded-2xl border border-black/10 bg-[rgba(255,255,255,0.55)] shadow-[0_8px_24px_rgba(2,3,4,0.05)]"
@@ -97,7 +107,11 @@
           }
         </div>
 
-        <div class="pointer-events-none absolute inset-0 z-20">
+        <div
+          class="pointer-events-none absolute inset-0 z-20"
+          [style.transform]="'scale(' + collab.canvasZoom() + ')'"
+          style="transform-origin: top left"
+        >
           @for (lane of ui.lanes(); track lane.id) {
             <div
               class="pointer-events-none absolute"

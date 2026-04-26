@@ -55,6 +55,7 @@ export class DiagramEditorCollaborationService {
   public inspectorCellId = signal('');
   public selectedTargetId = signal('');
   public labelText = signal('Actividad Editada');
+  public canvasZoom = signal(1);
 
   // Estado exclusivo para LINK
   public linkDraftSourceId = signal('');
@@ -151,6 +152,7 @@ export class DiagramEditorCollaborationService {
     });
 
     this.canvasManager.init();
+    this.canvasZoom.set(this.canvasManager.getZoom());
     this.viewReady = true;
     this.registerGlobalDragSafety();
 
@@ -332,6 +334,16 @@ export class DiagramEditorCollaborationService {
 
   sendPing(): void {
     this.syncService.SEND_PING(this.currentUserId(), 320, 220);
+  }
+
+  zoomIn(): void {
+    if (!this.canvasManager) return;
+    this.canvasZoom.set(this.canvasManager.zoomIn());
+  }
+
+  zoomOut(): void {
+    if (!this.canvasManager) return;
+    this.canvasZoom.set(this.canvasManager.zoomOut());
   }
 
   previewLaneResize(laneId: string, nextWidth: number): void {
