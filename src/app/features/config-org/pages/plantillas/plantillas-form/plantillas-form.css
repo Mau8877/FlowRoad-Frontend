@@ -1,0 +1,28 @@
+:host {
+  display: block;
+}
+
+/* Contraste alto para toda la plantilla (campos, labels y opciones). */
+:host ::ng-deep input,
+:host ::ng-deep textarea,
+:host ::ng-deep select {
+  color: #000000 !important;
+}
+
+:host ::ng-deep label,
+:host ::ng-deep .text-slate-400,
+:host ::ng-deep .text-slate-500,
+:host ::ng-deep .text-slate-600 {
+  color: #111827 !important;
+}
+
+:host ::ng-deep input::placeholder,
+:host ::ng-deep textarea::placeholder {
+  color: #374151 !important;
+  opacity: 1;
+}
+
+:host ::ng-deep select option,
+:host ::ng-deep select option[value=''] {
+  color: #000000 !important;
+}

@@ -279,6 +279,8 @@ export class EditorCanvasManager {
             text: '',
           },
         });
+      } else if (!jointCell.isLink()) {
+        jointCell.attr(this.withWrappedNodeLabel(delta['attrs'] as Record<string, any>));
       } else {
         jointCell.attr(delta['attrs']);
       }
@@ -1034,21 +1036,20 @@ export class EditorCanvasManager {
     }
 
     if (cell.type === 'standard.Polygon') {
+      const polygonAttrs = this.withWrappedNodeLabel(cell.attrs, 'Decision');
+
       const polygon = new shapes.standard.Polygon({
         id: cell.id,
         position: cell.position || { x: 100, y: 100 },
         size: cell.size || { width: 90, height: 90 },
-        attrs: cell.attrs || {
+        attrs: {
           body: {
             refPoints: '50,0 100,50 50,100 0,50',
             fill: '#ffffff',
             stroke: '#2563eb',
             strokeWidth: 2,
           },
-          label: {
-            text: 'Decisión',
-            fill: '#111827',
-          },
+          ...polygonAttrs,
         },
       });
 
@@ -1056,11 +1057,13 @@ export class EditorCanvasManager {
       return polygon;
     }
 
+    const rectAttrs = this.withWrappedNodeLabel(cell.attrs, 'Nueva Actividad');
+
     const rect = new shapes.standard.Rectangle({
       id: cell.id,
       position: cell.position || { x: 100, y: 100 },
       size: cell.size || { width: 160, height: 60 },
-      attrs: cell.attrs || {
+      attrs: {
         body: {
           fill: '#ffffff',
           stroke: '#2563eb',
@@ -1068,10 +1071,7 @@ export class EditorCanvasManager {
           rx: 12,
           ry: 12,
         },
-        label: {
-          text: 'Nueva Actividad',
-          fill: '#111827',
-        },
+        ...rectAttrs,
       },
     });
 
@@ -1115,6 +1115,35 @@ export class EditorCanvasManager {
     ];
   }
 
+  private withWrappedNodeLabel(
+    attrs: Record<string, any> | undefined,
+    fallbackText = '',
+  ): Record<string, any> {
+    const next = { ...(attrs ?? {}) };
+    const label = { ...(next['label'] ?? {}) };
+    const wrap = (label['textWrap'] as Record<string, any> | undefined) ?? {};
+
+    if (!Object.prototype.hasOwnProperty.call(label, 'text') && fallbackText) {
+      label['text'] = fallbackText;
+    }
+
+    label['fill'] = label['fill'] ?? '#111827';
+    label['textWrap'] = {
+      width: -16,
+      height: -12,
+      ellipsis: true,
+      ...wrap,
+    };
+    label['textAnchor'] = label['textAnchor'] ?? 'middle';
+    label['textVerticalAnchor'] = label['textVerticalAnchor'] ?? 'middle';
+    label['refX'] = label['refX'] ?? '50%';
+    label['refY'] = label['refY'] ?? '50%';
+    label['xAlignment'] = label['xAlignment'] ?? 'middle';
+    label['yAlignment'] = label['yAlignment'] ?? 'middle';
+
+    next['label'] = label;
+    return next;
+  }
   private isInitialNodeCell(cell: dia.Cell, nextCustomData?: Record<string, any>): boolean {
     if (cell.isLink()) return false;
 

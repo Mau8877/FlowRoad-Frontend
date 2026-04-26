@@ -168,6 +168,17 @@ export class DiagramSyncService {
           label: {
             text: payload.label,
             fill: '#111827',
+            textWrap: {
+              width: -16,
+              height: -12,
+              ellipsis: true,
+            },
+            textAnchor: 'middle',
+            textVerticalAnchor: 'middle',
+            refX: '50%',
+            refY: '50%',
+            xAlignment: 'middle',
+            yAlignment: 'middle',
           },
         },
         customData: {
@@ -391,6 +402,17 @@ export class DiagramSyncService {
             label: {
               text: 'Decisión',
               fill: '#111827',
+              textWrap: {
+                width: -16,
+                height: -12,
+                ellipsis: true,
+              },
+              textAnchor: 'middle',
+              textVerticalAnchor: 'middle',
+              refX: '50%',
+              refY: '50%',
+              xAlignment: 'middle',
+              yAlignment: 'middle',
             },
           },
           customData: {
@@ -445,6 +467,17 @@ export class DiagramSyncService {
             label: {
               text: 'Nueva Actividad',
               fill: '#111827',
+              textWrap: {
+                width: -16,
+                height: -12,
+                ellipsis: true,
+              },
+              textAnchor: 'middle',
+              textVerticalAnchor: 'middle',
+              refX: '50%',
+              refY: '50%',
+              xAlignment: 'middle',
+              yAlignment: 'middle',
             },
           },
           customData: {

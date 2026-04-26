@@ -98,7 +98,7 @@
               formControlName="name"
               placeholder="Ej. Revisión de Motor"
               [readOnly]="isPreviewMode()"
-              class="w-full px-3 sm:px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 outline-none"
+              class="w-full px-3 sm:px-4 py-2 text-black bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 outline-none"
             />
           </div>
           <div class="w-full">
@@ -108,11 +108,11 @@
             <select
               formControlName="departmentId"
               [attr.disabled]="isPreviewMode() ? true : null"
-              class="w-full px-3 sm:px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 outline-none"
+              class="w-full px-3 sm:px-4 py-2 text-black bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 outline-none"
             >
-              <option value="" disabled>Seleccionar...</option>
+              <option value="" disabled class="text-black">Seleccionar...</option>
               @for (dept of departamentos(); track dept.value) {
-                <option [value]="dept.value">{{ dept.label }}</option>
+                <option [value]="dept.value" class="text-black">{{ dept.label }}</option>
               }
             </select>
           </div>
@@ -125,7 +125,7 @@
               formControlName="description"
               placeholder="Breve explicación..."
               [readOnly]="isPreviewMode()"
-              class="w-full px-3 sm:px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 outline-none"
+              class="w-full px-3 sm:px-4 py-2 text-black bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 outline-none"
             />
           </div>
         </div>

@@ -1,0 +1,14 @@
+:host {
+  display: block;
+}
+
+/* Placeholder legible para modales de plantillas (create/edit) dentro de esta página. */
+:host ::ng-deep input::placeholder,
+:host ::ng-deep textarea::placeholder {
+  color: #64748b !important;
+  opacity: 1;
+}
+
+:host ::ng-deep select option[value=''] {
+  color: #64748b;
+}
