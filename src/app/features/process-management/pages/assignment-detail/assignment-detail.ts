@@ -34,6 +34,10 @@ export class AssignmentDetail implements OnInit {
   private readonly processAssignmentService = inject(ProcessAssignmentService);
   private readonly processInstanceService = inject(ProcessInstanceService);
   private readonly templateService = inject(TemplateService);
+  private readonly dateFormatter = new Intl.DateTimeFormat('es-BO', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
 
   public readonly FieldType = FieldType;
 
@@ -297,11 +301,11 @@ export class AssignmentDetail implements OnInit {
 
   formatHistoryValue(value: unknown): string {
     if (value === null || value === undefined) {
-      return '—';
+      return 'Sin valor';
     }
 
     if (Array.isArray(value)) {
-      return value.length > 0 ? value.join(', ') : '—';
+      return value.length > 0 ? value.join(', ') : 'Sin valor';
     }
 
     if (typeof value === 'object') {
@@ -309,6 +313,41 @@ export class AssignmentDetail implements OnInit {
     }
 
     return String(value);
+  }
+
+  formatDate(value?: string | null): string {
+    if (!value) {
+      return 'Sin fecha';
+    }
+
+    const parsedDate = new Date(value);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return 'Sin fecha';
+    }
+
+    return this.dateFormatter.format(parsedDate);
+  }
+
+  formatStatus(status?: string | null): string {
+    if (!status) {
+      return 'Sin estado';
+    }
+
+    switch (status) {
+      case 'PENDING':
+        return 'Pendiente';
+      case 'COMPLETED':
+        return 'Completada';
+      case 'CANCELLED':
+        return 'Cancelada';
+      case 'RUNNING':
+        return 'En ejecución';
+      case 'PENDING_ASSIGNMENT':
+        return 'Pendiente de asignación';
+      default:
+        return status;
+    }
   }
 
   goBack(): void {

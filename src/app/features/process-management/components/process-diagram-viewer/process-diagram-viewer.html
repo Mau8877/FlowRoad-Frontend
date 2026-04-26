@@ -1,0 +1,85 @@
+<div class="overflow-hidden rounded-3xl border border-fr-taupe/35 bg-white shadow-lg">
+  <div
+    class="flex flex-col gap-3 border-b border-fr-taupe/25 bg-fr-black px-5 py-4 text-white sm:flex-row sm:items-center sm:justify-between"
+  >
+    <div>
+      <p class="text-xs font-extrabold uppercase tracking-[0.16em] text-fr-gold">Avance visual</p>
+
+      <h3 class="mt-1 text-xl font-extrabold">Diagrama del proceso</h3>
+
+      <p class="mt-1 text-xs font-semibold text-slate-400">
+        Celdas cargadas: {{ cellsCount() }} · Carriles: {{ lanesCount() }}
+      </p>
+    </div>
+
+    <div class="flex flex-wrap gap-2 text-xs font-bold">
+      <span
+        class="rounded-full border border-emerald-300/50 bg-emerald-500/15 px-3 py-1 text-emerald-100"
+      >
+        Completado
+      </span>
+
+      <span class="rounded-full border border-fr-gold/60 bg-fr-gold/20 px-3 py-1 text-fr-gold">
+        Activo
+      </span>
+
+      <span class="rounded-full border border-slate-400/50 bg-white/10 px-3 py-1 text-slate-200">
+        Pendiente
+      </span>
+    </div>
+  </div>
+
+  <div class="bg-slate-50 p-4">
+    @if (!diagram) {
+      <div
+        class="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700"
+      >
+        No se pudo cargar el diagrama asociado a este proceso.
+      </div>
+    }
+
+    @if (renderError()) {
+      <div
+        class="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700"
+      >
+        {{ renderError() }}
+      </div>
+    }
+
+    <div class="relative">
+      <div class="pointer-events-none absolute inset-0 z-0">
+        @for (lane of laneOverlays(); track lane.id) {
+          <div
+            class="absolute rounded-2xl border border-dashed border-slate-300/90 bg-slate-50/80"
+            [style.left.px]="lane.left"
+            [style.top.px]="lane.top"
+            [style.width.px]="lane.width"
+            [style.height.px]="lane.height"
+          ></div>
+        }
+      </div>
+
+      <div
+        #paperContainer
+        class="relative z-10 h-[760px] w-full overflow-hidden rounded-2xl border border-slate-200 bg-transparent"
+      ></div>
+
+      <div class="pointer-events-none absolute inset-0 z-20">
+        @for (lane of laneOverlays(); track lane.id) {
+          <div
+            class="absolute"
+            [style.left.px]="lane.left + 10"
+            [style.top.px]="lane.top + 8"
+            [style.width.px]="lane.width - 20"
+          >
+            <div
+              class="rounded-xl border border-slate-300 bg-white/95 px-3 py-2 text-center text-[11px] font-extrabold uppercase tracking-wide text-slate-700 shadow-sm"
+            >
+              {{ lane.name }}
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+</div>

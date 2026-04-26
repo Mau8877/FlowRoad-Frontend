@@ -1,98 +1,200 @@
-<section class="min-h-[calc(100vh-64px)] bg-slate-50 px-6 py-6 text-slate-900">
-  <header class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+<section
+  class="min-h-[calc(100vh-64px)] bg-linear-to-b from-fr-black via-[#101113] to-[#171717] px-4 py-6 text-white sm:px-6 lg:px-8"
+>
+  <header
+    class="mb-6 flex flex-col gap-4 rounded-3xl border border-fr-taupe/40 bg-fr-black/80 p-5 shadow-lg lg:flex-row lg:items-center lg:justify-between"
+  >
     <div>
-      <p class="mb-1 text-xs font-extrabold uppercase tracking-[0.16em] text-fr-gold">FlowRoad</p>
-
-      <h1 class="text-3xl font-extrabold text-slate-900">Gestión de procesos</h1>
-
-      <p class="mt-2 text-sm text-slate-500">
-        Administra procesos ejecutados desde diagramas diseñados.
+      <p class="mb-1 text-xs font-extrabold uppercase tracking-[0.18em] text-fr-gold">FlowRoad</p>
+      <h1 class="text-2xl font-extrabold text-white sm:text-3xl">Gestión de procesos</h1>
+      <p class="mt-2 text-sm text-slate-300">
+        Visión general de procesos, tareas pendientes y eventos en tiempo real.
       </p>
     </div>
 
     <div class="flex flex-wrap items-center gap-3">
-      <a
-        routerLink="/process/list"
-        class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-slate-700"
-      >
-        Nuevo proceso
-      </a>
-
       <button
         type="button"
-        class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-100"
+        class="rounded-xl border border-fr-taupe/60 bg-white/10 px-4 py-2 text-sm font-bold text-white transition hover:border-fr-gold hover:bg-white/15"
         (click)="refreshData()"
       >
         Actualizar
       </button>
 
       <span
-        class="w-fit rounded-full px-4 py-2 text-sm font-bold"
-        [class.bg-green-100]="connectionState() === 'CONNECTED'"
-        [class.text-green-700]="connectionState() === 'CONNECTED'"
-        [class.bg-red-100]="connectionState() !== 'CONNECTED'"
-        [class.text-red-700]="connectionState() !== 'CONNECTED'"
+        class="w-fit rounded-full border px-4 py-2 text-xs font-extrabold uppercase tracking-wide"
+        [class.border-emerald-300/70]="connectionState() === 'CONNECTED'"
+        [class.bg-emerald-500/20]="connectionState() === 'CONNECTED'"
+        [class.text-emerald-200]="connectionState() === 'CONNECTED'"
+        [class.border-red-300/70]="connectionState() !== 'CONNECTED'"
+        [class.bg-red-500/20]="connectionState() !== 'CONNECTED'"
+        [class.text-red-200]="connectionState() !== 'CONNECTED'"
       >
         {{ connectionState() === 'CONNECTED' ? 'WebSocket conectado' : 'WebSocket desconectado' }}
       </span>
     </div>
   </header>
 
-  <section class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-4">
-    <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <span class="text-sm font-semibold text-slate-500"> Procesos en curso </span>
+  <section class="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+    <article class="rounded-2xl border border-fr-taupe/35 bg-fr-black/75 p-5 shadow-md">
+      <span class="text-xs font-bold uppercase tracking-wider text-slate-400">
+        Procesos en curso
+      </span>
 
-      <strong class="mt-2 block text-3xl font-extrabold text-slate-900">
+      <strong class="mt-2 block text-3xl font-extrabold text-fr-gold">
         {{ runningProcessesCount() }}
       </strong>
 
-      <p class="mt-2 text-sm text-slate-400">Instancias actualmente en ejecución.</p>
+      <p class="mt-2 text-sm text-slate-300">Instancias actualmente activas.</p>
     </article>
 
-    <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <span class="text-sm font-semibold text-slate-500"> Pendientes de asignación </span>
+    <article class="rounded-2xl border border-fr-taupe/35 bg-fr-black/75 p-5 shadow-md">
+      <span class="text-xs font-bold uppercase tracking-wider text-slate-400">
+        Pendientes de asignación
+      </span>
 
-      <strong class="mt-2 block text-3xl font-extrabold text-slate-900">
+      <strong class="mt-2 block text-3xl font-extrabold text-fr-gold">
         {{ pendingAssignmentProcessesCount() }}
       </strong>
 
-      <p class="mt-2 text-sm text-slate-400">Procesos que requieren asignación.</p>
+      <p class="mt-2 text-sm text-slate-300">Esperando responsable.</p>
     </article>
 
-    <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <span class="text-sm font-semibold text-slate-500"> Finalizados </span>
+    <article class="rounded-2xl border border-fr-taupe/35 bg-fr-black/75 p-5 shadow-md">
+      <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Completados</span>
 
-      <strong class="mt-2 block text-3xl font-extrabold text-slate-900">
+      <strong class="mt-2 block text-3xl font-extrabold text-fr-gold">
         {{ completedProcessesCount() }}
       </strong>
 
-      <p class="mt-2 text-sm text-slate-400">Procesos completados.</p>
+      <p class="mt-2 text-sm text-slate-300">Procesos cerrados correctamente.</p>
     </article>
 
-    <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <span class="text-sm font-semibold text-slate-500"> Mis tareas pendientes </span>
+    <article class="rounded-2xl border border-fr-taupe/35 bg-fr-black/75 p-5 shadow-md">
+      <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Cancelados</span>
 
-      <strong class="mt-2 block text-3xl font-extrabold text-slate-900">
+      <strong class="mt-2 block text-3xl font-extrabold text-fr-gold">
+        {{ cancelledProcessesCount() }}
+      </strong>
+
+      <p class="mt-2 text-sm text-slate-300">Instancias interrumpidas.</p>
+    </article>
+
+    <article class="rounded-2xl border border-fr-taupe/35 bg-fr-black/75 p-5 shadow-md">
+      <span class="text-xs font-bold uppercase tracking-wider text-slate-400">
+        Mis tareas pendientes
+      </span>
+
+      <strong class="mt-2 block text-3xl font-extrabold text-fr-gold">
         {{ myPendingAssignmentsCount() }}
       </strong>
 
-      <p class="mt-2 text-sm text-slate-400">Asignaciones activas para el usuario.</p>
+      <p class="mt-2 text-sm text-slate-300">Atenciones por resolver.</p>
     </article>
   </section>
 
-  <section class="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-    <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+  <section class="mb-6 grid grid-cols-1 gap-6">
+    <article class="rounded-3xl border border-fr-taupe/35 bg-white p-5 text-slate-900 shadow-lg">
       <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 class="text-xl font-extrabold text-slate-900">Mis tareas pendientes</h2>
+          <h2 class="text-xl font-extrabold text-fr-black">Notificaciones recientes</h2>
+          <p class="mt-1 text-sm text-slate-500">Eventos recibidos en vivo por WebSocket.</p>
+        </div>
 
-          <p class="mt-1 text-sm text-slate-500">
-            Tareas cargadas desde la base de datos para este trabajador.
-          </p>
+        <button
+          type="button"
+          class="w-fit rounded-xl border border-fr-taupe/60 bg-fr-black px-4 py-2 text-sm font-bold text-white transition hover:bg-fr-brown"
+          (click)="clearNotifications()"
+        >
+          Limpiar
+        </button>
+      </div>
+
+      @if (notifications().length === 0) {
+        <div
+          class="rounded-2xl border border-dashed border-fr-taupe/50 bg-fr-black/5 px-6 py-10 text-center"
+        >
+          <h3 class="text-lg font-extrabold text-fr-black">Sin notificaciones nuevas</h3>
+          <p class="mt-2 text-sm text-slate-500">Cuando se asigne una tarea, aparecerá aquí.</p>
+        </div>
+      } @else {
+        <div class="grid gap-4">
+          @for (notification of notifications(); track notification.assignmentId) {
+            <article class="rounded-2xl border border-fr-taupe/35 bg-fr-black/5 p-4">
+              <div class="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h3 class="text-base font-extrabold text-fr-black">
+                    {{ notification.nodeName }}
+                  </h3>
+
+                  <p class="mt-1 text-xs font-semibold text-slate-600">
+                    {{ notification.diagramName }} · {{ notification.processCode }}
+                  </p>
+                </div>
+
+                <span
+                  class="w-fit rounded-full bg-fr-gold/20 px-3 py-1 text-xs font-extrabold text-fr-brown"
+                >
+                  {{ notification.type }}
+                </span>
+              </div>
+
+              <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <dt class="text-xs font-extrabold uppercase tracking-wide text-slate-500">
+                    Asignado a
+                  </dt>
+
+                  <dd class="mt-1 text-sm font-semibold text-slate-800">
+                    {{ notification.assignedUserName }}
+                  </dd>
+                </div>
+
+                <div>
+                  <dt class="text-xs font-extrabold uppercase tracking-wide text-slate-500">
+                    Departamento
+                  </dt>
+
+                  <dd class="mt-1 text-sm font-semibold text-slate-800">
+                    {{ notification.assignedDepartmentName || 'Sin departamento' }}
+                  </dd>
+                </div>
+
+                <div>
+                  <dt class="text-xs font-extrabold uppercase tracking-wide text-slate-500">
+                    Plantilla
+                  </dt>
+
+                  <dd class="mt-1 text-sm font-semibold text-slate-800">
+                    {{ notification.templateName || 'Sin plantilla' }}
+                  </dd>
+                </div>
+
+                <div>
+                  <dt class="text-xs font-extrabold uppercase tracking-wide text-slate-500">
+                    Fecha
+                  </dt>
+
+                  <dd class="mt-1 text-sm font-semibold text-slate-800">
+                    {{ formatDate(notification.assignedAt) }}
+                  </dd>
+                </div>
+              </dl>
+            </article>
+          }
+        </div>
+      }
+    </article>
+
+    <article class="rounded-3xl border border-fr-taupe/35 bg-white p-5 text-slate-900 shadow-lg">
+      <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 class="text-xl font-extrabold text-fr-black">Mis tareas pendientes</h2>
+          <p class="mt-1 text-sm text-slate-500">Tareas activas asignadas al usuario actual.</p>
         </div>
 
         @if (loadingAssignments()) {
-          <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-extrabold text-blue-700">
+          <span class="rounded-full bg-fr-gold/15 px-3 py-1 text-xs font-extrabold text-fr-brown">
             Cargando...
           </span>
         }
@@ -106,62 +208,65 @@
         </div>
       } @else if (myPendingAssignments().length === 0) {
         <div
-          class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center"
+          class="rounded-2xl border border-dashed border-fr-taupe/50 bg-fr-black/5 px-6 py-10 text-center"
         >
-          <h3 class="text-lg font-extrabold text-slate-900">No tienes tareas pendientes</h3>
+          <h3 class="text-lg font-extrabold text-fr-black">No tienes tareas pendientes</h3>
 
           <p class="mt-2 text-sm text-slate-500">
             Cuando se te asigne una tarea activa, aparecerá aquí.
           </p>
         </div>
       } @else {
-        <div class="overflow-hidden rounded-2xl border border-slate-200">
-          <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
-            <thead class="bg-slate-50">
+        <div class="overflow-hidden rounded-2xl border border-fr-taupe/45">
+          <table class="min-w-full divide-y divide-fr-taupe/25 text-left text-sm">
+            <thead class="bg-fr-black/5">
               <tr>
-                <th class="px-4 py-3 font-extrabold text-slate-500">Tarea</th>
-                <th class="px-4 py-3 font-extrabold text-slate-500">Departamento</th>
-                <th class="px-4 py-3 font-extrabold text-slate-500">Plantilla</th>
-                <th class="px-4 py-3 font-extrabold text-slate-500">Estado</th>
-                <th class="px-4 py-3 text-right font-extrabold text-slate-500">Acción</th>
+                <th class="px-4 py-3 font-extrabold text-fr-gray">Tarea</th>
+                <th class="px-4 py-3 font-extrabold text-fr-gray">Departamento</th>
+                <th class="px-4 py-3 font-extrabold text-fr-gray">Plantilla</th>
+                <th class="px-4 py-3 font-extrabold text-fr-gray">Asignada</th>
+                <th class="px-4 py-3 font-extrabold text-fr-gray">Estado</th>
+                <th class="px-4 py-3 text-right font-extrabold text-fr-gray">Acción</th>
               </tr>
             </thead>
 
-            <tbody class="divide-y divide-slate-100 bg-white">
+            <tbody class="divide-y divide-fr-taupe/20 bg-white">
               @for (assignment of myPendingAssignments(); track assignment.id) {
-                <tr class="transition hover:bg-slate-50">
+                <tr class="transition hover:bg-fr-black/5">
                   <td class="px-4 py-3">
-                    <div class="font-bold text-slate-900">
-                      {{ assignment.nodeName }}
-                    </div>
+                    <div class="font-bold text-fr-black">{{ assignment.nodeName }}</div>
 
-                    <div class="text-xs text-slate-400">
+                    <div class="text-xs text-slate-500">
                       Proceso: {{ assignment.processInstanceId }}
                     </div>
                   </td>
 
-                  <td class="px-4 py-3 text-slate-600">
+                  <td class="px-4 py-3 text-slate-700">
                     {{
                       assignment.assignedDepartmentName || assignment.laneName || 'Sin departamento'
                     }}
                   </td>
 
-                  <td class="px-4 py-3 text-slate-600">
+                  <td class="px-4 py-3 text-slate-700">
                     {{ assignment.templateName || 'Sin plantilla' }}
+                  </td>
+
+                  <td class="px-4 py-3 text-slate-700">
+                    {{ formatDate(assignment.assignedAt || assignment.createdAt) }}
                   </td>
 
                   <td class="px-4 py-3">
                     <span
                       class="rounded-full bg-amber-50 px-3 py-1 text-xs font-extrabold text-amber-700"
                     >
-                      {{ assignment.status }}
+                      {{ formatStatus(assignment.status) }}
                     </span>
                   </td>
 
                   <td class="px-4 py-3 text-right">
                     <a
                       [routerLink]="['/process/tasks', assignment.id]"
-                      class="rounded-xl bg-slate-900 px-3 py-2 text-xs font-bold text-white transition hover:bg-slate-700"
+                      class="rounded-xl bg-fr-brown px-3 py-2 text-xs font-bold text-white transition hover:bg-fr-black"
                     >
                       Atender
                     </a>
@@ -173,94 +278,17 @@
         </div>
       }
     </article>
-
-    <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 class="text-xl font-extrabold text-slate-900">Notificaciones recientes</h2>
-
-          <p class="mt-1 text-sm text-slate-500">Eventos recibidos en vivo por WebSocket.</p>
-        </div>
-
-        <button
-          type="button"
-          class="w-fit rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white transition hover:bg-slate-700"
-          (click)="clearNotifications()"
-        >
-          Limpiar
-        </button>
-      </div>
-
-      @if (notifications().length === 0) {
-        <div
-          class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center"
-        >
-          <h3 class="text-lg font-extrabold text-slate-900">Sin notificaciones nuevas</h3>
-
-          <p class="mt-2 text-sm text-slate-500">
-            Cuando el backend asigne una tarea a este trabajador, aparecerá aquí.
-          </p>
-        </div>
-      } @else {
-        <div class="grid gap-4">
-          @for (notification of notifications(); track notification.assignmentId) {
-            <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <h3 class="text-lg font-extrabold text-slate-900">
-                    {{ notification.nodeName }}
-                  </h3>
-
-                  <p class="mt-1 text-sm text-slate-500">
-                    {{ notification.diagramName }} · {{ notification.processCode }}
-                  </p>
-                </div>
-
-                <span
-                  class="w-fit rounded-full bg-blue-50 px-3 py-1 text-xs font-extrabold text-blue-700"
-                >
-                  {{ notification.type }}
-                </span>
-              </div>
-
-              <dl class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <dt class="text-xs font-extrabold uppercase tracking-wide text-slate-400">
-                    Departamento
-                  </dt>
-
-                  <dd class="mt-1 text-sm font-semibold text-slate-700">
-                    {{ notification.assignedDepartmentName }}
-                  </dd>
-                </div>
-
-                <div>
-                  <dt class="text-xs font-extrabold uppercase tracking-wide text-slate-400">
-                    Plantilla
-                  </dt>
-
-                  <dd class="mt-1 text-sm font-semibold text-slate-700">
-                    {{ notification.templateName || 'Sin plantilla' }}
-                  </dd>
-                </div>
-              </dl>
-            </article>
-          }
-        </div>
-      }
-    </article>
   </section>
 
-  <section class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+  <section class="rounded-3xl border border-fr-taupe/35 bg-white p-5 text-slate-900 shadow-lg">
     <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h2 class="text-xl font-extrabold text-slate-900">Procesos recientes</h2>
-
+        <h2 class="text-xl font-extrabold text-fr-black">Procesos recientes</h2>
         <p class="mt-1 text-sm text-slate-500">Instancias creadas desde diagramas ejecutables.</p>
       </div>
 
       @if (loadingProcesses()) {
-        <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-extrabold text-blue-700">
+        <span class="rounded-full bg-fr-gold/15 px-3 py-1 text-xs font-extrabold text-fr-brown">
           Cargando...
         </span>
       }
@@ -274,42 +302,40 @@
       </div>
     } @else if (processInstances().length === 0) {
       <div
-        class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center"
+        class="rounded-2xl border border-dashed border-fr-taupe/50 bg-fr-black/5 px-6 py-10 text-center"
       >
-        <h3 class="text-lg font-extrabold text-slate-900">No hay procesos registrados</h3>
+        <h3 class="text-lg font-extrabold text-fr-black">No hay procesos registrados</h3>
 
         <p class="mt-2 text-sm text-slate-500">
           Cuando se cree una instancia de proceso, aparecerá aquí.
         </p>
       </div>
     } @else {
-      <div class="overflow-hidden rounded-2xl border border-slate-200">
-        <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
-          <thead class="bg-slate-50">
+      <div class="overflow-x-auto rounded-2xl border border-fr-taupe/45">
+        <table class="min-w-full divide-y divide-fr-taupe/25 text-left text-sm">
+          <thead class="bg-fr-black/5">
             <tr>
-              <th class="px-4 py-3 font-extrabold text-slate-500">Código</th>
-              <th class="px-4 py-3 font-extrabold text-slate-500">Diagrama</th>
-              <th class="px-4 py-3 font-extrabold text-slate-500">Estado</th>
-              <th class="px-4 py-3 font-extrabold text-slate-500">Iniciado por</th>
-              <th class="px-4 py-3 font-extrabold text-slate-500">Actualizado</th>
-              <th class="px-4 py-3 text-right font-extrabold text-slate-500">Acción</th>
+              <th class="px-4 py-3 font-extrabold text-fr-gray">Código</th>
+              <th class="px-4 py-3 font-extrabold text-fr-gray">Diagrama</th>
+              <th class="px-4 py-3 font-extrabold text-fr-gray">Estado</th>
+              <th class="px-4 py-3 font-extrabold text-fr-gray">Iniciado por</th>
+              <th class="px-4 py-3 font-extrabold text-fr-gray">Iniciado</th>
+              <th class="px-4 py-3 font-extrabold text-fr-gray">Actualizado</th>
+              <th class="px-4 py-3 font-extrabold text-fr-gray">Finalizado</th>
+              <th class="px-4 py-3 text-right font-extrabold text-fr-gray">Acción</th>
             </tr>
           </thead>
 
-          <tbody class="divide-y divide-slate-100 bg-white">
-            @for (process of processInstances(); track process.id) {
-              <tr class="transition hover:bg-slate-50">
+          <tbody class="divide-y divide-fr-taupe/20 bg-white">
+            @for (process of paginatedProcessInstances(); track process.id) {
+              <tr class="transition hover:bg-fr-black/5">
                 <td class="px-4 py-3">
-                  <div class="font-bold text-slate-900">
-                    {{ process.code }}
-                  </div>
+                  <div class="font-bold text-fr-black">{{ process.code }}</div>
 
-                  <div class="text-xs text-slate-400">
-                    {{ process.id }}
-                  </div>
+                  <div class="text-xs text-slate-500">{{ process.id }}</div>
                 </td>
 
-                <td class="px-4 py-3 text-slate-600">
+                <td class="px-4 py-3 text-slate-700">
                   {{ process.diagramName }}
                 </td>
 
@@ -325,30 +351,71 @@
                     [class.bg-red-50]="process.status === 'CANCELLED'"
                     [class.text-red-700]="process.status === 'CANCELLED'"
                   >
-                    {{ process.status }}
+                    {{ formatStatus(process.status) }}
                   </span>
                 </td>
 
-                <td class="px-4 py-3 text-slate-600">
+                <td class="px-4 py-3 text-slate-700">
                   {{ process.startedByUserName }}
                 </td>
 
-                <td class="px-4 py-3 text-slate-600">
-                  {{ process.updatedAt }}
+                <td class="px-4 py-3 text-slate-700">
+                  {{ formatDate(process.startedAt) }}
+                </td>
+
+                <td class="px-4 py-3 text-slate-700">
+                  {{ formatDate(process.updatedAt) }}
+                </td>
+
+                <td class="px-4 py-3 text-slate-700">
+                  {{ formatDate(process.finishedAt) }}
                 </td>
 
                 <td class="px-4 py-3 text-right">
-                  <button
-                    type="button"
-                    class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-100"
+                  <a
+                    [routerLink]="['/process/detail', process.id]"
+                    class="inline-flex items-center justify-center rounded-xl border border-fr-taupe/45 bg-fr-black px-3 py-2 text-xs font-bold text-white transition hover:border-fr-gold hover:bg-fr-brown"
                   >
                     Ver detalle
-                  </button>
+                  </a>
                 </td>
               </tr>
             }
           </tbody>
         </table>
+      </div>
+
+      <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p class="text-sm text-slate-600">
+          Mostrando {{ processRangeStart() }}-{{ processRangeEnd() }} de
+          {{ processInstances().length }} procesos
+        </p>
+
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            class="rounded-xl border border-fr-taupe/45 bg-white px-3 py-2 text-sm font-bold text-fr-black transition hover:bg-fr-black/5 disabled:cursor-not-allowed disabled:opacity-50"
+            [disabled]="currentProcessPage() === 1"
+            (click)="goToPreviousProcessPage()"
+          >
+            Anterior
+          </button>
+
+          <span
+            class="rounded-lg border border-fr-taupe/35 bg-fr-black/5 px-3 py-2 text-sm font-semibold text-fr-black"
+          >
+            Página {{ currentProcessPage() }} de {{ totalProcessPages() }}
+          </span>
+
+          <button
+            type="button"
+            class="rounded-xl border border-fr-taupe/45 bg-white px-3 py-2 text-sm font-bold text-fr-black transition hover:bg-fr-black/5 disabled:cursor-not-allowed disabled:opacity-50"
+            [disabled]="currentProcessPage() >= totalProcessPages()"
+            (click)="goToNextProcessPage()"
+          >
+            Siguiente
+          </button>
+        </div>
       </div>
     }
   </section>

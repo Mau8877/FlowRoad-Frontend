@@ -24,6 +24,13 @@ export class ProcessManagement implements OnInit, OnDestroy {
 
   private readonly subscriptions: Subscription[] = [];
 
+  private readonly dateFormatter = new Intl.DateTimeFormat('es-BO', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+
+  public readonly processPageSize = 10;
+
   public connectionState = signal<'CONNECTED' | 'DISCONNECTED'>('DISCONNECTED');
 
   public notifications = signal<ProcessAssignmentNotification[]>([]);
@@ -32,6 +39,7 @@ export class ProcessManagement implements OnInit, OnDestroy {
 
   public loadingProcesses = signal(false);
   public loadingAssignments = signal(false);
+  public currentProcessPage = signal(1);
 
   public processLoadError = signal<string | null>(null);
   public assignmentLoadError = signal<string | null>(null);
@@ -55,6 +63,29 @@ export class ProcessManagement implements OnInit, OnDestroy {
 
   public myPendingAssignmentsCount = computed(() => this.myPendingAssignments().length);
 
+  public totalProcessPages = computed(() =>
+    Math.max(1, Math.ceil(this.processInstances().length / this.processPageSize)),
+  );
+
+  public paginatedProcessInstances = computed(() => {
+    const start = (this.currentProcessPage() - 1) * this.processPageSize;
+    const end = start + this.processPageSize;
+
+    return this.processInstances().slice(start, end);
+  });
+
+  public processRangeStart = computed(() => {
+    if (this.processInstances().length === 0) {
+      return 0;
+    }
+
+    return (this.currentProcessPage() - 1) * this.processPageSize + 1;
+  });
+
+  public processRangeEnd = computed(() =>
+    Math.min(this.currentProcessPage() * this.processPageSize, this.processInstances().length),
+  );
+
   ngOnInit(): void {
     this.loadInitialData();
     this.connectProcessSocket();
@@ -73,6 +104,50 @@ export class ProcessManagement implements OnInit, OnDestroy {
     this.loadInitialData();
   }
 
+  goToNextProcessPage(): void {
+    this.currentProcessPage.update((page) => Math.min(page + 1, this.totalProcessPages()));
+  }
+
+  goToPreviousProcessPage(): void {
+    this.currentProcessPage.update((page) => Math.max(page - 1, 1));
+  }
+
+  formatDate(value?: string | null): string {
+    if (!value) {
+      return 'Sin fecha';
+    }
+
+    const parsedDate = new Date(value);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return 'Sin fecha';
+    }
+
+    return this.dateFormatter.format(parsedDate);
+  }
+
+  formatStatus(status: string): string {
+    switch (status) {
+      case 'RUNNING':
+        return 'En ejecución';
+
+      case 'PENDING_ASSIGNMENT':
+        return 'Pendiente de asignación';
+
+      case 'COMPLETED':
+        return 'Completado';
+
+      case 'CANCELLED':
+        return 'Cancelado';
+
+      case 'PENDING':
+        return 'Pendiente';
+
+      default:
+        return status;
+    }
+  }
+
   private loadInitialData(): void {
     this.loadProcessInstances();
     this.loadMyPendingAssignments();
@@ -88,6 +163,7 @@ export class ProcessManagement implements OnInit, OnDestroy {
       .subscribe({
         next: (processInstances) => {
           this.processInstances.set(processInstances);
+          this.clampCurrentProcessPage();
         },
         error: (error) => {
           console.error('[PROCESS-MANAGEMENT][LOAD_PROCESSES_ERROR]', error);
@@ -156,5 +232,16 @@ export class ProcessManagement implements OnInit, OnDestroy {
 
       return [notification, ...current];
     });
+  }
+
+  private clampCurrentProcessPage(): void {
+    if (this.currentProcessPage() < 1) {
+      this.currentProcessPage.set(1);
+      return;
+    }
+
+    if (this.currentProcessPage() > this.totalProcessPages()) {
+      this.currentProcessPage.set(this.totalProcessPages());
+    }
   }
 }

@@ -1,285 +1,76 @@
-<section class="min-h-[calc(100vh-64px)] bg-slate-50 px-6 py-6 text-slate-900">
-  <header class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-    <div>
-      <p class="mb-1 text-xs font-extrabold uppercase tracking-[0.16em] text-fr-gold">
-        Gestión de procesos
-      </p>
+<section class="min-h-[calc(100vh-64px)] bg-linear-to-b from-fr-black via-[#111214] to-[#1a1b1d] px-4 py-6 text-white sm:px-6 lg:px-8">
+  <header class="mb-6 rounded-3xl border border-fr-taupe/40 bg-fr-black/75 p-5 shadow-lg">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div>
+        <p class="mb-1 text-xs font-extrabold uppercase tracking-[0.18em] text-fr-gold">Gestión de procesos</p>
+        <h1 class="text-2xl font-extrabold text-white sm:text-3xl">Atender tarea</h1>
+        <p class="mt-2 text-sm text-slate-300">Completa el informe asociado sin salir del flujo del proceso.</p>
+      </div>
 
-      <h1 class="text-3xl font-extrabold text-slate-900">Atender tarea</h1>
-
-      <p class="mt-2 text-sm text-slate-500">Completa el informe asociado a la tarea asignada.</p>
+      <button
+        type="button"
+        class="h-fit rounded-xl border border-fr-taupe/60 bg-white/10 px-4 py-2 text-sm font-bold text-white transition hover:border-fr-gold hover:bg-white/15"
+        (click)="goBack()"
+      >
+        Volver
+      </button>
     </div>
 
-    <button
-      type="button"
-      class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-100"
-      (click)="goBack()"
-    >
-      Volver
-    </button>
+    @if (assignment()) {
+      <div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <article class="rounded-2xl border border-fr-taupe/35 bg-white/5 p-4">
+          <p class="text-xs font-bold uppercase tracking-wide text-slate-300">Tarea</p>
+          <p class="mt-2 text-sm font-extrabold text-fr-gold">{{ assignment()?.nodeName }}</p>
+        </article>
+
+        <article class="rounded-2xl border border-fr-taupe/35 bg-white/5 p-4">
+          <p class="text-xs font-bold uppercase tracking-wide text-slate-300">Plantilla</p>
+          <p class="mt-2 text-sm font-semibold text-white">{{ template()?.name || assignment()?.templateName || 'Sin plantilla' }}</p>
+        </article>
+
+        <article class="rounded-2xl border border-fr-taupe/35 bg-white/5 p-4">
+          <p class="text-xs font-bold uppercase tracking-wide text-slate-300">Estado</p>
+          <p class="mt-2 text-sm font-semibold text-white">{{ formatStatus(assignment()?.status) }}</p>
+        </article>
+
+        <article class="rounded-2xl border border-fr-taupe/35 bg-white/5 p-4">
+          <p class="text-xs font-bold uppercase tracking-wide text-slate-300">Asignada</p>
+          <p class="mt-2 text-sm font-semibold text-white">{{ formatDate(assignment()?.assignedAt || assignment()?.createdAt) }}</p>
+        </article>
+      </div>
+    }
   </header>
 
   @if (isLoading()) {
-    <div class="rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-      <p class="text-sm font-bold text-slate-500">Cargando tarea...</p>
+    <div class="rounded-3xl border border-fr-taupe/35 bg-white/10 p-8 text-center shadow-sm">
+      <p class="text-sm font-bold text-slate-200">Cargando tarea...</p>
     </div>
   } @else if (errorMessage()) {
-    <div
-      class="mb-5 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-semibold text-red-700"
-    >
+    <div class="mb-5 rounded-2xl border border-red-300/40 bg-red-500/15 px-5 py-4 text-sm font-semibold text-red-100">
       {{ errorMessage() }}
     </div>
   }
 
   @if (!isLoading() && assignment()) {
-    <div class="grid grid-cols-1 gap-6 xl:grid-cols-[0.85fr_1.15fr]">
-      <aside class="space-y-6">
-        <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 class="text-xl font-extrabold text-slate-900">
-            {{ assignment()?.nodeName }}
-          </h2>
-
-          <p class="mt-2 text-sm text-slate-500">
-            {{ template()?.name || assignment()?.templateName || 'Sin plantilla asociada' }}
-          </p>
-
-          <div class="mt-5 space-y-4">
-            <div>
-              <span class="text-xs font-extrabold uppercase tracking-wide text-slate-400">
-                Estado
-              </span>
-
-              <div class="mt-1">
-                <span
-                  class="rounded-full bg-amber-50 px-3 py-1 text-xs font-extrabold text-amber-700"
-                >
-                  {{ assignment()?.status }}
-                </span>
-              </div>
-            </div>
-
-            <div>
-              <span class="text-xs font-extrabold uppercase tracking-wide text-slate-400">
-                Departamento
-              </span>
-
-              <p class="mt-1 text-sm font-semibold text-slate-700">
-                {{
-                  assignment()?.assignedDepartmentName ||
-                    assignment()?.laneName ||
-                    'Sin departamento'
-                }}
-              </p>
-            </div>
-
-            <div>
-              <span class="text-xs font-extrabold uppercase tracking-wide text-slate-400">
-                Cargo
-              </span>
-
-              <p class="mt-1 text-sm font-semibold text-slate-700">
-                {{ assignment()?.assignedCargoName || 'No especificado' }}
-              </p>
-            </div>
-
-            <div>
-              <span class="text-xs font-extrabold uppercase tracking-wide text-slate-400">
-                Asignado a
-              </span>
-
-              <p class="mt-1 text-sm font-semibold text-slate-700">
-                {{ assignment()?.assignedUserName }}
-              </p>
-            </div>
-
-            <div>
-              <span class="text-xs font-extrabold uppercase tracking-wide text-slate-400">
-                Fecha asignación
-              </span>
-
-              <p class="mt-1 text-sm font-semibold text-slate-700">
-                {{ assignment()?.assignedAt || assignment()?.createdAt }}
-              </p>
-            </div>
-          </div>
-        </article>
-
-        @if (processDetail()) {
-          <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h3 class="text-lg font-extrabold text-slate-900">Proceso</h3>
-
-            <div class="mt-4 space-y-4">
-              <div>
-                <span class="text-xs font-extrabold uppercase tracking-wide text-slate-400">
-                  Código
-                </span>
-
-                <p class="mt-1 text-sm font-semibold text-slate-700">
-                  {{ processDetail()?.instance?.code }}
-                </p>
-              </div>
-
-              <div>
-                <span class="text-xs font-extrabold uppercase tracking-wide text-slate-400">
-                  Diagrama
-                </span>
-
-                <p class="mt-1 text-sm font-semibold text-slate-700">
-                  {{ processDetail()?.instance?.diagramName }}
-                </p>
-              </div>
-
-              <div>
-                <span class="text-xs font-extrabold uppercase tracking-wide text-slate-400">
-                  Iniciado por
-                </span>
-
-                <p class="mt-1 text-sm font-semibold text-slate-700">
-                  {{ processDetail()?.instance?.startedByUserName }}
-                </p>
-              </div>
-            </div>
-          </article>
-        }
-
-        <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div class="mb-4">
-            <h3 class="text-lg font-extrabold text-slate-900">Informes anteriores</h3>
-
-            <p class="mt-1 text-sm text-slate-500">
-              Respuestas registradas en pasos previos del proceso.
-            </p>
-          </div>
-
-          @if (previousHistory().length === 0) {
-            <div
-              class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-5 py-6 text-center"
-            >
-              <p class="text-sm font-semibold text-slate-500">
-                Este proceso todavía no tiene informes anteriores.
-              </p>
-            </div>
-          } @else {
-            <div class="space-y-4">
-              @for (history of previousHistory(); track history.id) {
-                <section class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <div class="mb-3">
-                    <h4 class="text-sm font-extrabold text-slate-900">
-                      {{ history.fromNodeName }}
-                    </h4>
-
-                    <p class="mt-1 text-xs font-semibold text-slate-500">
-                      Plantilla: {{ history.templateName || 'Sin plantilla' }}
-                    </p>
-                  </div>
-
-                  <div class="mb-3 grid grid-cols-1 gap-3 text-sm">
-                    <div>
-                      <span
-                        class="block text-xs font-extrabold uppercase tracking-wide text-slate-400"
-                      >
-                        Atendido por
-                      </span>
-
-                      <span class="mt-1 block font-semibold text-slate-700">
-                        {{ history.performedByUserName }}
-                      </span>
-                    </div>
-
-                    <div>
-                      <span
-                        class="block text-xs font-extrabold uppercase tracking-wide text-slate-400"
-                      >
-                        Fecha
-                      </span>
-
-                      <span class="mt-1 block font-semibold text-slate-700">
-                        {{ history.performedAt }}
-                      </span>
-                    </div>
-
-                    @if (history.transitionLabel) {
-                      <div>
-                        <span
-                          class="block text-xs font-extrabold uppercase tracking-wide text-slate-400"
-                        >
-                          Transición
-                        </span>
-
-                        <span class="mt-1 block font-semibold text-slate-700">
-                          {{ history.transitionLabel }}
-                        </span>
-                      </div>
-                    }
-                  </div>
-
-                  @if (getHistoryFields(history).length > 0) {
-                    <div class="mt-4 rounded-xl border border-slate-200 bg-white p-3">
-                      <p class="mb-2 text-xs font-extrabold uppercase tracking-wide text-slate-400">
-                        Respuesta registrada
-                      </p>
-
-                      <div class="space-y-2">
-                        @for (field of getHistoryFields(history); track field.fieldId) {
-                          <div class="text-sm">
-                            <span class="font-bold text-slate-700"> {{ field.label }}: </span>
-
-                            <span class="text-slate-600">
-                              {{ formatHistoryValue(field.value) }}
-                            </span>
-                          </div>
-                        }
-                      </div>
-                    </div>
-                  }
-
-                  @if (history.comment) {
-                    <div class="mt-4 rounded-xl border border-slate-200 bg-white p-3">
-                      <p class="mb-1 text-xs font-extrabold uppercase tracking-wide text-slate-400">
-                        Comentario
-                      </p>
-
-                      <p class="text-sm text-slate-700">
-                        {{ history.comment }}
-                      </p>
-                    </div>
-                  }
-                </section>
-              }
-            </div>
-          }
-        </article>
-      </aside>
-
-      <main class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div class="mb-5">
-          <h2 class="text-xl font-extrabold text-slate-900">
-            {{ template()?.name || 'Informe de atención' }}
-          </h2>
-
-          <p class="mt-1 text-sm text-slate-500">
-            {{
-              template()?.description || 'Completa los campos requeridos para avanzar el proceso.'
-            }}
-          </p>
+    <section class="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.75fr)]">
+      <main class="rounded-3xl border border-fr-taupe/35 bg-white p-5 text-slate-900 shadow-lg">
+        <div class="mb-5 rounded-2xl border border-fr-taupe/35 bg-fr-black/5 p-4">
+          <h2 class="text-xl font-extrabold text-fr-black">{{ template()?.name || 'Informe de atención' }}</h2>
+          <p class="mt-1 text-sm text-slate-600">{{ template()?.description || 'Completa los campos requeridos para avanzar el proceso.' }}</p>
         </div>
 
         @if (successMessage()) {
-          <div
-            class="mb-5 rounded-2xl border border-green-200 bg-green-50 px-5 py-4 text-sm font-semibold text-green-700"
-          >
+          <div class="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-semibold text-emerald-700">
             {{ successMessage() }}
           </div>
         }
 
         @if (isLoadingTemplate()) {
-          <div class="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-8 text-center">
-            <p class="text-sm font-bold text-slate-500">Cargando plantilla...</p>
+          <div class="rounded-2xl border border-fr-taupe/35 bg-fr-black/5 px-5 py-8 text-center">
+            <p class="text-sm font-bold text-slate-600">Cargando plantilla...</p>
           </div>
         } @else if (!template()) {
-          <div
-            class="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-semibold text-amber-700"
-          >
+          <div class="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-semibold text-amber-700">
             Esta tarea no tiene una plantilla cargada. Puedes completar la tarea con un comentario.
           </div>
         } @else {
@@ -287,9 +78,8 @@
             @for (field of sortedTemplateFields(); track field.fieldId) {
               <div [ngClass]="getGridClass(field)">
                 <label class="block">
-                  <span class="mb-2 block text-sm font-bold text-slate-700">
+                  <span class="mb-2 block text-sm font-bold text-fr-black">
                     {{ field.label }}
-
                     @if (field.required) {
                       <span class="text-red-500">*</span>
                     }
@@ -298,7 +88,7 @@
                   @switch (field.type) {
                     @case (FieldType.TEXT) {
                       <input
-                        class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white"
+                        class="w-full rounded-2xl border border-fr-taupe/45 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-fr-gold focus:ring-2 focus:ring-fr-gold/20"
                         [placeholder]="field.uiProps.placeholder || ''"
                         [ngModel]="getStringFieldValue(field.fieldId)"
                         (ngModelChange)="updateFieldValue(field, $event)"
@@ -307,7 +97,7 @@
 
                     @case (FieldType.TEXTAREA) {
                       <textarea
-                        class="min-h-28 w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white"
+                        class="min-h-28 w-full rounded-2xl border border-fr-taupe/45 bg-white p-4 text-sm text-slate-700 outline-none transition focus:border-fr-gold focus:ring-2 focus:ring-fr-gold/20"
                         [placeholder]="field.uiProps.placeholder || ''"
                         [ngModel]="getStringFieldValue(field.fieldId)"
                         (ngModelChange)="updateFieldValue(field, $event)"
@@ -317,7 +107,7 @@
                     @case (FieldType.NUMBER) {
                       <input
                         type="number"
-                        class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white"
+                        class="w-full rounded-2xl border border-fr-taupe/45 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-fr-gold focus:ring-2 focus:ring-fr-gold/20"
                         [placeholder]="field.uiProps.placeholder || ''"
                         [ngModel]="getStringFieldValue(field.fieldId)"
                         (ngModelChange)="updateFieldValue(field, $event)"
@@ -327,7 +117,7 @@
                     @case (FieldType.DATE) {
                       <input
                         type="date"
-                        class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white"
+                        class="w-full rounded-2xl border border-fr-taupe/45 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-fr-gold focus:ring-2 focus:ring-fr-gold/20"
                         [ngModel]="getStringFieldValue(field.fieldId)"
                         (ngModelChange)="updateFieldValue(field, $event)"
                       />
@@ -335,34 +125,28 @@
 
                     @case (FieldType.SELECT) {
                       <select
-                        class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white"
+                        class="w-full rounded-2xl border border-fr-taupe/45 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-fr-gold focus:ring-2 focus:ring-fr-gold/20"
                         [ngModel]="getStringFieldValue(field.fieldId)"
                         (ngModelChange)="updateFieldValue(field, $event)"
                       >
                         <option value="">Selecciona una opción</option>
-
                         @for (option of field.options || []; track option.value) {
-                          <option [value]="option.value">
-                            {{ option.label }}
-                          </option>
+                          <option [value]="option.value">{{ option.label }}</option>
                         }
                       </select>
                     }
 
                     @case (FieldType.MULTIPLE_CHOICE) {
-                      <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <div class="rounded-2xl border border-fr-taupe/45 bg-fr-black/5 p-4">
                         <div class="grid gap-3">
                           @for (option of field.options || []; track option.value) {
-                            <label
-                              class="flex items-center gap-3 text-sm font-semibold text-slate-700"
-                            >
+                            <label class="flex items-center gap-3 text-sm font-semibold text-slate-700">
                               <input
                                 type="checkbox"
-                                class="h-4 w-4 rounded border-slate-300"
+                                class="h-4 w-4 rounded border-fr-taupe"
                                 [checked]="isOptionSelected(field, option.value)"
                                 (change)="toggleMultipleChoice(field, option.value)"
                               />
-
                               <span>{{ option.label }}</span>
                             </label>
                           }
@@ -372,7 +156,7 @@
 
                     @case (FieldType.FILE) {
                       <input
-                        class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white"
+                        class="w-full rounded-2xl border border-fr-taupe/45 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-fr-gold focus:ring-2 focus:ring-fr-gold/20"
                         placeholder="URL o referencia del archivo"
                         [ngModel]="getStringFieldValue(field.fieldId)"
                         (ngModelChange)="updateFieldValue(field, $event)"
@@ -381,7 +165,7 @@
 
                     @case (FieldType.PHOTO) {
                       <input
-                        class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white"
+                        class="w-full rounded-2xl border border-fr-taupe/45 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-fr-gold focus:ring-2 focus:ring-fr-gold/20"
                         placeholder="URL o referencia de la foto"
                         [ngModel]="getStringFieldValue(field.fieldId)"
                         (ngModelChange)="updateFieldValue(field, $event)"
@@ -390,7 +174,7 @@
 
                     @default {
                       <input
-                        class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white"
+                        class="w-full rounded-2xl border border-fr-taupe/45 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-fr-gold focus:ring-2 focus:ring-fr-gold/20"
                         [placeholder]="field.uiProps.placeholder || ''"
                         [ngModel]="getStringFieldValue(field.fieldId)"
                         (ngModelChange)="updateFieldValue(field, $event)"
@@ -403,12 +187,12 @@
           </div>
         }
 
-        <section class="mt-8 border-t border-slate-100 pt-6">
+        <section class="mt-8 border-t border-fr-taupe/25 pt-6">
           <label class="block">
-            <span class="mb-2 block text-sm font-bold text-slate-700"> Comentario </span>
+            <span class="mb-2 block text-sm font-bold text-fr-black">Comentario</span>
 
             <textarea
-              class="min-h-28 w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white"
+              class="min-h-28 w-full rounded-2xl border border-fr-taupe/45 bg-white p-4 text-sm text-slate-700 outline-none transition focus:border-fr-gold focus:ring-2 focus:ring-fr-gold/20"
               [ngModel]="comment()"
               (ngModelChange)="comment.set($event)"
               placeholder="Comentario de atención..."
@@ -419,7 +203,7 @@
         <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
           <button
             type="button"
-            class="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-100"
+            class="rounded-xl border border-fr-taupe/55 bg-white px-5 py-3 text-sm font-bold text-fr-black transition hover:bg-fr-black/5"
             (click)="goBack()"
           >
             Cancelar
@@ -427,7 +211,7 @@
 
           <button
             type="button"
-            class="rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+            class="rounded-xl bg-fr-brown px-5 py-3 text-sm font-bold text-white transition hover:bg-fr-black disabled:cursor-not-allowed disabled:opacity-60"
             [disabled]="isSubmitting() || assignment()?.status !== 'PENDING'"
             (click)="completeAssignment()"
           >
@@ -435,6 +219,152 @@
           </button>
         </div>
       </main>
-    </div>
+
+      <aside class="space-y-6 xl:sticky xl:top-6">
+        <article class="rounded-3xl border border-fr-taupe/35 bg-white p-5 text-slate-900 shadow-lg">
+          <h2 class="text-lg font-extrabold text-fr-black">Detalle de asignación</h2>
+
+          <div class="mt-4 space-y-4 text-sm">
+            <div>
+              <span class="text-xs font-extrabold uppercase tracking-wide text-fr-gray">Departamento</span>
+              <p class="mt-1 font-semibold text-slate-800">{{ assignment()?.assignedDepartmentName || assignment()?.laneName || 'Sin departamento' }}</p>
+            </div>
+
+            <div>
+              <span class="text-xs font-extrabold uppercase tracking-wide text-fr-gray">Cargo</span>
+              <p class="mt-1 font-semibold text-slate-800">{{ assignment()?.assignedCargoName || 'No especificado' }}</p>
+            </div>
+
+            <div>
+              <span class="text-xs font-extrabold uppercase tracking-wide text-fr-gray">Asignado a</span>
+              <p class="mt-1 font-semibold text-slate-800">{{ assignment()?.assignedUserName }}</p>
+            </div>
+
+            <div>
+              <span class="text-xs font-extrabold uppercase tracking-wide text-fr-gray">Fecha de creación</span>
+              <p class="mt-1 font-semibold text-slate-800">{{ formatDate(assignment()?.createdAt) }}</p>
+            </div>
+          </div>
+        </article>
+
+        @if (processDetail()) {
+          <article class="rounded-3xl border border-fr-taupe/35 bg-white p-5 text-slate-900 shadow-lg">
+            <h3 class="text-lg font-extrabold text-fr-black">Proceso relacionado</h3>
+
+            <div class="mt-4 space-y-4 text-sm">
+              <div>
+                <span class="text-xs font-extrabold uppercase tracking-wide text-fr-gray">Código</span>
+                <p class="mt-1 font-semibold text-slate-800">{{ processDetail()?.instance?.code }}</p>
+              </div>
+
+              <div>
+                <span class="text-xs font-extrabold uppercase tracking-wide text-fr-gray">Diagrama</span>
+                <p class="mt-1 font-semibold text-slate-800">{{ processDetail()?.instance?.diagramName }}</p>
+              </div>
+
+              <div>
+                <span class="text-xs font-extrabold uppercase tracking-wide text-fr-gray">Estado</span>
+                <p class="mt-1 font-semibold text-slate-800">{{ formatStatus(processDetail()?.instance?.status) }}</p>
+              </div>
+
+              <div>
+                <span class="text-xs font-extrabold uppercase tracking-wide text-fr-gray">Iniciado por</span>
+                <p class="mt-1 font-semibold text-slate-800">{{ processDetail()?.instance?.startedByUserName }}</p>
+              </div>
+
+              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+                <div>
+                  <span class="text-xs font-extrabold uppercase tracking-wide text-fr-gray">Iniciado</span>
+                  <p class="mt-1 font-semibold text-slate-800">{{ formatDate(processDetail()?.instance?.startedAt) }}</p>
+                </div>
+
+                <div>
+                  <span class="text-xs font-extrabold uppercase tracking-wide text-fr-gray">Actualizado</span>
+                  <p class="mt-1 font-semibold text-slate-800">{{ formatDate(processDetail()?.instance?.updatedAt) }}</p>
+                </div>
+              </div>
+
+              <div>
+                <span class="text-xs font-extrabold uppercase tracking-wide text-fr-gray">Finalizado</span>
+                <p class="mt-1 font-semibold text-slate-800">{{ formatDate(processDetail()?.instance?.finishedAt) }}</p>
+              </div>
+            </div>
+          </article>
+        }
+      </aside>
+    </section>
+
+    <section class="mt-6 rounded-3xl border border-fr-taupe/35 bg-white p-5 text-slate-900 shadow-lg">
+      <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h3 class="text-lg font-extrabold text-fr-black">Informes anteriores</h3>
+          <p class="mt-1 text-sm text-slate-500">Respuestas registradas en pasos previos del proceso.</p>
+        </div>
+
+        <span class="w-fit rounded-full bg-fr-black/5 px-3 py-1 text-xs font-extrabold uppercase tracking-wide text-fr-gray">
+          {{ previousHistory().length }} registro{{ previousHistory().length === 1 ? '' : 's' }}
+        </span>
+      </div>
+
+      @if (previousHistory().length === 0) {
+        <div class="rounded-2xl border border-dashed border-fr-taupe/45 bg-fr-black/5 px-6 py-10 text-center">
+          <h4 class="text-base font-extrabold text-fr-black">Sin informes previos</h4>
+          <p class="mt-2 text-sm text-slate-600">Cuando se completen tareas anteriores, aparecerán aquí.</p>
+        </div>
+      } @else {
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
+          @for (history of previousHistory(); track history.id) {
+            <article class="flex h-full flex-col rounded-2xl border border-fr-taupe/40 bg-fr-black/5 p-4">
+              <div class="mb-3 flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <h4 class="text-sm font-extrabold text-fr-black">{{ history.fromNodeName }}</h4>
+                  <p class="mt-1 text-xs font-semibold text-slate-600">Plantilla: {{ history.templateName || 'Sin plantilla' }}</p>
+                </div>
+
+                @if (history.transitionLabel) {
+                  <span class="rounded-full bg-fr-gold/20 px-3 py-1 text-[11px] font-extrabold text-fr-brown">
+                    {{ history.transitionLabel }}
+                  </span>
+                }
+              </div>
+
+              <dl class="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+                <div>
+                  <dt class="text-[11px] font-extrabold uppercase tracking-wide text-fr-gray">Atendido por</dt>
+                  <dd class="mt-1 font-semibold text-slate-800">{{ history.performedByUserName }}</dd>
+                </div>
+
+                <div>
+                  <dt class="text-[11px] font-extrabold uppercase tracking-wide text-fr-gray">Fecha</dt>
+                  <dd class="mt-1 font-semibold text-slate-800">{{ formatDate(history.performedAt) }}</dd>
+                </div>
+              </dl>
+
+              <div class="mt-3 rounded-xl border border-fr-taupe/40 bg-white p-3">
+                <p class="mb-2 text-[11px] font-extrabold uppercase tracking-wide text-fr-gray">Respuestas registradas</p>
+
+                @if (getHistoryFields(history).length > 0) {
+                  <div class="space-y-1.5">
+                    @for (field of getHistoryFields(history); track field.fieldId) {
+                      <div class="text-sm leading-relaxed">
+                        <span class="font-bold text-fr-black">{{ field.label }}:</span>
+                        <span class="ml-1 text-slate-700">{{ formatHistoryValue(field.value) }}</span>
+                      </div>
+                    }
+                  </div>
+                } @else {
+                  <p class="text-sm text-slate-500">No hay respuestas registradas.</p>
+                }
+              </div>
+
+              <div class="mt-3 rounded-xl border border-fr-taupe/35 bg-white p-3">
+                <p class="mb-1 text-[11px] font-extrabold uppercase tracking-wide text-fr-gray">Comentario</p>
+                <p class="text-sm text-slate-700">{{ history.comment || 'Sin comentario.' }}</p>
+              </div>
+            </article>
+          }
+        </div>
+      }
+    </section>
   }
 </section>

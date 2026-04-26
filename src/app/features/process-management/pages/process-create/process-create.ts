@@ -1,14 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 
 import { DiagramSummaryResponse } from '#/app/features/diagram-editor/interfaces/diagram.models';
 import { DiagramService } from '#/app/features/diagram-editor/services/diagram.service';
 
-import { CommonTable } from '#/app/features/shared/components/common-table/common-table';
 import { CreateModal } from '#/app/features/shared/components/common-table/components/create-modal/create-modal';
-import { TableColumn } from '#/app/features/shared/components/common-table/interfaces/column.interface';
 import { FormField } from '#/app/features/shared/components/common-table/interfaces/field.interface';
 
 import {
@@ -19,18 +17,16 @@ import { ProcessInstanceService } from '../../services/process-instance.service'
 
 import {
   ClipboardList,
-  FileText,
   LUCIDE_ICONS,
   LucideAngularModule,
   LucideIconProvider,
   Plus,
-  Workflow,
 } from 'lucide-angular';
 
 @Component({
   selector: 'app-process-create',
   standalone: true,
-  imports: [CommonModule, CommonTable, CreateModal, LucideAngularModule],
+  imports: [CommonModule, RouterLink, CreateModal, LucideAngularModule],
   templateUrl: './process-create.html',
   providers: [
     {
@@ -38,9 +34,7 @@ import {
       multi: true,
       useValue: new LucideIconProvider({
         ClipboardList,
-        FileText,
         Plus,
-        Workflow,
       }),
     },
   ],
@@ -49,21 +43,16 @@ export class ProcessCreate implements OnInit {
   private readonly diagramService = inject(DiagramService);
   private readonly processInstanceService = inject(ProcessInstanceService);
   private readonly router = inject(Router);
+  private readonly dateFormatter = new Intl.DateTimeFormat('es-BO', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
 
   public diagrams = signal<DiagramSummaryResponse[]>([]);
   public processInstances = signal<ProcessInstanceSummaryResponse[]>([]);
 
   public isLoading = signal(false);
   public isCreateModalOpen = signal(false);
-
-  public tableColumns: TableColumn[] = [
-    { label: 'Proceso', key: 'code', type: 'custom' },
-    { label: 'Trámite / Diagrama', key: 'diagramName' },
-    { label: 'Estado', key: 'status', type: 'badge' },
-    { label: 'Iniciado por', key: 'startedByUserName' },
-    { label: 'Fecha de inicio', key: 'startedAt' },
-    { label: 'Última actualización', key: 'updatedAt' },
-  ];
 
   public formFields: FormField[] = [
     {
@@ -155,5 +144,57 @@ export class ProcessCreate implements OnInit {
 
   goBack(): void {
     this.router.navigate(['/process']);
+  }
+
+  formatDate(value?: string | null): string {
+    if (!value) {
+      return 'Sin fecha';
+    }
+
+    const parsedDate = new Date(value);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return 'Sin fecha';
+    }
+
+    return this.dateFormatter.format(parsedDate);
+  }
+
+  formatStatus(status: string): string {
+    switch (status) {
+      case 'RUNNING':
+        return 'En ejecución';
+      case 'PENDING_ASSIGNMENT':
+        return 'Pendiente de asignación';
+      case 'COMPLETED':
+        return 'Completado';
+      case 'CANCELLED':
+        return 'Cancelado';
+      default:
+        return status || 'Sin estado';
+    }
+  }
+
+  getStatusBadgeClass(status: string): string {
+    switch (status) {
+      case 'RUNNING':
+        return 'bg-green-50 text-green-700 border-green-200';
+      case 'PENDING_ASSIGNMENT':
+        return 'bg-amber-50 text-amber-700 border-amber-200';
+      case 'COMPLETED':
+        return 'bg-blue-50 text-blue-700 border-blue-200';
+      case 'CANCELLED':
+        return 'bg-red-50 text-red-700 border-red-200';
+      default:
+        return 'bg-slate-100 text-slate-700 border-slate-200';
+    }
+  }
+
+  getDiagramName(process: ProcessInstanceSummaryResponse): string {
+    return process.diagramName?.trim() || 'Proceso sin diagrama';
+  }
+
+  getStartedBy(process: ProcessInstanceSummaryResponse): string {
+    return process.startedByUserName?.trim() || 'Usuario no disponible';
   }
 }
