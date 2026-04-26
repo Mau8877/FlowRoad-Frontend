@@ -13,8 +13,13 @@ export class EditorHeaderComponent {
   @Input() sessionToken = '';
   @Input() isConnected = false;
 
+  @Output() backClick = new EventEmitter<void>();
   @Output() debugClick = new EventEmitter<void>();
   @Output() settingsClick = new EventEmitter<void>();
+
+  onBackClick(): void {
+    this.backClick.emit();
+  }
 
   onDebugClick(): void {
     this.debugClick.emit();

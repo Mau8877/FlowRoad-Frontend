@@ -110,9 +110,35 @@
     </div>
 
     <div class="space-y-4 p-4">
-      <div class="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-700">
-        Este elemento conecta dos nodos del flujo.
+      <div class="space-y-2">
+        <label class="block text-xs font-bold uppercase tracking-[0.08em] text-fr-taupe">
+          Label
+        </label>
+        <input
+          type="text"
+          class="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-fr-black outline-none transition focus:border-fr-gold focus:ring-3 focus:ring-[rgba(204,158,97,0.18)]"
+          [ngModel]="draftLabel()"
+          (ngModelChange)="draftLabel.set($event)"
+          placeholder="Ej: Sí, No, Aprobado..."
+        />
       </div>
+
+      <div class="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-700">
+        Este elemento conecta dos nodos del flujo. El label se guarda sobre la línea.
+      </div>
+
+      <button
+        type="button"
+        (click)="onSave()"
+        [disabled]="isSaving"
+        class="inline-flex w-full items-center justify-center rounded-xl bg-fr-gold px-4 py-3 text-sm font-bold text-fr-black transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        @if (isSaving) {
+          Guardando...
+        } @else {
+          Guardar conector
+        }
+      </button>
 
       <button
         type="button"

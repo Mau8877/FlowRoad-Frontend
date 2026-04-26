@@ -220,6 +220,7 @@ export class DiagramSyncService {
           type: 'standard.Link',
           source: { id: sourceId },
           target: { id: targetId },
+          labels: [],
           router: {
             name: 'manhattan',
             args: {
@@ -248,6 +249,29 @@ export class DiagramSyncService {
           customData: {
             tipo: 'CONTROL_FLOW',
           },
+        },
+      },
+    });
+  }
+
+  UPDATE_LINK(
+    cellId: string,
+    userId: string,
+    payload: {
+      label: string;
+      customData?: Record<string, any>;
+    },
+  ): void {
+    const trimmed = payload.label.trim();
+    this.SEND_OPERATION({
+      opType: 'UPDATE_LINK',
+      cellId,
+      userId,
+      delta: {
+        labels: this.buildLinkLabels(trimmed),
+        customData: {
+          ...(payload.customData ?? {}),
+          linkLabel: trimmed,
         },
       },
     });
@@ -320,11 +344,25 @@ export class DiagramSyncService {
           type: 'standard.Circle',
           position: { x, y },
           size: { width: 42, height: 42 },
+          markup: [
+            { tagName: 'circle', selector: 'body' },
+            { tagName: 'circle', selector: 'inner' },
+            { tagName: 'text', selector: 'label' },
+          ],
           attrs: {
             body: {
               fill: '#ffffff',
               stroke: '#111827',
               strokeWidth: 3,
+            },
+            inner: {
+              ref: 'body',
+              refCx: '50%',
+              refCy: '50%',
+              refR: '30%',
+              fill: '#111827',
+              stroke: '#111827',
+              strokeWidth: 1,
             },
             label: {
               text: '',
@@ -416,5 +454,33 @@ export class DiagramSyncService {
           },
         };
     }
+  }
+
+  private buildLinkLabels(label: string): unknown[] {
+    const trimmed = label.trim();
+    if (!trimmed) return [];
+
+    return [
+      {
+        position: 0.5,
+        attrs: {
+          text: {
+            text: trimmed,
+            fill: '#111827',
+            fontSize: 12,
+            fontWeight: 600,
+            textAnchor: 'middle',
+            yAlignment: 'middle',
+          },
+          rect: {
+            fill: '#ffffff',
+            stroke: '#cbd5e1',
+            strokeWidth: 1,
+            rx: 6,
+            ry: 6,
+          },
+        },
+      },
+    ];
   }
 }

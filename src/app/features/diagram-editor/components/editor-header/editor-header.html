@@ -35,6 +35,14 @@
   <div class="flex shrink-0 items-center gap-2">
     <button
       type="button"
+      (click)="onBackClick()"
+      class="inline-flex items-center rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
+    >
+      Volver
+    </button>
+
+    <button
+      type="button"
       (click)="onDebugClick()"
       class="inline-flex items-center rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
     >

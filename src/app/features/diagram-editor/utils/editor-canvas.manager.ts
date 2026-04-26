@@ -6,6 +6,15 @@ export interface CanvasManagerCallbacks {
   onCellDoubleClicked(cellId: string, label: string): void;
   onBlankPointerDown(x: number, y: number): void;
   onElementPointerDown(cellId: string, position: { x: number; y: number }): void;
+  onElementResizePreview(
+    cellId: string,
+    width: number,
+    height: number,
+  ): {
+    width: number;
+    height: number;
+  };
+  onElementResizeCommit(cellId: string, width: number, height: number): void;
   onElementDragStart(cellId: string, position: { x: number; y: number }): void;
   onElementPositionChanged(cellId: string, x: number, y: number): void;
   onElementPointerUp(cellId: string, x: number, y: number): void;
@@ -28,6 +37,13 @@ interface PendingPointerState {
   dragStarted: boolean;
 }
 
+interface ResizeSessionState {
+  cellId: string;
+  originSize: { width: number; height: number };
+  startPointer: { x: number; y: number };
+  lastSize: { width: number; height: number };
+}
+
 type HighlightMode = 'selected-node' | 'selected-link' | 'link-source' | 'link-target';
 
 export class EditorCanvasManager {
@@ -35,15 +51,46 @@ export class EditorCanvasManager {
   private paper!: dia.Paper;
   private resizeObserver?: ResizeObserver;
   private resizeFrame: number | null = null;
+  private resizeHandleEl: HTMLDivElement | null = null;
 
   private pendingPointerState: PendingPointerState | null = null;
+  private resizeSession: ResizeSessionState | null = null;
   private selectedCellId: string | null = null;
   private linkSourceCellId: string | null = null;
   private linkTargetCellId: string | null = null;
 
   private readonly previewLinkId = '__draft-link-preview__';
+  private readonly resizeHandleSizePx = 14;
+
+  private readonly handleWindowPointerUp = (): void => {
+    this.finishResizeSession();
+  };
 
   private readonly handleHostPointerMove = (event: PointerEvent): void => {
+    if (this.resizeSession) {
+      const point = this.getLocalPointFromClient(event.clientX, event.clientY);
+      if (!point) return;
+
+      const requestedWidth =
+        this.resizeSession.originSize.width + (point.x - this.resizeSession.startPointer.x);
+      const requestedHeight =
+        this.resizeSession.originSize.height + (point.y - this.resizeSession.startPointer.y);
+
+      const next = this.callbacks.onElementResizePreview(
+        this.resizeSession.cellId,
+        requestedWidth,
+        requestedHeight,
+      );
+
+      this.resizeSession.lastSize = {
+        width: next.width,
+        height: next.height,
+      };
+
+      this.applyResize(this.resizeSession.cellId, next.width, next.height);
+      return;
+    }
+
     if (!this.linkSourceCellId || this.linkTargetCellId) return;
 
     const point = this.getLocalPointFromClient(event.clientX, event.clientY);
@@ -62,6 +109,7 @@ export class EditorCanvasManager {
 
     this.host.style.width = '100%';
     this.host.style.height = '100%';
+    this.host.style.position = 'relative';
 
     this.paper = new dia.Paper({
       el: this.host,
@@ -109,6 +157,7 @@ export class EditorCanvasManager {
     });
 
     this.registerEvents();
+    this.createResizeHandle();
     this.observeResize();
     this.scheduleResize();
 
@@ -124,8 +173,13 @@ export class EditorCanvasManager {
     }
 
     this.host.removeEventListener('pointermove', this.handleHostPointerMove);
+    window.removeEventListener('pointerup', this.handleWindowPointerUp);
+    window.removeEventListener('pointercancel', this.handleWindowPointerUp);
+    this.resizeHandleEl?.remove();
+    this.resizeHandleEl = null;
 
     this.pendingPointerState = null;
+    this.resizeSession = null;
     this.selectedCellId = null;
     this.linkSourceCellId = null;
     this.linkTargetCellId = null;
@@ -171,6 +225,20 @@ export class EditorCanvasManager {
     if (cell && !cell.isLink()) {
       const element = cell as dia.Element;
       element.position(x, y);
+      if (this.selectedCellId === cellId) {
+        this.updateResizeHandle();
+      }
+    }
+  }
+
+  applyResize(cellId: string, width: number, height: number): void {
+    const cell = this.graph.getCell(cellId);
+    if (!cell || cell.isLink()) return;
+
+    const element = cell as dia.Element;
+    element.resize(width, height);
+    if (this.selectedCellId === cellId) {
+      this.updateResizeHandle();
     }
   }
 
@@ -180,42 +248,83 @@ export class EditorCanvasManager {
     const jointCell = this.graph.getCell(cellId);
     if (!jointCell) return;
 
-    if (delta['position'] && !jointCell.isLink()) {
+    const hasKey = (key: string) => Object.prototype.hasOwnProperty.call(delta, key);
+
+    if (hasKey('position') && !jointCell.isLink()) {
       const element = jointCell as dia.Element;
       element.position(delta['position'].x, delta['position'].y);
     }
 
-    if (delta['size'] && !jointCell.isLink()) {
+    if (hasKey('size') && !jointCell.isLink()) {
       const element = jointCell as dia.Element;
       element.resize(delta['size'].width, delta['size'].height);
     }
 
-    if (delta['attrs']) {
-      jointCell.attr(delta['attrs']);
+    if (hasKey('attrs')) {
+      if (this.isInitialNodeCell(jointCell, delta['customData'])) {
+        const incomingAttrs = (delta['attrs'] as Record<string, any> | undefined) ?? {};
+        const incomingBody = (incomingAttrs['body'] as Record<string, any> | undefined) ?? {};
+        const incomingLabel = (incomingAttrs['label'] as Record<string, any> | undefined) ?? {};
+
+        jointCell.attr({
+          ...incomingAttrs,
+          body: {
+            ...incomingBody,
+            fill: '#111827',
+            stroke: '#111827',
+            strokeWidth: 2,
+          },
+          label: {
+            ...incomingLabel,
+            text: '',
+          },
+        });
+      } else {
+        jointCell.attr(delta['attrs']);
+      }
     }
 
-    if (delta['source'] && jointCell.isLink()) {
+    if (hasKey('source') && jointCell.isLink()) {
       jointCell.set('source', delta['source']);
     }
 
-    if (delta['target'] && jointCell.isLink()) {
+    if (hasKey('target') && jointCell.isLink()) {
       jointCell.set('target', delta['target']);
     }
 
-    if (delta['vertices'] && jointCell.isLink()) {
+    if (hasKey('vertices') && jointCell.isLink()) {
       jointCell.set('vertices', delta['vertices']);
     }
 
-    if (delta['router'] && jointCell.isLink()) {
+    if (hasKey('labels') && jointCell.isLink()) {
+      jointCell.set('labels', delta['labels']);
+    }
+
+    if (
+      !hasKey('labels') &&
+      delta['customData']?.['linkLabel'] !== undefined &&
+      jointCell.isLink()
+    ) {
+      jointCell.set(
+        'labels',
+        this.buildLinkLabelsFromText(String(delta['customData']['linkLabel'] ?? '')),
+      );
+    }
+
+    if (hasKey('router') && jointCell.isLink()) {
       jointCell.set('router', delta['router']);
     }
 
-    if (delta['connector'] && jointCell.isLink()) {
+    if (hasKey('connector') && jointCell.isLink()) {
       jointCell.set('connector', delta['connector']);
     }
 
-    if (delta['customData']) {
+    if (hasKey('customData')) {
       jointCell.set('customData', delta['customData']);
+    }
+
+    if (this.isInitialNodeCell(jointCell, delta['customData'])) {
+      this.forceInitialNodeVisual(jointCell as dia.Element);
     }
 
     this.reapplyHighlights();
@@ -275,6 +384,7 @@ export class EditorCanvasManager {
     const mode: HighlightMode =
       snapshotCell?.type === 'standard.Link' ? 'selected-link' : 'selected-node';
     this.paintHighlight(cellId, mode);
+    this.updateResizeHandle();
   }
 
   clearSelection(snapshotCell?: DiagramCell, explicitCellId?: string): void {
@@ -286,6 +396,7 @@ export class EditorCanvasManager {
     if (!explicitCellId || explicitCellId === this.selectedCellId) {
       this.selectedCellId = null;
     }
+    this.updateResizeHandle();
   }
 
   setLinkSource(cellId: string): void {
@@ -418,6 +529,8 @@ export class EditorCanvasManager {
     if (this.linkTargetCellId) {
       this.paintHighlight(this.linkTargetCellId, 'link-target');
     }
+
+    this.updateResizeHandle();
   }
 
   private paintHighlight(cellId: string, mode: HighlightMode): void {
@@ -469,6 +582,11 @@ export class EditorCanvasManager {
       return;
     }
 
+    if (this.isInitialNodeCell(cell, snapshotCell?.customData)) {
+      this.forceInitialNodeVisual(cell as dia.Element);
+      return;
+    }
+
     const bodyStroke =
       snapshotCell?.attrs?.['body']?.['stroke'] ||
       (this.callbacks.isCellRemotelyLocked(cellId) ? '#dc2626' : '#2563eb');
@@ -508,7 +626,7 @@ export class EditorCanvasManager {
       this.callbacks.onBlankPointerDown(x, y);
     });
 
-    this.paper.on('element:pointerdown', (elementView) => {
+    this.paper.on('element:pointerdown', (elementView, evt, x, y) => {
       const cellId = String(elementView.model.id);
 
       if (cellId === this.previewLinkId) {
@@ -517,6 +635,30 @@ export class EditorCanvasManager {
 
       const element = elementView.model as dia.Element;
       const position = element.position();
+      const size = element.size();
+
+      if (this.shouldStartResize(cellId, x, y, position, size.width, size.height)) {
+        evt.preventDefault();
+        evt.stopPropagation();
+
+        this.pendingPointerState = null;
+        this.resizeSession = {
+          cellId,
+          originSize: {
+            width: Number(size.width ?? 160),
+            height: Number(size.height ?? 60),
+          },
+          startPointer: { x, y },
+          lastSize: {
+            width: Number(size.width ?? 160),
+            height: Number(size.height ?? 60),
+          },
+        };
+
+        window.addEventListener('pointerup', this.handleWindowPointerUp);
+        window.addEventListener('pointercancel', this.handleWindowPointerUp);
+        return;
+      }
 
       this.pendingPointerState = {
         cellId,
@@ -534,6 +676,10 @@ export class EditorCanvasManager {
     });
 
     this.paper.on('element:pointermove', (elementView) => {
+      if (this.resizeSession) {
+        return;
+      }
+
       const cellId = String(elementView.model.id);
 
       if (cellId === this.previewLinkId) {
@@ -592,6 +738,37 @@ export class EditorCanvasManager {
     });
   }
 
+  private shouldStartResize(
+    cellId: string,
+    pointerX: number,
+    pointerY: number,
+    position: { x: number; y: number },
+    width: number,
+    height: number,
+  ): boolean {
+    if (!this.callbacks.isSelectMode()) return false;
+    if (this.selectedCellId !== cellId) return false;
+
+    const right = position.x + width;
+    const bottom = position.y + height;
+
+    return (
+      pointerX >= right - this.resizeHandleSizePx && pointerY >= bottom - this.resizeHandleSizePx
+    );
+  }
+
+  private finishResizeSession(): void {
+    if (!this.resizeSession) return;
+
+    const { cellId, lastSize } = this.resizeSession;
+    this.resizeSession = null;
+
+    window.removeEventListener('pointerup', this.handleWindowPointerUp);
+    window.removeEventListener('pointercancel', this.handleWindowPointerUp);
+
+    this.callbacks.onElementResizeCommit(cellId, lastSize.width, lastSize.height);
+  }
+
   private observeResize(): void {
     const target = this.host.parentElement ?? this.host;
 
@@ -609,6 +786,7 @@ export class EditorCanvasManager {
 
     this.resizeFrame = requestAnimationFrame(() => {
       this.resize();
+      this.updateResizeHandle();
       this.resizeFrame = null;
     });
   }
@@ -626,6 +804,90 @@ export class EditorCanvasManager {
     if (this.paper) {
       this.paper.setDimensions(width, height);
     }
+  }
+
+  private createResizeHandle(): void {
+    const handle = document.createElement('div');
+    handle.className = 'editor-resize-handle';
+    handle.style.position = 'absolute';
+    handle.style.width = `${this.resizeHandleSizePx}px`;
+    handle.style.height = `${this.resizeHandleSizePx}px`;
+    handle.style.border = '2px solid #7c3aed';
+    handle.style.background = '#ffffff';
+    handle.style.borderRadius = '4px';
+    handle.style.boxShadow = '0 2px 8px rgba(2,3,4,0.22)';
+    handle.style.cursor = 'nwse-resize';
+    handle.style.zIndex = '2000';
+    handle.style.display = 'none';
+    handle.style.pointerEvents = 'auto';
+
+    handle.addEventListener('pointerdown', (event: PointerEvent) => {
+      if (!this.selectedCellId) return;
+      const selected = this.graph.getCell(this.selectedCellId);
+      if (!selected || selected.isLink()) return;
+      if (!this.callbacks.isSelectMode()) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const point = this.getLocalPointFromClient(event.clientX, event.clientY);
+      if (!point) return;
+
+      const element = selected as dia.Element;
+      const size = element.size();
+
+      this.resizeSession = {
+        cellId: this.selectedCellId,
+        originSize: {
+          width: Number(size.width ?? 160),
+          height: Number(size.height ?? 60),
+        },
+        startPointer: {
+          x: point.x,
+          y: point.y,
+        },
+        lastSize: {
+          width: Number(size.width ?? 160),
+          height: Number(size.height ?? 60),
+        },
+      };
+
+      this.pendingPointerState = null;
+      window.addEventListener('pointerup', this.handleWindowPointerUp);
+      window.addEventListener('pointercancel', this.handleWindowPointerUp);
+    });
+
+    this.host.appendChild(handle);
+    this.resizeHandleEl = handle;
+  }
+
+  private updateResizeHandle(): void {
+    if (!this.resizeHandleEl) return;
+
+    const selectedId = this.selectedCellId;
+    if (!selectedId || !this.callbacks.isSelectMode()) {
+      this.resizeHandleEl.style.display = 'none';
+      return;
+    }
+
+    const selected = this.graph.getCell(selectedId);
+    if (!selected || selected.isLink()) {
+      this.resizeHandleEl.style.display = 'none';
+      return;
+    }
+
+    if (this.callbacks.isCellRemotelyLocked(selectedId)) {
+      this.resizeHandleEl.style.display = 'none';
+      return;
+    }
+
+    const element = selected as dia.Element;
+    const bbox = element.getBBox();
+    const half = this.resizeHandleSizePx / 2;
+
+    this.resizeHandleEl.style.left = `${bbox.x + bbox.width - half}px`;
+    this.resizeHandleEl.style.top = `${bbox.y + bbox.height - half}px`;
+    this.resizeHandleEl.style.display = 'block';
   }
 
   private getLocalPointFromClient(
@@ -666,6 +928,7 @@ export class EditorCanvasManager {
         source: cell.source || {},
         target: cell.target || {},
         vertices: cell.vertices || [],
+        labels: this.resolveLinkLabels(cell),
         router: cell.router || defaultRouter,
         connector: cell.connector || defaultConnector,
         attrs: cell.attrs || {
@@ -687,6 +950,69 @@ export class EditorCanvasManager {
     }
 
     if (cell.type === 'standard.Circle') {
+      const nodeType = String(cell.customData?.['tipo'] ?? '').toUpperCase();
+      const isInitialNode = nodeType === 'INITIAL';
+      const isFinalNode = nodeType === 'FINAL';
+
+      if (isInitialNode) {
+        const initialCircle = new shapes.standard.Circle({
+          id: cell.id,
+          position: cell.position || { x: 100, y: 100 },
+          size: cell.size || { width: 36, height: 36 },
+          attrs: {
+            body: {
+              fill: '#111827',
+              stroke: '#111827',
+              strokeWidth: 2,
+            },
+            label: {
+              text: '',
+            },
+          },
+        });
+
+        initialCircle.set('customData', cell.customData || {});
+        return initialCircle;
+      }
+
+      if (isFinalNode) {
+        const finalCircle = new shapes.standard.Circle({
+          id: cell.id,
+          position: cell.position || { x: 100, y: 100 },
+          size: cell.size || { width: 42, height: 42 },
+          markup: [
+            { tagName: 'circle', selector: 'body' },
+            { tagName: 'circle', selector: 'inner' },
+            { tagName: 'text', selector: 'label' },
+          ],
+          attrs: {
+            body: {
+              fill: '#ffffff',
+              stroke: '#111827',
+              strokeWidth: 3,
+              ...(cell.attrs?.['body'] || {}),
+            },
+            inner: {
+              ref: 'body',
+              refCx: '50%',
+              refCy: '50%',
+              refR: '30%',
+              fill: '#111827',
+              stroke: '#111827',
+              strokeWidth: 1,
+              ...(cell.attrs?.['inner'] || {}),
+            },
+            label: {
+              text: '',
+              ...(cell.attrs?.['label'] || {}),
+            },
+          },
+        });
+
+        finalCircle.set('customData', cell.customData || {});
+        return finalCircle;
+      }
+
       const circle = new shapes.standard.Circle({
         id: cell.id,
         position: cell.position || { x: 100, y: 100 },
@@ -751,5 +1077,64 @@ export class EditorCanvasManager {
 
     rect.set('customData', cell.customData || {});
     return rect;
+  }
+
+  private resolveLinkLabels(cell: DiagramCell): Record<string, any>[] {
+    if (Array.isArray(cell.labels) && cell.labels.length > 0) {
+      return cell.labels as Record<string, any>[];
+    }
+
+    const fallbackText = String(cell.customData?.['linkLabel'] ?? '').trim();
+    return this.buildLinkLabelsFromText(fallbackText);
+  }
+
+  private buildLinkLabelsFromText(text: string): Record<string, any>[] {
+    if (!text) return [];
+
+    return [
+      {
+        position: 0.5,
+        attrs: {
+          text: {
+            text,
+            fill: '#111827',
+            fontSize: 12,
+            fontWeight: 600,
+            textAnchor: 'middle',
+            yAlignment: 'middle',
+          },
+          rect: {
+            fill: '#ffffff',
+            stroke: '#cbd5e1',
+            strokeWidth: 1,
+            rx: 6,
+            ry: 6,
+          },
+        },
+      },
+    ];
+  }
+
+  private isInitialNodeCell(cell: dia.Cell, nextCustomData?: Record<string, any>): boolean {
+    if (cell.isLink()) return false;
+
+    const currentCustomData = (cell.get('customData') as Record<string, any> | undefined) ?? {};
+    const customData = nextCustomData ?? currentCustomData;
+    const nodeType = String(customData?.['tipo'] ?? '').toUpperCase();
+
+    return nodeType === 'INITIAL';
+  }
+
+  private forceInitialNodeVisual(element: dia.Element): void {
+    element.attr({
+      body: {
+        fill: '#111827',
+        stroke: '#111827',
+        strokeWidth: 2,
+      },
+      label: {
+        text: '',
+      },
+    });
   }
 }

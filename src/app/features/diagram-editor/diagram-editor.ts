@@ -8,21 +8,25 @@ import {
   OnInit,
   ViewChild,
   inject,
+  signal,
 } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
+import { finalize } from 'rxjs';
 
 import { DepartmentService } from '#/app/features/config-org/services/departamento.service';
 import { TemplateService } from '#/app/features/config-org/services/plantillas.service';
 import { EditorDebugModalComponent } from './components/editor-debug-modal/editor-debug-modal';
 import { EditorHeaderComponent } from './components/editor-header/editor-header';
-import { EditorMinimapComponent } from './components/editor-minimap/editor-minimap';
-import { EditorNodeInspectorComponent } from './components/editor-node-inspector/editor-node-inspector';
+import {
+  EditorNodeInspectorComponent,
+  type NodeInspectorSubmitPayload,
+} from './components/editor-node-inspector/editor-node-inspector';
 import {
   EditorSettingsPopoverComponent,
   type EditorSettingsSubmitPayload,
 } from './components/editor-settings-popover/editor-settings-popover';
 import { EditorToolbarComponent } from './components/editor-toolbar/editor-toolbar';
-import { DiagramCell, EditorTool } from './interfaces/diagram.models';
+import { Diagram, DiagramCell, EditorTool } from './interfaces/diagram.models';
 import { DiagramEditorCollaborationService } from './services/diagram-editor-collaboration.service';
 import { DiagramEditorDragSessionService } from './services/diagram-editor-drag-session.service';
 import { DiagramEditorLaneService } from './services/diagram-editor-lane.service';
@@ -42,7 +46,6 @@ import { DiagramService } from './services/diagram.service';
     EditorSettingsPopoverComponent,
     EditorNodeInspectorComponent,
     EditorDebugModalComponent,
-    EditorMinimapComponent,
   ],
   templateUrl: './diagram-editor.html',
   styleUrl: './diagram-editor.css',
@@ -61,6 +64,7 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('canvasViewport', { static: true }) canvasViewport!: ElementRef<HTMLDivElement>;
 
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly diagramService = inject(DiagramService);
   private readonly departmentService = inject(DepartmentService);
   private readonly templateService = inject(TemplateService);
@@ -79,6 +83,8 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
   private resizeStartWidth = 0;
 
   private draggingLaneId: string | null = null;
+  protected readonly isImporting = signal(false);
+  protected readonly isExporting = signal(false);
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id') || '';
@@ -128,6 +134,10 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
 
   protected closeSettingsPopover(): void {
     this.ui.closeSettingsPopover();
+  }
+
+  protected onBackRequested(): void {
+    this.router.navigateByUrl('/diagram');
   }
 
   protected onToolSelected(tool: EditorTool): void {
@@ -232,12 +242,19 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
     return this.collab.getSelectedCell();
   }
 
-  protected onInspectorSave(payload: {
-    label: string;
-    width: number;
-    height: number;
-    templateDocumentId: string;
-  }): void {
+  protected onInspectorSave(payload: NodeInspectorSubmitPayload): void {
+    const selectedCell = this.getSelectedCell();
+    if (!selectedCell) return;
+
+    if (selectedCell.type === 'standard.Link') {
+      this.collab.updateLinkLabel(payload.label);
+      this.collab.logs.update((current) => [
+        `${new Date().toLocaleTimeString()} - Conector actualizado: ${payload.label || '(sin label)'}`,
+        ...current,
+      ]);
+      return;
+    }
+
     this.collab.updateNode(payload);
     this.collab.logs.update((current) => [
       `${new Date().toLocaleTimeString()} - Nodo actualizado: ${payload.label}`,
@@ -281,6 +298,75 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
         ]);
       },
     );
+  }
+
+  protected onExportRequested(): void {
+    const diagramId = this.collab.diagramId();
+    if (!diagramId || this.isExporting()) return;
+
+    this.isExporting.set(true);
+
+    this.diagramService
+      .EXPORT(diagramId)
+      .pipe(finalize(() => this.isExporting.set(false)))
+      .subscribe({
+        next: (blob) => {
+          this.downloadFlowroadFile(blob);
+          this.collab.logs.update((current) => [
+            `${new Date().toLocaleTimeString()} - Exportación .flowroad completada`,
+            ...current,
+          ]);
+        },
+        error: (error) => {
+          console.error(error);
+          this.collab.logs.update((current) => [
+            `${new Date().toLocaleTimeString()} - Error al exportar .flowroad`,
+            ...current,
+          ]);
+        },
+      });
+  }
+
+  protected onImportRequested(file: File): void {
+    const diagramId = this.collab.diagramId();
+    if (!diagramId || !file || this.isImporting()) return;
+
+    const confirmed = window.confirm(
+      'Esta acción reemplazará completamente el diagrama actual (nombre, descripción, lanes y nodos). ¿Deseas continuar?',
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    this.isImporting.set(true);
+
+    this.diagramService
+      .IMPORT_INTO_CURRENT(diagramId, file)
+      .pipe(finalize(() => this.isImporting.set(false)))
+      .subscribe({
+        next: (diagram: Diagram) => {
+          console.log('IMPORT RESPONSE', diagram);
+          console.log('IMPORT CELLS', diagram.cells);
+          console.log('IMPORT LANES', diagram.lanes);
+          console.log('IMPORT NAME', diagram.name);
+          console.log('IMPORT DESCRIPTION', diagram.description);
+
+          this.collab.replaceDiagramFromImport(diagram);
+          this.ui.closeSettingsPopover();
+          this.collab.logs.update((current) => [
+            `${new Date().toLocaleTimeString()} - Importación .flowroad completada (${diagram.cells?.length ?? 0} celdas)`,
+            ...current,
+          ]);
+        },
+        error: (error) => {
+          console.error(error);
+          this.collab.logs.update((current) => [
+            `${new Date().toLocaleTimeString()} - Error al importar .flowroad`,
+            ...current,
+          ]);
+        },
+      });
   }
 
   private shouldIgnoreKeyboardShortcut(event: KeyboardEvent): boolean {
@@ -337,5 +423,23 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
         ]);
       },
     });
+  }
+
+  private downloadFlowroadFile(blob: Blob): void {
+    const objectUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const safeName = this.ui
+      .diagramName()
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    link.href = objectUrl;
+    link.download = `${safeName || 'diagrama'}.flowroad`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(objectUrl);
   }
 }

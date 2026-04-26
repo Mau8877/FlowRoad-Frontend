@@ -69,11 +69,17 @@ export interface DiagramCell {
   source?: CellReference;
   target?: CellReference;
   vertices?: Position[];
+  labels?: DiagramLinkLabel[];
 
   attrs?: Record<string, any>;
   router?: string | { name: string; args?: Record<string, any> };
   connector?: string | { name: string; args?: Record<string, any> };
   customData?: DiagramCellCustomData;
+}
+
+export interface DiagramLinkLabel {
+  position?: number | { distance?: number; offset?: number };
+  attrs?: Record<string, any>;
 }
 
 export interface Position {

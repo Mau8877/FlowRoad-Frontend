@@ -3,7 +3,12 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { Diagram, DiagramLane, DiagramSummaryResponse, JoinSessionResponse } from '../interfaces/diagram.models';
+import {
+  Diagram,
+  DiagramLane,
+  DiagramSummaryResponse,
+  JoinSessionResponse,
+} from '../interfaces/diagram.models';
 
 @Injectable({
   providedIn: 'root',
@@ -56,11 +61,16 @@ export class DiagramService {
     });
   }
 
-  EXPORT(id: string): Observable<Diagram> {
-    return this.http.get<Diagram>(`${this.DIAGRAMS_URL}/${id}/export`);
+  EXPORT(id: string): Observable<Blob> {
+    return this.http.get(`${this.DIAGRAMS_URL}/${id}/export`, {
+      responseType: 'blob',
+    });
   }
 
-  IMPORT(payload: any): Observable<Diagram> {
-    return this.http.post<Diagram>(`${this.DIAGRAMS_URL}/import`, payload);
+  IMPORT_INTO_CURRENT(id: string, file: File): Observable<Diagram> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    return this.http.post<Diagram>(`${this.DIAGRAMS_URL}/${id}/import`, formData);
   }
 }

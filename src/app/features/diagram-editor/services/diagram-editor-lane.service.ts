@@ -63,6 +63,33 @@ export class DiagramEditorLaneService {
     };
   }
 
+  normalizeNodeSizeToLane(
+    positionX: number,
+    positionY: number,
+    lane: DiagramLane,
+    width: number,
+    height: number,
+    minWidth = 24,
+    minHeight = 18,
+  ): { width: number; height: number } {
+    const roundedWidth = Math.round(Number(width || this.defaultNodeWidth));
+    const roundedHeight = Math.round(Number(height || this.defaultNodeHeight));
+
+    const maxWidth = Math.max(
+      8,
+      Math.floor(lane.x + lane.width - this.laneHorizontalPadding - positionX),
+    );
+    const maxHeight = Math.max(
+      8,
+      Math.floor(lane.y + lane.height - this.laneVerticalPadding - positionY),
+    );
+
+    return {
+      width: Math.min(maxWidth, Math.max(minWidth, roundedWidth)),
+      height: Math.min(maxHeight, Math.max(minHeight, roundedHeight)),
+    };
+  }
+
   getDefaultCreatePosition(): { x: number; y: number } | null {
     const lanes = this.getOrderedLanes();
     if (lanes.length === 0) return null;

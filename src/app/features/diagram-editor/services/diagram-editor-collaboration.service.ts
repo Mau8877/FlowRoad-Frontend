@@ -3,6 +3,7 @@ import { Subscription } from 'rxjs';
 
 import { AuthService } from '../../auth/services/auth.service';
 import {
+  Diagram,
   DiagramCell,
   DiagramLane,
   DiagramNodeType,
@@ -99,6 +100,14 @@ export class DiagramEditorCollaborationService {
 
       onElementPointerDown: (cellId: string, position: { x: number; y: number }) => {
         this.handleElementPointerDown(cellId, position);
+      },
+
+      onElementResizePreview: (cellId: string, width: number, height: number) => {
+        return this.handleElementResizePreview(cellId, width, height);
+      },
+
+      onElementResizeCommit: (cellId: string, width: number, height: number) => {
+        this.handleElementResizeCommit(cellId, width, height);
       },
 
       onElementDragStart: (cellId: string, position: { x: number; y: number }) => {
@@ -230,8 +239,11 @@ export class DiagramEditorCollaborationService {
 
     const selectedCell = this.snapshotStore.findCell(cellId);
     if (!selectedCell || selectedCell.type === 'standard.Link') return;
+    const isInitialNode =
+      String(selectedCell.customData?.['tipo'] ?? '').toUpperCase() === 'INITIAL';
 
-    const nextLabel = payload?.label ?? this.labelText();
+    const nextLabelRaw = payload?.label ?? this.labelText();
+    const nextLabel = isInitialNode ? '' : nextLabelRaw;
     const nextWidth = payload?.width ?? selectedCell.size?.width;
     const nextHeight = payload?.height ?? selectedCell.size?.height;
     const nextTemplateDocumentId =
@@ -244,6 +256,46 @@ export class DiagramEditorCollaborationService {
       ...(nextWidth !== undefined ? { width: nextWidth } : {}),
       ...(nextHeight !== undefined ? { height: nextHeight } : {}),
       templateDocumentId: nextTemplateDocumentId,
+    });
+  }
+
+  updateLinkLabel(label: string): void {
+    const cellId = this.selectedCellId();
+    if (!cellId) return;
+
+    const selectedCell = this.snapshotStore.findCell(cellId);
+    if (!selectedCell || selectedCell.type !== 'standard.Link') return;
+
+    const nextLabel = label.trim();
+    const nextLabels = this.buildLinkLabels(nextLabel);
+
+    // Optimistic local update so the label becomes visible immediately.
+    this.snapshotStore.update((cells) =>
+      cells.map((cell) =>
+        cell.id === cellId
+          ? {
+              ...cell,
+              labels: nextLabels,
+              customData: {
+                ...(cell.customData ?? {}),
+                linkLabel: nextLabel,
+              },
+            }
+          : cell,
+      ),
+    );
+
+    this.canvasManager?.applyUpdate(cellId, {
+      labels: nextLabels,
+      customData: {
+        ...(selectedCell.customData ?? {}),
+        linkLabel: nextLabel,
+      },
+    });
+
+    this.syncService.UPDATE_LINK(cellId, this.currentUserId(), {
+      label: nextLabel,
+      customData: selectedCell.customData ?? {},
     });
   }
 
@@ -464,6 +516,86 @@ export class DiagramEditorCollaborationService {
     }
   }
 
+  replaceDiagramFromImport(diagram: Diagram): void {
+    console.log('replaceDiagramFromImport INPUT', diagram);
+    console.log('replaceDiagramFromImport cells length', diagram.cells?.length ?? 0);
+    console.log('replaceDiagramFromImport lanes length', diagram.lanes?.length ?? 0);
+    console.log('replaceDiagramFromImport first cell', diagram.cells?.[0] ?? null);
+    console.log('replaceDiagramFromImport first lane', diagram.lanes?.[0] ?? null);
+
+    this.uiService.setMetadata(
+      diagram.name ?? 'Diagrama de actividades',
+      diagram.description ?? '',
+    );
+    this.uiService.setLanes(diagram.lanes ?? []);
+    this.snapshotStore.setSnapshot(Array.isArray(diagram.cells) ? diagram.cells : []);
+    console.log('snapshotStore after import', this.snapshotStore.cells());
+
+    this.dragSession.reset();
+    this.lockState.reset();
+    this.lastLiveSentAt = 0;
+    this.resetLinkDraft(false);
+    this.clearSelection();
+
+    this.renderSnapshot();
+    console.log('renderSnapshot executed after import');
+  }
+
+  private handleElementResizePreview(
+    cellId: string,
+    width: number,
+    height: number,
+  ): { width: number; height: number } {
+    const next = this.resolveResizeWithinLane(cellId, width, height);
+    this.canvasManager?.applyResize(cellId, next.width, next.height);
+    return next;
+  }
+
+  private handleElementResizeCommit(cellId: string, width: number, height: number): void {
+    const next = this.resolveResizeWithinLane(cellId, width, height);
+    const cell = this.snapshotStore.findCell(cellId);
+
+    if (!cell || cell.type === 'standard.Link') {
+      return;
+    }
+
+    const currentWidth = Number(cell.size?.width ?? 160);
+    const currentHeight = Number(cell.size?.height ?? 60);
+
+    this.canvasManager?.applyResize(cellId, next.width, next.height);
+
+    if (currentWidth === next.width && currentHeight === next.height) {
+      return;
+    }
+
+    this.snapshotStore.update((cells) =>
+      cells.map((current) =>
+        current.id === cellId
+          ? {
+              ...current,
+              size: {
+                width: next.width,
+                height: next.height,
+              },
+            }
+          : current,
+      ),
+    );
+
+    const isInitialNode = String(cell.customData?.['tipo'] ?? '').toUpperCase() === 'INITIAL';
+    const label = isInitialNode
+      ? ''
+      : String(cell.attrs?.['label']?.['text'] ?? cell.customData?.['nombre'] ?? this.labelText());
+    const templateDocumentId = String(cell.customData?.['templateDocumentId'] ?? '');
+
+    this.syncService.UPDATE_NODE(cellId, this.currentUserId(), {
+      label: isInitialNode ? '' : label.trim() || 'Sin nombre',
+      width: next.width,
+      height: next.height,
+      templateDocumentId,
+    });
+  }
+
   private createLane(): void {
     const departmentId = this.uiService.selectedLaneDepartmentId();
 
@@ -641,7 +773,12 @@ export class DiagramEditorCollaborationService {
         (lane) => ({ ...lane }),
       );
       const incomingCells = (msg.delta['cells'] as DiagramCell[] | undefined) ?? [];
+      const incomingName =
+        (msg.delta['name'] as string | undefined) ?? this.uiService.diagramName();
+      const incomingDescription =
+        (msg.delta['description'] as string | undefined) ?? this.uiService.diagramDescription();
 
+      this.uiService.setMetadata(incomingName, incomingDescription);
       this.uiService.setLanes(incomingLanes);
       this.snapshotStore.setSnapshot(incomingCells);
       this.canvasManager?.clearAndRender(this.snapshotCells());
@@ -897,6 +1034,62 @@ export class DiagramEditorCollaborationService {
           cell.source?.id === sourceId &&
           cell.target?.id === targetId,
       );
+  }
+
+  private buildLinkLabels(label: string): Record<string, any>[] {
+    if (!label) return [];
+
+    return [
+      {
+        position: 0.5,
+        attrs: {
+          text: {
+            text: label,
+            fill: '#111827',
+            fontSize: 12,
+            fontWeight: 600,
+            textAnchor: 'middle',
+            yAlignment: 'middle',
+          },
+          rect: {
+            fill: '#ffffff',
+            stroke: '#cbd5e1',
+            strokeWidth: 1,
+            rx: 6,
+            ry: 6,
+          },
+        },
+      },
+    ];
+  }
+
+  private resolveResizeWithinLane(
+    cellId: string,
+    width: number,
+    height: number,
+  ): { width: number; height: number } {
+    const cell = this.snapshotStore.findCell(cellId);
+    if (!cell || cell.type === 'standard.Link') {
+      return {
+        width: Math.max(24, Math.round(width)),
+        height: Math.max(18, Math.round(height)),
+      };
+    }
+
+    const position = cell.position ?? { x: 100, y: 100 };
+    const laneId = cell.customData?.laneId;
+    const lane =
+      (laneId ? this.uiService.lanes().find((item) => item.id === laneId) : null) ??
+      this.laneService.resolveLaneForPoint(position.x, position.y);
+
+    if (!lane) {
+      return {
+        width: Math.max(24, Math.round(width)),
+        height: Math.max(18, Math.round(height)),
+      };
+    }
+
+    return this.laneService.normalizeNodeSizeToLane(position.x, position.y, lane, width, height);
   }
 
   private registerGlobalDragSafety(): void {

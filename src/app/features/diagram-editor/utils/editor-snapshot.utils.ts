@@ -35,17 +35,26 @@ export function updateSnapshotCellFromMessage(
   return cells.map((cell) => {
     if (cell.id !== msg.cellId) return cell;
 
+    const hasKey = (key: string) => Object.prototype.hasOwnProperty.call(msg.delta, key);
+    const nextCustomData = hasKey('customData')
+      ? {
+          ...(cell.customData ?? {}),
+          ...(msg.delta['customData'] ?? {}),
+        }
+      : cell.customData;
+
     return {
       ...cell,
-      ...(msg.delta['position'] ? { position: msg.delta['position'] } : {}),
-      ...(msg.delta['size'] ? { size: msg.delta['size'] } : {}),
-      ...(msg.delta['source'] ? { source: msg.delta['source'] } : {}),
-      ...(msg.delta['target'] ? { target: msg.delta['target'] } : {}),
-      ...(msg.delta['vertices'] ? { vertices: msg.delta['vertices'] } : {}),
-      ...(msg.delta['attrs'] ? { attrs: msg.delta['attrs'] } : {}),
-      ...(msg.delta['router'] ? { router: msg.delta['router'] } : {}),
-      ...(msg.delta['connector'] ? { connector: msg.delta['connector'] } : {}),
-      ...(msg.delta['customData'] ? { customData: msg.delta['customData'] } : {}),
+      ...(hasKey('position') ? { position: msg.delta['position'] } : {}),
+      ...(hasKey('size') ? { size: msg.delta['size'] } : {}),
+      ...(hasKey('source') ? { source: msg.delta['source'] } : {}),
+      ...(hasKey('target') ? { target: msg.delta['target'] } : {}),
+      ...(hasKey('vertices') ? { vertices: msg.delta['vertices'] } : {}),
+      ...(hasKey('labels') ? { labels: msg.delta['labels'] } : {}),
+      ...(hasKey('attrs') ? { attrs: msg.delta['attrs'] } : {}),
+      ...(hasKey('router') ? { router: msg.delta['router'] } : {}),
+      ...(hasKey('connector') ? { connector: msg.delta['connector'] } : {}),
+      ...(hasKey('customData') ? { customData: nextCustomData } : {}),
     };
   });
 }

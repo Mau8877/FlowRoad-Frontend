@@ -1,9 +1,10 @@
-<div class="flex min-h-full w-full flex-col gap-4 bg-zinc-100 p-4">
+<div class="diagram-editor-shell">
   <div class="relative">
     <app-editor-header
       [diagramName]="ui.diagramName()"
       [sessionToken]="collab.sessionToken()"
       [isConnected]="collab.isConnected()"
+      (backClick)="onBackRequested()"
       (debugClick)="openDebugModal()"
       (settingsClick)="toggleSettingsPopover()"
     />
@@ -15,132 +16,132 @@
       [currentLanes]="ui.lanes()"
       [availableDepartments]="ui.availableDepartments()"
       [isSaving]="ui.isSavingSettings()"
+      [isImporting]="isImporting()"
+      [isExporting]="isExporting()"
       (closeRequested)="closeSettingsPopover()"
       (saveRequested)="saveDiagramSettings($event)"
+      (exportRequested)="onExportRequested()"
+      (importRequested)="onImportRequested($event)"
     />
   </div>
 
-  <app-editor-toolbar
-    [activeTool]="ui.activeTool()"
-    [availableDepartments]="ui.availableDepartments()"
-    [selectedLaneDepartmentId]="ui.selectedLaneDepartmentId()"
-    (toolSelected)="onToolSelected($event)"
-    (laneDepartmentChanged)="onLaneDepartmentChanged($event)"
-    (aiRequested)="onAiRequested()"
-  />
+  <div class="editor-main-layout" [class.with-inspector]="!!getSelectedCell()">
+    <aside class="editor-left-toolbar">
+      <app-editor-toolbar
+        [activeTool]="ui.activeTool()"
+        [availableDepartments]="ui.availableDepartments()"
+        [selectedLaneDepartmentId]="ui.selectedLaneDepartmentId()"
+        (toolSelected)="onToolSelected($event)"
+        (laneDepartmentChanged)="onLaneDepartmentChanged($event)"
+        (aiRequested)="onAiRequested()"
+      />
+    </aside>
 
-  <div
-    #canvasViewport
-    class="relative h-[calc(100vh-235px)] min-h-140 overflow-auto rounded-3xl border border-black/5 bg-[#fcfcfb] shadow-[0_16px_40px_rgba(2,3,4,0.08)]"
-    [class.cursor-grab]="ui.activeTool() === 'PAN'"
-    [class.cursor-grabbing]="ui.activeTool() === 'PAN'"
-  >
     <div
-      class="relative"
-      [style.width.px]="ui.canvasWidthPx()"
-      [style.height.px]="ui.canvasHeightPx()"
-      (mousedown)="onViewportMouseDown($event)"
-      (mousemove)="onViewportMouseMove($event)"
-      (mouseup)="onViewportMouseUp()"
-      (mouseleave)="onViewportMouseLeave()"
+      #canvasViewport
+      class="editor-canvas-frame"
+      [class.cursor-grab]="ui.activeTool() === 'PAN'"
+      [class.cursor-grabbing]="ui.activeTool() === 'PAN'"
     >
-      <!-- Fondo -->
-      <div class="pointer-events-none absolute inset-0 z-0">
-        <div class="absolute inset-0 bg-[#fcfcfb]"></div>
+      <div
+        class="relative"
+        [style.width.px]="ui.canvasWidthPx()"
+        [style.height.px]="ui.canvasHeightPx()"
+        (mousedown)="onViewportMouseDown($event)"
+        (mousemove)="onViewportMouseMove($event)"
+        (mouseup)="onViewportMouseUp()"
+        (mouseleave)="onViewportMouseLeave()"
+      >
+        <div class="pointer-events-none absolute inset-0 z-0">
+          <div class="absolute inset-0 bg-[#fcfcfb]"></div>
 
-        <div
-          class="absolute inset-0"
-          style="
-            background-image:
-              linear-gradient(to right, rgba(15, 23, 42, 0.045) 1px, transparent 1px),
-              linear-gradient(to bottom, rgba(15, 23, 42, 0.045) 1px, transparent 1px);
-            background-size: 24px 24px;
-            background-position: 0 0;
-          "
-        ></div>
-
-        <div
-          class="absolute inset-0"
-          style="
-            background-image:
-              linear-gradient(to right, rgba(204, 158, 97, 0.1) 1px, transparent 1px),
-              linear-gradient(to bottom, rgba(204, 158, 97, 0.1) 1px, transparent 1px);
-            background-size: 120px 120px;
-            background-position: 0 0;
-          "
-        ></div>
-      </div>
-
-      <!-- Lanes visuales conectadas -->
-      <div class="pointer-events-none absolute inset-0 z-0">
-        @for (lane of ui.lanes(); track lane.id) {
           <div
-            class="pointer-events-none absolute overflow-hidden rounded-2xl border border-black/10 bg-[rgba(255,255,255,0.55)] shadow-[0_8px_24px_rgba(2,3,4,0.05)]"
-            [style.left.px]="lane.x"
-            [style.top.px]="lane.y"
-            [style.width.px]="lane.width"
-            [style.height.px]="lane.height"
-          >
-            <div
-              class="pointer-events-none flex items-center justify-center border-b border-black/10 bg-[rgba(255,255,255,0.92)] px-3 text-center text-sm font-semibold text-zinc-700 backdrop-blur-sm"
-              [style.height.px]="ui.laneHeaderHeightPx"
-            >
-              {{ lane.departmentName }}
-            </div>
-          </div>
-        }
-      </div>
+            class="absolute inset-0"
+            style="
+              background-image:
+                linear-gradient(to right, rgba(15, 23, 42, 0.045) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(15, 23, 42, 0.045) 1px, transparent 1px);
+              background-size: 24px 24px;
+              background-position: 0 0;
+            "
+          ></div>
 
-      <!-- Controles interactivos de lanes -->
-      <div class="pointer-events-none absolute inset-0 z-20">
-        @for (lane of ui.lanes(); track lane.id) {
           <div
-            class="pointer-events-none absolute"
-            [style.left.px]="lane.x"
-            [style.top.px]="lane.y"
-            [style.width.px]="lane.width"
-            [style.height.px]="lane.height"
-          >
-            <!-- Header drag -->
+            class="absolute inset-0"
+            style="
+              background-image:
+                linear-gradient(to right, rgba(204, 158, 97, 0.1) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(204, 158, 97, 0.1) 1px, transparent 1px);
+              background-size: 120px 120px;
+              background-position: 0 0;
+            "
+          ></div>
+        </div>
+
+        <div class="pointer-events-none absolute inset-0 z-0">
+          @for (lane of ui.lanes(); track lane.id) {
             <div
-              class="pointer-events-auto absolute left-0 top-0 flex cursor-grab items-center justify-center rounded-t-2xl border-b border-transparent bg-transparent text-sm font-semibold text-transparent hover:bg-fr-gold/8"
+              class="pointer-events-none absolute overflow-hidden rounded-2xl border border-black/10 bg-[rgba(255,255,255,0.55)] shadow-[0_8px_24px_rgba(2,3,4,0.05)]"
+              [style.left.px]="lane.x"
+              [style.top.px]="lane.y"
               [style.width.px]="lane.width"
-              [style.height.px]="ui.laneHeaderHeightPx"
-              (mousedown)="onLaneHeaderMouseDown($event, lane.id)"
-              [title]="'Arrastrar para reordenar ' + lane.departmentName"
-            ></div>
+              [style.height.px]="lane.height"
+            >
+              <div
+                class="pointer-events-none flex items-center justify-center border-b border-black/10 bg-[rgba(255,255,255,0.92)] px-3 text-center text-sm font-semibold text-zinc-700 backdrop-blur-sm"
+                [style.height.px]="ui.laneHeaderHeightPx"
+              >
+                {{ lane.departmentName }}
+              </div>
+            </div>
+          }
+        </div>
 
-            <!-- Handle resize -->
+        <div class="pointer-events-none absolute inset-0 z-20">
+          @for (lane of ui.lanes(); track lane.id) {
             <div
-              class="pointer-events-auto absolute right-0 top-0 h-full w-3 cursor-col-resize bg-fr-gold/10 hover:bg-fr-gold/25"
-              (mousedown)="onLaneResizeStart($event, lane.id, ui.getLaneWidth(lane))"
-              [title]="'Redimensionar ' + lane.departmentName"
-            ></div>
-          </div>
-        }
-      </div>
+              class="pointer-events-none absolute"
+              [style.left.px]="lane.x"
+              [style.top.px]="lane.y"
+              [style.width.px]="lane.width"
+              [style.height.px]="lane.height"
+            >
+              <div
+                class="pointer-events-auto absolute left-0 top-0 flex cursor-grab items-center justify-center rounded-t-2xl border-b border-transparent bg-transparent text-sm font-semibold text-transparent hover:bg-fr-gold/8"
+                [style.width.px]="lane.width"
+                [style.height.px]="ui.laneHeaderHeightPx"
+                (mousedown)="onLaneHeaderMouseDown($event, lane.id)"
+                [title]="'Arrastrar para reordenar ' + lane.departmentName"
+              ></div>
 
-      <!-- Paper real -->
-      <div class="absolute inset-0 z-10 overflow-hidden">
-        <div #paperHost class="h-full w-full"></div>
-      </div>
+              <div
+                class="pointer-events-auto absolute right-0 top-0 h-full w-3 cursor-col-resize bg-fr-gold/10 hover:bg-fr-gold/25"
+                (mousedown)="onLaneResizeStart($event, lane.id, ui.getLaneWidth(lane))"
+                [title]="'Redimensionar ' + lane.departmentName"
+              ></div>
+            </div>
+          }
+        </div>
 
-      <div class="pointer-events-none absolute bottom-4 right-4 z-20">
-        <app-editor-minimap [cells]="collab.snapshotCells()" [title]="'Mapa'"></app-editor-minimap>
+        <div class="absolute inset-0 z-10 overflow-hidden">
+          <div #paperHost class="h-full w-full"></div>
+        </div>
       </div>
     </div>
 
-    <div class="pointer-events-none absolute right-4 top-4 z-30">
-      <div class="pointer-events-auto">
-        <app-editor-node-inspector
-          [selectedCell]="getSelectedCell()"
-          [availableTemplates]="ui.availableTemplates()"
-          [isSaving]="false"
-          (saveRequested)="onInspectorSave($event)"
-          (deleteRequested)="onInspectorDelete()"
-        />
-      </div>
-    </div>
+    @if (getSelectedCell()) {
+      <aside class="editor-right-inspector">
+        <div class="editor-right-inspector-inner">
+          <app-editor-node-inspector
+            [selectedCell]="getSelectedCell()"
+            [availableTemplates]="ui.availableTemplates()"
+            [isSaving]="false"
+            (saveRequested)="onInspectorSave($event)"
+            (deleteRequested)="onInspectorDelete()"
+          />
+        </div>
+      </aside>
+    }
   </div>
 
   <app-editor-debug-modal

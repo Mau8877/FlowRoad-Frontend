@@ -1,52 +1,78 @@
-<div
-  class="sticky top-0 z-30 flex w-full flex-wrap items-center gap-2 rounded-2xl border border-black/5 bg-white/90 px-3 py-3 shadow-[0_8px_22px_rgba(2,3,4,0.08)] backdrop-blur-sm"
->
-  <button
-    type="button"
-    (click)="onAi()"
-    class="inline-flex items-center rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-bold text-violet-700 transition hover:bg-violet-100"
-  >
-    🤖 IA
-  </button>
-
-  <div class="mx-1 h-8 w-px bg-zinc-200"></div>
-
-  @for (tool of tools; track tool.key) {
+﻿<aside class="toolbar-shell" aria-label="Herramientas del editor">
+  <div class="toolbar-header">
     <button
       type="button"
-      (click)="onSelectTool(tool.key)"
-      class="inline-flex items-center rounded-xl px-3 py-2 text-sm font-semibold transition"
-      [class]="
-        activeTool === tool.key
-          ? 'bg-fr-gold text-fr-black shadow-[0_4px_12px_rgba(204,158,97,0.22)]'
-          : 'border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'
-      "
+      (click)="onAi()"
+      class="tool-btn tool-btn-ai"
+      title="Asistente IA"
+      aria-label="Asistente IA"
+      aria-pressed="false"
     >
-      {{ tool.label }}
+      <lucide-icon name="sparkles" class="tool-icon"></lucide-icon>
+      <span class="tool-text">Asistente IA</span>
     </button>
-  }
+  </div>
 
-  @if (activeTool === 'LANE') {
-    <div
-      class="ml-2 flex items-center gap-2 rounded-2xl border border-fr-gold/30 bg-fr-gold/8 px-3 py-2"
-    >
-      <span class="text-xs font-bold uppercase tracking-[0.08em] text-fr-taupe">Department</span>
+  <div class="toolbar-body">
+    <div class="tool-group">
+      <div class="tool-group-title">Navegación</div>
 
-      <select
-        class="min-w-[240px] rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-700 outline-none transition focus:border-fr-gold"
-        [ngModel]="selectedLaneDepartmentId"
-        (ngModelChange)="onLaneDepartmentChange($event)"
-      >
-        <option value="">Selecciona department...</option>
-
-        @for (department of availableDepartments; track department.id) {
-          <option [value]="department.id">
-            {{ department.name }}
-          </option>
-        }
-      </select>
-
-      <span class="text-xs text-zinc-500">Luego haz click en el canvas</span>
+      @for (tool of navigationTools; track tool.key) {
+        <button
+          type="button"
+          (click)="onSelectTool(tool.key)"
+          class="tool-btn"
+          [class.is-active]="isToolActive(tool.key)"
+          [title]="tool.label"
+          [attr.aria-label]="tool.label"
+          [attr.aria-pressed]="isToolActive(tool.key)"
+        >
+          <lucide-icon [name]="tool.icon" class="tool-icon"></lucide-icon>
+          <span class="tool-text">{{ tool.label }}</span>
+        </button>
+      }
     </div>
-  }
-</div>
+
+    <div class="tool-divider"></div>
+
+    <div class="tool-group">
+      <div class="tool-group-title">Estructura</div>
+
+      @for (tool of structureTools; track tool.key) {
+        <button
+          type="button"
+          (click)="onSelectTool(tool.key)"
+          class="tool-btn"
+          [class.is-active]="isToolActive(tool.key)"
+          [title]="tool.label"
+          [attr.aria-label]="tool.label"
+          [attr.aria-pressed]="isToolActive(tool.key)"
+        >
+          <lucide-icon [name]="tool.icon" class="tool-icon"></lucide-icon>
+          <span class="tool-text">{{ tool.label }}</span>
+        </button>
+      }
+    </div>
+
+    @if (activeTool === 'LANE') {
+      <div class="lane-box">
+        <label class="lane-label" for="lane-department-select">Departamento</label>
+        <select
+          id="lane-department-select"
+          class="lane-select"
+          [ngModel]="selectedLaneDepartmentId"
+          (ngModelChange)="onLaneDepartmentChange($event)"
+        >
+          <option value="">Selecciona...</option>
+
+          @for (department of availableDepartments; track department.id) {
+            <option [value]="department.id">
+              {{ department.name }}
+            </option>
+          }
+        </select>
+        <div class="lane-help">Haz clic en el canvas para crear la lane.</div>
+      </div>
+    }
+  </div>
+</aside>

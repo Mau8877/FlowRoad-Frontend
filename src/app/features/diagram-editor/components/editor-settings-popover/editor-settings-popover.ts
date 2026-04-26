@@ -2,11 +2,13 @@ import { DepartmentResponse } from '#/app/features/config-org/interfaces/departa
 import { CommonModule } from '@angular/common';
 import {
   Component,
+  ElementRef,
   EventEmitter,
   Input,
   OnChanges,
   Output,
   SimpleChanges,
+  ViewChild,
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -26,15 +28,21 @@ export interface EditorSettingsSubmitPayload {
   styleUrl: './editor-settings-popover.css',
 })
 export class EditorSettingsPopoverComponent implements OnChanges {
+  @ViewChild('importFileInput') importFileInput?: ElementRef<HTMLInputElement>;
+
   @Input() isOpen = false;
   @Input() currentName = '';
   @Input() currentDescription = '';
   @Input() currentLanes: DiagramLane[] = [];
   @Input() availableDepartments: DepartmentResponse[] = [];
   @Input() isSaving = false;
+  @Input() isImporting = false;
+  @Input() isExporting = false;
 
   @Output() closeRequested = new EventEmitter<void>();
   @Output() saveRequested = new EventEmitter<EditorSettingsSubmitPayload>();
+  @Output() exportRequested = new EventEmitter<void>();
+  @Output() importRequested = new EventEmitter<File>();
 
   public draftName = signal('');
   public draftDescription = signal('');
@@ -66,6 +74,26 @@ export class EditorSettingsPopoverComponent implements OnChanges {
       description,
       lanes: this.draftLanes(),
     });
+  }
+
+  onExport(): void {
+    this.exportRequested.emit();
+  }
+
+  openImportPicker(): void {
+    if (this.isImporting) return;
+    this.importFileInput?.nativeElement.click();
+  }
+
+  onImportFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+
+    if (!file) return;
+
+    this.importRequested.emit(file);
+
+    input.value = '';
   }
 
   onAddDepartment(department: DepartmentResponse): void {

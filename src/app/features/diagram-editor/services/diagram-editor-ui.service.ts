@@ -17,8 +17,8 @@ export class DiagramEditorUiService {
   public readonly defaultLaneStartY = 80;
   public readonly laneHeaderHeightPx = 56;
   public readonly laneAutoBottomPaddingPx = 80;
-  public readonly minCanvasWidthPx = 1600;
-  public readonly minCanvasHeightPx = 900;
+  public readonly minCanvasWidthPx = 960;
+  public readonly minCanvasHeightPx = 640;
 
   public diagramName = signal('Diagrama de actividades');
   public diagramDescription = signal('');

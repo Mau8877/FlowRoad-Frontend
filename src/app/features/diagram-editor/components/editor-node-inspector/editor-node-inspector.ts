@@ -14,9 +14,9 @@ import { DiagramCell } from '../../interfaces/diagram.models';
 
 export interface NodeInspectorSubmitPayload {
   label: string;
-  width: number;
-  height: number;
-  templateDocumentId: string;
+  width?: number;
+  height?: number;
+  templateDocumentId?: string;
 }
 
 @Component({
@@ -54,10 +54,21 @@ export class EditorNodeInspectorComponent implements OnChanges {
   }
 
   onSave(): void {
-    if (!this.selectedCell || this.selectedCell.type === 'standard.Link') return;
+    if (!this.selectedCell) return;
+
+    if (this.selectedCell.type === 'standard.Link') {
+      this.saveRequested.emit({
+        label: this.draftLabel().trim(),
+      });
+      return;
+    }
+
+    const isInitialNode =
+      String(this.selectedCell.customData?.['tipo'] ?? '').toUpperCase() === 'INITIAL';
+    const nextLabel = isInitialNode ? '' : this.draftLabel().trim() || 'Sin nombre';
 
     this.saveRequested.emit({
-      label: this.draftLabel().trim() || 'Sin nombre',
+      label: nextLabel,
       width: Math.max(24, Number(this.draftWidth()) || 160),
       height: Math.max(18, Number(this.draftHeight()) || 60),
       templateDocumentId: this.draftTemplateDocumentId().trim(),
@@ -71,8 +82,16 @@ export class EditorNodeInspectorComponent implements OnChanges {
   private syncFromSelectedCell(): void {
     const cell = this.selectedCell;
 
-    if (!cell || cell.type === 'standard.Link') {
+    if (!cell) {
       this.draftLabel.set('');
+      this.draftWidth.set(160);
+      this.draftHeight.set(60);
+      this.draftTemplateDocumentId.set('');
+      return;
+    }
+
+    if (cell.type === 'standard.Link') {
+      this.draftLabel.set(this.getSelectedLinkLabel(cell));
       this.draftWidth.set(160);
       this.draftHeight.set(60);
       this.draftTemplateDocumentId.set('');
@@ -85,5 +104,16 @@ export class EditorNodeInspectorComponent implements OnChanges {
     this.draftWidth.set(Number(cell.size?.width ?? 160));
     this.draftHeight.set(Number(cell.size?.height ?? 60));
     this.draftTemplateDocumentId.set(String(cell.customData?.['templateDocumentId'] ?? ''));
+  }
+
+  private getSelectedLinkLabel(cell: DiagramCell): string {
+    if (cell.type !== 'standard.Link') return '';
+
+    const labels = Array.isArray(cell.labels) ? cell.labels : [];
+    const first = labels[0];
+    const text = first?.attrs?.['text']?.['text'];
+    const customDataText = cell.customData?.['linkLabel'];
+
+    return String(text ?? customDataText ?? '');
   }
 }
