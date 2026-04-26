@@ -39,5 +39,18 @@ export const MENU_ITEMS: NavItem[] = [
     roles: ['ADMIN', 'DESIGNER'],
   },
 
+  {
+    label: 'Mis Procesos',
+    icon: 'list-checks',
+    route: '/process',
+    roles: ['ADMIN', 'WORKER', 'RECEP'],
+  },
+  {
+    label: 'Iniciar Procesos',
+    icon: 'list-plus',
+    route: '/process/list',
+    roles: ['ADMIN', 'RECEP'],
+  },
+
   { label: 'Mis Trámites', icon: 'file-text', route: '/tramites', roles: ['USER'] },
 ];

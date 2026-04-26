@@ -1,8 +1,8 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { roleGuard } from './core/guards/role.guard';
-import { Layout } from './features/layout/layout';
 import { DiagramEditor } from './features/diagram-editor/diagram-editor';
+import { Layout } from './features/layout/layout';
 
 export const routes: Routes = [
   {
@@ -52,9 +52,20 @@ export const routes: Routes = [
       },
       {
         path: 'diagram',
+        canActivate: [roleGuard],
+        data: { roles: ['ADMIN', 'DESIGNER'] },
         loadChildren: () =>
           import('./features/diagram-editor/diagram-editor.routes').then(
             (m) => m.DIAGRAM_EDITOR_ROUTES,
+          ),
+      },
+      {
+        path: 'process',
+        canActivate: [roleGuard],
+        data: { roles: ['ADMIN', 'WORKER', 'RECEP'] },
+        loadChildren: () =>
+          import('./features/process-management/process-management.routes').then(
+            (m) => m.PROCESS_MANAGEMENT_ROUTES,
           ),
       },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },

@@ -1,0 +1,440 @@
+<section class="min-h-[calc(100vh-64px)] bg-slate-50 px-6 py-6 text-slate-900">
+  <header class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+    <div>
+      <p class="mb-1 text-xs font-extrabold uppercase tracking-[0.16em] text-fr-gold">
+        Gestión de procesos
+      </p>
+
+      <h1 class="text-3xl font-extrabold text-slate-900">Atender tarea</h1>
+
+      <p class="mt-2 text-sm text-slate-500">Completa el informe asociado a la tarea asignada.</p>
+    </div>
+
+    <button
+      type="button"
+      class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-100"
+      (click)="goBack()"
+    >
+      Volver
+    </button>
+  </header>
+
+  @if (isLoading()) {
+    <div class="rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+      <p class="text-sm font-bold text-slate-500">Cargando tarea...</p>
+    </div>
+  } @else if (errorMessage()) {
+    <div
+      class="mb-5 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-semibold text-red-700"
+    >
+      {{ errorMessage() }}
+    </div>
+  }
+
+  @if (!isLoading() && assignment()) {
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-[0.85fr_1.15fr]">
+      <aside class="space-y-6">
+        <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 class="text-xl font-extrabold text-slate-900">
+            {{ assignment()?.nodeName }}
+          </h2>
+
+          <p class="mt-2 text-sm text-slate-500">
+            {{ template()?.name || assignment()?.templateName || 'Sin plantilla asociada' }}
+          </p>
+
+          <div class="mt-5 space-y-4">
+            <div>
+              <span class="text-xs font-extrabold uppercase tracking-wide text-slate-400">
+                Estado
+              </span>
+
+              <div class="mt-1">
+                <span
+                  class="rounded-full bg-amber-50 px-3 py-1 text-xs font-extrabold text-amber-700"
+                >
+                  {{ assignment()?.status }}
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <span class="text-xs font-extrabold uppercase tracking-wide text-slate-400">
+                Departamento
+              </span>
+
+              <p class="mt-1 text-sm font-semibold text-slate-700">
+                {{
+                  assignment()?.assignedDepartmentName ||
+                    assignment()?.laneName ||
+                    'Sin departamento'
+                }}
+              </p>
+            </div>
+
+            <div>
+              <span class="text-xs font-extrabold uppercase tracking-wide text-slate-400">
+                Cargo
+              </span>
+
+              <p class="mt-1 text-sm font-semibold text-slate-700">
+                {{ assignment()?.assignedCargoName || 'No especificado' }}
+              </p>
+            </div>
+
+            <div>
+              <span class="text-xs font-extrabold uppercase tracking-wide text-slate-400">
+                Asignado a
+              </span>
+
+              <p class="mt-1 text-sm font-semibold text-slate-700">
+                {{ assignment()?.assignedUserName }}
+              </p>
+            </div>
+
+            <div>
+              <span class="text-xs font-extrabold uppercase tracking-wide text-slate-400">
+                Fecha asignación
+              </span>
+
+              <p class="mt-1 text-sm font-semibold text-slate-700">
+                {{ assignment()?.assignedAt || assignment()?.createdAt }}
+              </p>
+            </div>
+          </div>
+        </article>
+
+        @if (processDetail()) {
+          <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h3 class="text-lg font-extrabold text-slate-900">Proceso</h3>
+
+            <div class="mt-4 space-y-4">
+              <div>
+                <span class="text-xs font-extrabold uppercase tracking-wide text-slate-400">
+                  Código
+                </span>
+
+                <p class="mt-1 text-sm font-semibold text-slate-700">
+                  {{ processDetail()?.instance?.code }}
+                </p>
+              </div>
+
+              <div>
+                <span class="text-xs font-extrabold uppercase tracking-wide text-slate-400">
+                  Diagrama
+                </span>
+
+                <p class="mt-1 text-sm font-semibold text-slate-700">
+                  {{ processDetail()?.instance?.diagramName }}
+                </p>
+              </div>
+
+              <div>
+                <span class="text-xs font-extrabold uppercase tracking-wide text-slate-400">
+                  Iniciado por
+                </span>
+
+                <p class="mt-1 text-sm font-semibold text-slate-700">
+                  {{ processDetail()?.instance?.startedByUserName }}
+                </p>
+              </div>
+            </div>
+          </article>
+        }
+
+        <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div class="mb-4">
+            <h3 class="text-lg font-extrabold text-slate-900">Informes anteriores</h3>
+
+            <p class="mt-1 text-sm text-slate-500">
+              Respuestas registradas en pasos previos del proceso.
+            </p>
+          </div>
+
+          @if (previousHistory().length === 0) {
+            <div
+              class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-5 py-6 text-center"
+            >
+              <p class="text-sm font-semibold text-slate-500">
+                Este proceso todavía no tiene informes anteriores.
+              </p>
+            </div>
+          } @else {
+            <div class="space-y-4">
+              @for (history of previousHistory(); track history.id) {
+                <section class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div class="mb-3">
+                    <h4 class="text-sm font-extrabold text-slate-900">
+                      {{ history.fromNodeName }}
+                    </h4>
+
+                    <p class="mt-1 text-xs font-semibold text-slate-500">
+                      Plantilla: {{ history.templateName || 'Sin plantilla' }}
+                    </p>
+                  </div>
+
+                  <div class="mb-3 grid grid-cols-1 gap-3 text-sm">
+                    <div>
+                      <span
+                        class="block text-xs font-extrabold uppercase tracking-wide text-slate-400"
+                      >
+                        Atendido por
+                      </span>
+
+                      <span class="mt-1 block font-semibold text-slate-700">
+                        {{ history.performedByUserName }}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span
+                        class="block text-xs font-extrabold uppercase tracking-wide text-slate-400"
+                      >
+                        Fecha
+                      </span>
+
+                      <span class="mt-1 block font-semibold text-slate-700">
+                        {{ history.performedAt }}
+                      </span>
+                    </div>
+
+                    @if (history.transitionLabel) {
+                      <div>
+                        <span
+                          class="block text-xs font-extrabold uppercase tracking-wide text-slate-400"
+                        >
+                          Transición
+                        </span>
+
+                        <span class="mt-1 block font-semibold text-slate-700">
+                          {{ history.transitionLabel }}
+                        </span>
+                      </div>
+                    }
+                  </div>
+
+                  @if (getHistoryFields(history).length > 0) {
+                    <div class="mt-4 rounded-xl border border-slate-200 bg-white p-3">
+                      <p class="mb-2 text-xs font-extrabold uppercase tracking-wide text-slate-400">
+                        Respuesta registrada
+                      </p>
+
+                      <div class="space-y-2">
+                        @for (field of getHistoryFields(history); track field.fieldId) {
+                          <div class="text-sm">
+                            <span class="font-bold text-slate-700"> {{ field.label }}: </span>
+
+                            <span class="text-slate-600">
+                              {{ formatHistoryValue(field.value) }}
+                            </span>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  }
+
+                  @if (history.comment) {
+                    <div class="mt-4 rounded-xl border border-slate-200 bg-white p-3">
+                      <p class="mb-1 text-xs font-extrabold uppercase tracking-wide text-slate-400">
+                        Comentario
+                      </p>
+
+                      <p class="text-sm text-slate-700">
+                        {{ history.comment }}
+                      </p>
+                    </div>
+                  }
+                </section>
+              }
+            </div>
+          }
+        </article>
+      </aside>
+
+      <main class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="mb-5">
+          <h2 class="text-xl font-extrabold text-slate-900">
+            {{ template()?.name || 'Informe de atención' }}
+          </h2>
+
+          <p class="mt-1 text-sm text-slate-500">
+            {{
+              template()?.description || 'Completa los campos requeridos para avanzar el proceso.'
+            }}
+          </p>
+        </div>
+
+        @if (successMessage()) {
+          <div
+            class="mb-5 rounded-2xl border border-green-200 bg-green-50 px-5 py-4 text-sm font-semibold text-green-700"
+          >
+            {{ successMessage() }}
+          </div>
+        }
+
+        @if (isLoadingTemplate()) {
+          <div class="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-8 text-center">
+            <p class="text-sm font-bold text-slate-500">Cargando plantilla...</p>
+          </div>
+        } @else if (!template()) {
+          <div
+            class="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-semibold text-amber-700"
+          >
+            Esta tarea no tiene una plantilla cargada. Puedes completar la tarea con un comentario.
+          </div>
+        } @else {
+          <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+            @for (field of sortedTemplateFields(); track field.fieldId) {
+              <div [ngClass]="getGridClass(field)">
+                <label class="block">
+                  <span class="mb-2 block text-sm font-bold text-slate-700">
+                    {{ field.label }}
+
+                    @if (field.required) {
+                      <span class="text-red-500">*</span>
+                    }
+                  </span>
+
+                  @switch (field.type) {
+                    @case (FieldType.TEXT) {
+                      <input
+                        class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white"
+                        [placeholder]="field.uiProps.placeholder || ''"
+                        [ngModel]="getStringFieldValue(field.fieldId)"
+                        (ngModelChange)="updateFieldValue(field, $event)"
+                      />
+                    }
+
+                    @case (FieldType.TEXTAREA) {
+                      <textarea
+                        class="min-h-28 w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white"
+                        [placeholder]="field.uiProps.placeholder || ''"
+                        [ngModel]="getStringFieldValue(field.fieldId)"
+                        (ngModelChange)="updateFieldValue(field, $event)"
+                      ></textarea>
+                    }
+
+                    @case (FieldType.NUMBER) {
+                      <input
+                        type="number"
+                        class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white"
+                        [placeholder]="field.uiProps.placeholder || ''"
+                        [ngModel]="getStringFieldValue(field.fieldId)"
+                        (ngModelChange)="updateFieldValue(field, $event)"
+                      />
+                    }
+
+                    @case (FieldType.DATE) {
+                      <input
+                        type="date"
+                        class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white"
+                        [ngModel]="getStringFieldValue(field.fieldId)"
+                        (ngModelChange)="updateFieldValue(field, $event)"
+                      />
+                    }
+
+                    @case (FieldType.SELECT) {
+                      <select
+                        class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white"
+                        [ngModel]="getStringFieldValue(field.fieldId)"
+                        (ngModelChange)="updateFieldValue(field, $event)"
+                      >
+                        <option value="">Selecciona una opción</option>
+
+                        @for (option of field.options || []; track option.value) {
+                          <option [value]="option.value">
+                            {{ option.label }}
+                          </option>
+                        }
+                      </select>
+                    }
+
+                    @case (FieldType.MULTIPLE_CHOICE) {
+                      <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <div class="grid gap-3">
+                          @for (option of field.options || []; track option.value) {
+                            <label
+                              class="flex items-center gap-3 text-sm font-semibold text-slate-700"
+                            >
+                              <input
+                                type="checkbox"
+                                class="h-4 w-4 rounded border-slate-300"
+                                [checked]="isOptionSelected(field, option.value)"
+                                (change)="toggleMultipleChoice(field, option.value)"
+                              />
+
+                              <span>{{ option.label }}</span>
+                            </label>
+                          }
+                        </div>
+                      </div>
+                    }
+
+                    @case (FieldType.FILE) {
+                      <input
+                        class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white"
+                        placeholder="URL o referencia del archivo"
+                        [ngModel]="getStringFieldValue(field.fieldId)"
+                        (ngModelChange)="updateFieldValue(field, $event)"
+                      />
+                    }
+
+                    @case (FieldType.PHOTO) {
+                      <input
+                        class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white"
+                        placeholder="URL o referencia de la foto"
+                        [ngModel]="getStringFieldValue(field.fieldId)"
+                        (ngModelChange)="updateFieldValue(field, $event)"
+                      />
+                    }
+
+                    @default {
+                      <input
+                        class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white"
+                        [placeholder]="field.uiProps.placeholder || ''"
+                        [ngModel]="getStringFieldValue(field.fieldId)"
+                        (ngModelChange)="updateFieldValue(field, $event)"
+                      />
+                    }
+                  }
+                </label>
+              </div>
+            }
+          </div>
+        }
+
+        <section class="mt-8 border-t border-slate-100 pt-6">
+          <label class="block">
+            <span class="mb-2 block text-sm font-bold text-slate-700"> Comentario </span>
+
+            <textarea
+              class="min-h-28 w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white"
+              [ngModel]="comment()"
+              (ngModelChange)="comment.set($event)"
+              placeholder="Comentario de atención..."
+            ></textarea>
+          </label>
+        </section>
+
+        <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            class="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-100"
+            (click)="goBack()"
+          >
+            Cancelar
+          </button>
+
+          <button
+            type="button"
+            class="rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+            [disabled]="isSubmitting() || assignment()?.status !== 'PENDING'"
+            (click)="completeAssignment()"
+          >
+            {{ isSubmitting() ? 'Completando...' : 'Completar tarea' }}
+          </button>
+        </div>
+      </main>
+    </div>
+  }
+</section>
