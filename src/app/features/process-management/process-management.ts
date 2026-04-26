@@ -129,10 +129,10 @@ export class ProcessManagement implements OnInit, OnDestroy {
   formatStatus(status: string): string {
     switch (status) {
       case 'RUNNING':
-        return 'En ejecuciÃ³n';
+        return 'En ejecución';
 
       case 'PENDING_ASSIGNMENT':
-        return 'Pendiente de asignaciÃ³n';
+        return 'Pendiente de asignación';
 
       case 'COMPLETED':
         return 'Completado';
@@ -216,8 +216,18 @@ export class ProcessManagement implements OnInit, OnDestroy {
       this.processSocketService.onProcessInstanceNotification$.subscribe((notification) => {
         console.log('[PROCESS-MANAGEMENT][PROCESS_EVENT]', notification);
 
-        this.loadProcessInstances();
-        this.loadMyPendingAssignments();
+        const eventType = notification.type;
+
+        if (
+          eventType === 'PROCESS_CANCELLED' ||
+          eventType === 'PROCESS_COMPLETED' ||
+          eventType === 'PROCESS_UPDATED' ||
+          eventType === 'PROCESS_PENDING_ASSIGNMENT' ||
+          eventType === 'PROCESS_CREATED'
+        ) {
+          this.loadProcessInstances();
+          this.loadMyPendingAssignments();
+        }
       }),
     );
   }

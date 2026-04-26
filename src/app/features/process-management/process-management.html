@@ -372,12 +372,15 @@
                 </td>
 
                 <td class="px-4 py-3 text-right">
-                  <a
-                    [routerLink]="['/process/detail', process.id]"
-                    class="inline-flex items-center justify-center rounded-xl border border-fr-taupe/45 bg-fr-black px-3 py-2 text-xs font-bold text-white transition hover:border-fr-gold hover:bg-fr-brown"
-                  >
-                    Ver detalle
-                  </a>
+                  <div class="flex justify-end gap-2">
+                    <a
+                      [routerLink]="['/process/detail', process.id]"
+                      class="inline-flex items-center justify-center rounded-xl border border-fr-taupe/45 bg-fr-black px-3 py-2 text-xs font-bold text-white transition hover:border-fr-gold hover:bg-fr-brown"
+                    >
+                      Ver detalle
+                    </a>
+
+                  </div>
                 </td>
               </tr>
             }

@@ -117,7 +117,16 @@
                       Ver detalle
                     </a>
 
-                    <!-- TODO: Mostrar botón "Cancelar" para estados RUNNING/PENDING_ASSIGNMENT cuando exista endpoint de cancelación -->
+                    @if (canCancelProcess(process)) {
+                      <button
+                        type="button"
+                        class="inline-flex items-center justify-center rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                        [disabled]="isCancellingProcess(process.id)"
+                        (click)="cancelProcess(process)"
+                      >
+                        {{ isCancellingProcess(process.id) ? 'Cancelando...' : 'Cancelar' }}
+                      </button>
+                    }
                   </div>
                 </td>
               </tr>

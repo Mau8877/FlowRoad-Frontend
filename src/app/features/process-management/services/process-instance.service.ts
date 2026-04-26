@@ -38,6 +38,13 @@ export class ProcessInstanceService {
     return this.http.post<ProcessInstanceSummaryResponse>(this.PROCESS_INSTANCES_URL, request);
   }
 
+  CANCEL(processInstanceId: string): Observable<ProcessInstanceSummaryResponse> {
+    return this.http.put<ProcessInstanceSummaryResponse>(
+      `${this.PROCESS_INSTANCES_URL}/${processInstanceId}/cancel`,
+      {},
+    );
+  }
+
   COMPLETE_ASSIGNMENT(
     processInstanceId: string,
     assignmentId: string,

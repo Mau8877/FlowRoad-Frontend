@@ -1,13 +1,14 @@
 import { ProcessInstanceStatus } from './process-instance.model';
 
+export type ProcessInstanceNotificationType =
+  | 'PROCESS_CREATED'
+  | 'PROCESS_UPDATED'
+  | 'PROCESS_COMPLETED'
+  | 'PROCESS_CANCELLED'
+  | 'PROCESS_PENDING_ASSIGNMENT';
+
 export interface ProcessInstanceNotification {
-  type:
-    | 'PROCESS_CREATED'
-    | 'PROCESS_UPDATED'
-    | 'PROCESS_COMPLETED'
-    | 'PROCESS_CANCELLED'
-    | 'PROCESS_PENDING_ASSIGNMENT'
-    | string;
+  type: ProcessInstanceNotificationType | string;
 
   processInstanceId: string;
   processCode: string;

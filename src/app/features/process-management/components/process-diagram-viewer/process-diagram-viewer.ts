@@ -131,14 +131,25 @@ export class ProcessDiagramViewer implements AfterViewChecked, OnChanges, OnDest
     }
 
     try {
-      const clonedCells = this.cloneCells(cells).map((cell: any) => ({
-        ...cell,
-        z: cell.type === 'standard.Link' ? 10 : 20,
-      }));
+      const clonedCells = this.cloneCells(cells).map((cell: any) => {
+        const normalizedCell = {
+          ...cell,
+          z: cell.type === 'standard.Link' ? 10 : 20,
+        };
+
+        if (this.isFinalCircleCellData(normalizedCell)) {
+          return this.prepareFinalCircleCellData(normalizedCell);
+        }
+
+        if (this.isInitialCircleCellData(normalizedCell)) {
+          return this.prepareInitialCircleCellData(normalizedCell);
+        }
+
+        return normalizedCell;
+      });
 
       this.graph.fromJSON({ cells: clonedCells });
 
-      this.prepareCircleNodes();
       this.applyReadOnlyStyle();
       this.applyProgressStyles();
       this.applySmartRoutingToLinks();
@@ -146,7 +157,6 @@ export class ProcessDiagramViewer implements AfterViewChecked, OnChanges, OnDest
 
       requestAnimationFrame(() => {
         this.fitDiagramToContainer(lanes);
-        this.prepareCircleNodes();
         this.applySmartRoutingToLinks();
         this.restoreZOrder();
         this.updateLaneOverlays(lanes);
@@ -158,117 +168,10 @@ export class ProcessDiagramViewer implements AfterViewChecked, OnChanges, OnDest
     }
   }
 
-  private resolveDiagramCells(): unknown[] {
-    const diagramAsAny = this.diagram as any;
-
-    if (!diagramAsAny) {
-      return [];
-    }
-
-    if (Array.isArray(diagramAsAny.cells)) {
-      return diagramAsAny.cells;
-    }
-
-    if (Array.isArray(diagramAsAny.diagram?.cells)) {
-      return diagramAsAny.diagram.cells;
-    }
-
-    if (Array.isArray(diagramAsAny.snapshot?.cells)) {
-      return diagramAsAny.snapshot.cells;
-    }
-
-    if (Array.isArray(diagramAsAny.snapshot?.diagram?.cells)) {
-      return diagramAsAny.snapshot.diagram.cells;
-    }
-
-    if (typeof diagramAsAny.snapshot === 'string') {
-      try {
-        const parsedSnapshot = JSON.parse(diagramAsAny.snapshot);
-
-        if (Array.isArray(parsedSnapshot.cells)) {
-          return parsedSnapshot.cells;
-        }
-
-        if (Array.isArray(parsedSnapshot.diagram?.cells)) {
-          return parsedSnapshot.diagram.cells;
-        }
-      } catch {
-        return [];
-      }
-    }
-
-    return [];
-  }
-
-  private resolveDiagramLanes(): RuntimeLane[] {
-    const diagramAsAny = this.diagram as any;
-
-    if (!diagramAsAny) {
-      return [];
-    }
-
-    if (Array.isArray(diagramAsAny.lanes)) {
-      return diagramAsAny.lanes;
-    }
-
-    if (Array.isArray(diagramAsAny.diagram?.lanes)) {
-      return diagramAsAny.diagram.lanes;
-    }
-
-    if (Array.isArray(diagramAsAny.snapshot?.lanes)) {
-      return diagramAsAny.snapshot.lanes;
-    }
-
-    if (Array.isArray(diagramAsAny.snapshot?.diagram?.lanes)) {
-      return diagramAsAny.snapshot.diagram.lanes;
-    }
-
-    if (typeof diagramAsAny.snapshot === 'string') {
-      try {
-        const parsedSnapshot = JSON.parse(diagramAsAny.snapshot);
-
-        if (Array.isArray(parsedSnapshot.lanes)) {
-          return parsedSnapshot.lanes;
-        }
-
-        if (Array.isArray(parsedSnapshot.diagram?.lanes)) {
-          return parsedSnapshot.diagram.lanes;
-        }
-      } catch {
-        return [];
-      }
-    }
-
-    return [];
-  }
-
-  private cloneCells(cells: unknown[]): any[] {
-    return JSON.parse(JSON.stringify(cells)) as any[];
-  }
-
-  private prepareCircleNodes(): void {
-    if (!this.graph) {
-      return;
-    }
-
-    this.graph.getElements().forEach((element: dia.Element) => {
-      if (!this.isCircleNode(element)) {
-        return;
-      }
-
-      this.applyCircleMarkup(element);
-    });
-  }
-
-  /**
-   * IMPORTANTE:
-   * Tu nodo FINAL ya viene del backend con selector "inner".
-   * Por eso usamos "inner", no "innerDot".
-   */
-  private applyCircleMarkup(element: dia.Element): void {
-    element.set(
-      'markup',
-      [
+  private prepareFinalCircleCellData(cell: any): any {
+    return {
+      ...cell,
+      markup: [
         {
           tagName: 'circle',
           selector: 'body',
@@ -282,36 +185,126 @@ export class ProcessDiagramViewer implements AfterViewChecked, OnChanges, OnDest
           selector: 'label',
         },
       ],
-      { silent: true },
-    );
+      attrs: {
+        ...(cell.attrs ?? {}),
+        body: {
+          ...(cell.attrs?.body ?? {}),
+          refCx: '50%',
+          refCy: '50%',
+          refR: '50%',
+        },
+        inner: {
+          refCx: '50%',
+          refCy: '50%',
+          refR: '28%',
+          fill: '#10b981',
+          stroke: '#10b981',
+          strokeWidth: 1,
+          display: 'block',
+        },
+        label: {
+          ...(cell.attrs?.label ?? {}),
+          text: cell.attrs?.label?.text ?? '',
+          refX: '50%',
+          refY: '50%',
+          textAnchor: 'middle',
+          textVerticalAnchor: 'middle',
+        },
+      },
+    };
+  }
 
-    const isFinal = this.isFinalNode(element);
+  private prepareInitialCircleCellData(cell: any): any {
+    return {
+      ...cell,
+      markup: [
+        {
+          tagName: 'circle',
+          selector: 'body',
+        },
+        {
+          tagName: 'text',
+          selector: 'label',
+        },
+      ],
+      attrs: {
+        ...(cell.attrs ?? {}),
+        body: {
+          ...(cell.attrs?.body ?? {}),
+          refCx: '50%',
+          refCy: '50%',
+          refR: '50%',
+        },
+        label: {
+          ...(cell.attrs?.label ?? {}),
+          text: cell.attrs?.label?.text ?? '',
+          refX: '50%',
+          refY: '50%',
+          textAnchor: 'middle',
+          textVerticalAnchor: 'middle',
+        },
+      },
+    };
+  }
 
-    element.attr({
-      body: {
-        refCx: '50%',
-        refCy: '50%',
-        refR: '50%',
-      },
-      inner: {
-        refCx: '50%',
-        refCy: '50%',
-        refR: '28%',
-        display: isFinal ? 'block' : 'none',
-      },
-      label: {
-        refX: '50%',
-        refY: '50%',
-        textAnchor: 'middle',
-        textVerticalAnchor: 'middle',
-      },
-    });
+  private resolveDiagramCells(): unknown[] {
+    const diagramAsAny = this.diagram as any;
+
+    if (!diagramAsAny) return [];
+
+    if (Array.isArray(diagramAsAny.cells)) return diagramAsAny.cells;
+    if (Array.isArray(diagramAsAny.diagram?.cells)) return diagramAsAny.diagram.cells;
+    if (Array.isArray(diagramAsAny.snapshot?.cells)) return diagramAsAny.snapshot.cells;
+    if (Array.isArray(diagramAsAny.snapshot?.diagram?.cells)) {
+      return diagramAsAny.snapshot.diagram.cells;
+    }
+
+    if (typeof diagramAsAny.snapshot === 'string') {
+      try {
+        const parsedSnapshot = JSON.parse(diagramAsAny.snapshot);
+
+        if (Array.isArray(parsedSnapshot.cells)) return parsedSnapshot.cells;
+        if (Array.isArray(parsedSnapshot.diagram?.cells)) return parsedSnapshot.diagram.cells;
+      } catch {
+        return [];
+      }
+    }
+
+    return [];
+  }
+
+  private resolveDiagramLanes(): RuntimeLane[] {
+    const diagramAsAny = this.diagram as any;
+
+    if (!diagramAsAny) return [];
+
+    if (Array.isArray(diagramAsAny.lanes)) return diagramAsAny.lanes;
+    if (Array.isArray(diagramAsAny.diagram?.lanes)) return diagramAsAny.diagram.lanes;
+    if (Array.isArray(diagramAsAny.snapshot?.lanes)) return diagramAsAny.snapshot.lanes;
+    if (Array.isArray(diagramAsAny.snapshot?.diagram?.lanes)) {
+      return diagramAsAny.snapshot.diagram.lanes;
+    }
+
+    if (typeof diagramAsAny.snapshot === 'string') {
+      try {
+        const parsedSnapshot = JSON.parse(diagramAsAny.snapshot);
+
+        if (Array.isArray(parsedSnapshot.lanes)) return parsedSnapshot.lanes;
+        if (Array.isArray(parsedSnapshot.diagram?.lanes)) return parsedSnapshot.diagram.lanes;
+      } catch {
+        return [];
+      }
+    }
+
+    return [];
+  }
+
+  private cloneCells(cells: unknown[]): any[] {
+    return JSON.parse(JSON.stringify(cells)) as any[];
   }
 
   private applyReadOnlyStyle(): void {
-    if (!this.graph) {
-      return;
-    }
+    if (!this.graph) return;
 
     this.graph.getCells().forEach((cell: dia.Cell) => {
       if (cell.isLink()) {
@@ -335,34 +328,33 @@ export class ProcessDiagramViewer implements AfterViewChecked, OnChanges, OnDest
 
       const element = cell as dia.Element;
 
-      if (this.isCircleNode(element)) {
-        this.applyCircleMarkup(element);
-      }
-
       element.attr({
         body: {
           stroke: '#cbd5e1',
           strokeWidth: 2,
           fill: '#ffffff',
         },
-        inner: {
-          display: this.isFinalNode(element) ? 'block' : 'none',
-          stroke: '#cbd5e1',
-          fill: '#cbd5e1',
-          strokeWidth: 1,
-        },
         label: {
           fill: '#0f172a',
           fontWeight: 700,
         },
       });
+
+      if (this.isFinalNode(element)) {
+        element.attr({
+          inner: {
+            display: 'block',
+            fill: '#cbd5e1',
+            stroke: '#cbd5e1',
+            strokeWidth: 1,
+          },
+        });
+      }
     });
   }
 
   private applyProgressStyles(): void {
-    if (!this.graph) {
-      return;
-    }
+    if (!this.graph) return;
 
     const completed = new Set(this.completedNodeIds ?? []);
     const active = new Set(this.activeNodeIds ?? []);
@@ -403,9 +395,7 @@ export class ProcessDiagramViewer implements AfterViewChecked, OnChanges, OnDest
   }
 
   private applySmartRoutingToLinks(): void {
-    if (!this.graph) {
-      return;
-    }
+    if (!this.graph) return;
 
     this.graph.getLinks().forEach((link: dia.Link) => {
       const currentVertices = link.vertices() ?? [];
@@ -422,30 +412,22 @@ export class ProcessDiagramViewer implements AfterViewChecked, OnChanges, OnDest
         { silent: true },
       );
 
-      if (hasVertices) {
-        link.set(
-          'router',
-          {
-            name: 'normal',
-          },
-          { silent: true },
-        );
-      } else {
-        link.set(
-          'router',
-          {
-            name: 'manhattan',
-            args: {
-              step: 20,
-              padding: 24,
-              maximumLoops: 200,
-              startDirections: ['top', 'right', 'bottom', 'left'],
-              endDirections: ['top', 'right', 'bottom', 'left'],
+      link.set(
+        'router',
+        hasVertices
+          ? { name: 'normal' }
+          : {
+              name: 'manhattan',
+              args: {
+                step: 20,
+                padding: 24,
+                maximumLoops: 200,
+                startDirections: ['top', 'right', 'bottom', 'left'],
+                endDirections: ['top', 'right', 'bottom', 'left'],
+              },
             },
-          },
-          { silent: true },
-        );
-      }
+        { silent: true },
+      );
 
       const source = { ...(link.get('source') ?? {}) };
       const target = { ...(link.get('target') ?? {}) };
@@ -488,22 +470,12 @@ export class ProcessDiagramViewer implements AfterViewChecked, OnChanges, OnDest
     completed: Set<string>,
     active: Set<string>,
   ): CellStatus {
-    if (active.has(cellId)) {
-      return 'ACTIVE';
-    }
-
-    if (completed.has(cellId)) {
-      return 'COMPLETED';
-    }
-
+    if (active.has(cellId)) return 'ACTIVE';
+    if (completed.has(cellId)) return 'COMPLETED';
     return 'PENDING';
   }
 
   private paintCompletedNode(element: dia.Element): void {
-    if (this.isCircleNode(element)) {
-      this.applyCircleMarkup(element);
-    }
-
     const isFinal = this.isFinalNode(element);
 
     element.attr({
@@ -512,24 +484,25 @@ export class ProcessDiagramViewer implements AfterViewChecked, OnChanges, OnDest
         stroke: '#10b981',
         strokeWidth: 3,
       },
-      inner: {
-        display: isFinal ? 'block' : 'none',
-        fill: '#10b981',
-        stroke: '#10b981',
-        strokeWidth: 1,
-      },
       label: {
         fill: '#065f46',
         fontWeight: 800,
       },
     });
+
+    if (isFinal) {
+      element.attr({
+        inner: {
+          display: 'block',
+          fill: '#10b981',
+          stroke: '#10b981',
+          strokeWidth: 1,
+        },
+      });
+    }
   }
 
   private paintActiveNode(element: dia.Element): void {
-    if (this.isCircleNode(element)) {
-      this.applyCircleMarkup(element);
-    }
-
     const isFinal = this.isFinalNode(element);
 
     element.attr({
@@ -538,24 +511,25 @@ export class ProcessDiagramViewer implements AfterViewChecked, OnChanges, OnDest
         stroke: '#cc9e61',
         strokeWidth: 4,
       },
-      inner: {
-        display: isFinal ? 'block' : 'none',
-        fill: '#cc9e61',
-        stroke: '#cc9e61',
-        strokeWidth: 1,
-      },
       label: {
         fill: '#541f14',
         fontWeight: 900,
       },
     });
+
+    if (isFinal) {
+      element.attr({
+        inner: {
+          display: 'block',
+          fill: '#cc9e61',
+          stroke: '#cc9e61',
+          strokeWidth: 1,
+        },
+      });
+    }
   }
 
   private paintPendingNode(element: dia.Element): void {
-    if (this.isCircleNode(element)) {
-      this.applyCircleMarkup(element);
-    }
-
     const isFinal = this.isFinalNode(element);
 
     element.attr({
@@ -564,17 +538,22 @@ export class ProcessDiagramViewer implements AfterViewChecked, OnChanges, OnDest
         stroke: '#cbd5e1',
         strokeWidth: 2,
       },
-      inner: {
-        display: isFinal ? 'block' : 'none',
-        fill: '#cbd5e1',
-        stroke: '#cbd5e1',
-        strokeWidth: 1,
-      },
       label: {
         fill: '#475569',
         fontWeight: 700,
       },
     });
+
+    if (isFinal) {
+      element.attr({
+        inner: {
+          display: 'block',
+          fill: '#cbd5e1',
+          stroke: '#cbd5e1',
+          strokeWidth: 1,
+        },
+      });
+    }
   }
 
   private paintTraversedLink(link: dia.Link): void {
@@ -608,9 +587,7 @@ export class ProcessDiagramViewer implements AfterViewChecked, OnChanges, OnDest
   }
 
   private restoreZOrder(): void {
-    if (!this.graph) {
-      return;
-    }
+    if (!this.graph) return;
 
     this.graph.getLinks().forEach((link: dia.Link) => {
       link.toBack();
@@ -622,9 +599,7 @@ export class ProcessDiagramViewer implements AfterViewChecked, OnChanges, OnDest
   }
 
   private fitDiagramToContainer(lanes: RuntimeLane[]): void {
-    if (!this.paper || !this.graph || this.graph.getCells().length === 0) {
-      return;
-    }
+    if (!this.paper || !this.graph || this.graph.getCells().length === 0) return;
 
     const container = this.paperContainer?.nativeElement;
 
@@ -661,9 +636,7 @@ export class ProcessDiagramViewer implements AfterViewChecked, OnChanges, OnDest
         const orderA = a.order ?? 0;
         const orderB = b.order ?? 0;
 
-        if (orderA !== orderB) {
-          return orderA - orderB;
-        }
+        if (orderA !== orderB) return orderA - orderB;
 
         return a.x - b.x;
       })
@@ -684,9 +657,7 @@ export class ProcessDiagramViewer implements AfterViewChecked, OnChanges, OnDest
   }
 
   private isFinalNode(element: dia.Element): boolean {
-    if (!this.graph || !this.isCircleNode(element)) {
-      return false;
-    }
+    if (!this.graph || !this.isCircleNode(element)) return false;
 
     const customData = element.get('customData') as { tipo?: string; nombre?: string } | undefined;
 
@@ -710,6 +681,24 @@ export class ProcessDiagramViewer implements AfterViewChecked, OnChanges, OnDest
     });
 
     return incomingLinks.length > 0 && outgoingLinks.length === 0;
+  }
+
+  private isFinalCircleCellData(cell: any): boolean {
+    if (cell?.type !== 'standard.Circle') return false;
+
+    const tipo = this.normalizeText(cell?.customData?.tipo);
+    const nombre = this.normalizeText(cell?.customData?.nombre);
+
+    return tipo === 'FINAL' || tipo === 'FIN' || nombre === 'FIN' || nombre === 'FINAL';
+  }
+
+  private isInitialCircleCellData(cell: any): boolean {
+    if (cell?.type !== 'standard.Circle') return false;
+
+    const tipo = this.normalizeText(cell?.customData?.tipo);
+    const nombre = this.normalizeText(cell?.customData?.nombre);
+
+    return tipo === 'INITIAL' || tipo === 'INICIO' || nombre === 'INICIO';
   }
 
   private normalizeText(value?: string | null): string {

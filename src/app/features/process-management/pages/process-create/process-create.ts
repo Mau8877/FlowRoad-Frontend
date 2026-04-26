@@ -53,6 +53,7 @@ export class ProcessCreate implements OnInit {
 
   public isLoading = signal(false);
   public isCreateModalOpen = signal(false);
+  public cancellingProcessIds = signal<Set<string>>(new Set());
 
   public formFields: FormField[] = [
     {
@@ -144,6 +145,57 @@ export class ProcessCreate implements OnInit {
 
   goBack(): void {
     this.router.navigate(['/process']);
+  }
+
+  canCancelProcess(process: ProcessInstanceSummaryResponse): boolean {
+    return process.status === 'RUNNING' || process.status === 'PENDING_ASSIGNMENT';
+  }
+
+  isCancellingProcess(processId: string): boolean {
+    return this.cancellingProcessIds().has(processId);
+  }
+
+  cancelProcess(process: ProcessInstanceSummaryResponse): void {
+    if (!this.canCancelProcess(process)) {
+      return;
+    }
+
+    const confirmed = confirm(`¿Seguro que deseas cancelar el trámite ${process.code}?`);
+
+    if (!confirmed) {
+      return;
+    }
+
+    this.cancellingProcessIds.update((current) => {
+      const next = new Set(current);
+      next.add(process.id);
+      return next;
+    });
+
+    this.processInstanceService.CANCEL(process.id).subscribe({
+      next: (updatedProcess) => {
+        this.processInstances.update((current) =>
+          current.map((item) => (item.id === updatedProcess.id ? updatedProcess : item)),
+        );
+
+        this.cancellingProcessIds.update((current) => {
+          const next = new Set(current);
+          next.delete(process.id);
+          return next;
+        });
+
+        this.LOAD_DATA();
+      },
+      error: (error) => {
+        console.error('[PROCESS-CREATE][CANCEL_PROCESS_ERROR]', error);
+
+        this.cancellingProcessIds.update((current) => {
+          const next = new Set(current);
+          next.delete(process.id);
+          return next;
+        });
+      },
+    });
   }
 
   formatDate(value?: string | null): string {
