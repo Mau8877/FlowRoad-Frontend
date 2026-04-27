@@ -163,4 +163,14 @@
     [logs]="collab.logs()"
     (closeRequested)="closeDebugModal()"
   />
+
+  <app-editor-ai-modal
+    [isOpen]="isAiModalOpen()"
+    [isLoading]="isAiGenerating() || isAiApplying()"
+    [response]="aiResponse()"
+    [errorMessage]="aiErrorMessage()"
+    (closeRequested)="closeAiModal()"
+    (generateRequested)="generateAiDiagram($event)"
+    (applyRequested)="applyAiDiagram()"
+  />
 </div>

@@ -78,7 +78,8 @@ export class EditorToolbarComponent {
     this.toolSelected.emit(tool);
   }
 
-  onAi(): void {
+  onAiClick(): void {
+    console.log('AI button clicked');
     this.aiRequested.emit();
   }
 

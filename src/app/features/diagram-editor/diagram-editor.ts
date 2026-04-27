@@ -11,10 +11,17 @@ import {
   signal,
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { finalize } from 'rxjs';
+import { finalize, forkJoin, map, of } from 'rxjs';
 
+import {
+  CreateTemplateRequest,
+  FieldDefinition,
+  FieldType,
+  TemplateResponse,
+} from '#/app/features/config-org/interfaces/plantillas.models';
 import { DepartmentService } from '#/app/features/config-org/services/departamento.service';
 import { TemplateService } from '#/app/features/config-org/services/plantillas.service';
+import { EditorAiModalComponent } from './components/editor-ai-modal/editor-ai-modal';
 import { EditorDebugModalComponent } from './components/editor-debug-modal/editor-debug-modal';
 import { EditorHeaderComponent } from './components/editor-header/editor-header';
 import {
@@ -26,7 +33,16 @@ import {
   type EditorSettingsSubmitPayload,
 } from './components/editor-settings-popover/editor-settings-popover';
 import { EditorToolbarComponent } from './components/editor-toolbar/editor-toolbar';
-import { Diagram, DiagramCell, EditorTool } from './interfaces/diagram.models';
+import {
+  Diagram,
+  DiagramAiExistingTemplateContext,
+  DiagramAiRequest,
+  DiagramAiResponse,
+  DiagramAiTemplateSuggestion,
+  DiagramCell,
+  EditorTool,
+} from './interfaces/diagram.models';
+import { DiagramAiService } from './services/diagram-ai.service';
 import { DiagramEditorCollaborationService } from './services/diagram-editor-collaboration.service';
 import { DiagramEditorDragSessionService } from './services/diagram-editor-drag-session.service';
 import { DiagramEditorLaneService } from './services/diagram-editor-lane.service';
@@ -46,6 +62,7 @@ import { DiagramService } from './services/diagram.service';
     EditorSettingsPopoverComponent,
     EditorNodeInspectorComponent,
     EditorDebugModalComponent,
+    EditorAiModalComponent,
   ],
   templateUrl: './diagram-editor.html',
   styleUrl: './diagram-editor.css',
@@ -68,6 +85,7 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
   private readonly diagramService = inject(DiagramService);
   private readonly departmentService = inject(DepartmentService);
   private readonly templateService = inject(TemplateService);
+  private readonly diagramAiService = inject(DiagramAiService);
 
   protected readonly ui = inject(DiagramEditorUiService);
   protected readonly collab = inject(DiagramEditorCollaborationService);
@@ -83,8 +101,17 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
   private resizeStartWidth = 0;
 
   private draggingLaneId: string | null = null;
+
   protected readonly isImporting = signal(false);
   protected readonly isExporting = signal(false);
+
+  protected readonly isAiModalOpen = signal(false);
+  protected readonly isAiGenerating = signal(false);
+  protected readonly isAiApplying = signal(false);
+  protected readonly aiResponse = signal<DiagramAiResponse | null>(null);
+  protected readonly aiErrorMessage = signal('');
+
+  private readonly fullTemplates = signal<TemplateResponse[]>([]);
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id') || '';
@@ -110,6 +137,12 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
 
     if (event.key === 'Escape') {
       event.preventDefault();
+
+      if (this.isAiModalOpen()) {
+        this.closeAiModal();
+        return;
+      }
+
       this.collab.cancelCurrentAction();
       return;
     }
@@ -150,10 +183,111 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
   }
 
   protected onAiRequested(): void {
-    this.collab.logs.update((current) => [
-      `${new Date().toLocaleTimeString()} - IA aún no implementada, pero el botón ya está listo 😎`,
-      ...current,
-    ]);
+    this.isAiModalOpen.set(true);
+    this.aiErrorMessage.set('');
+  }
+
+  protected closeAiModal(): void {
+    if (this.isAiGenerating() || this.isAiApplying()) return;
+
+    this.isAiModalOpen.set(false);
+    this.aiErrorMessage.set('');
+  }
+
+  protected generateAiDiagram(userMessage: string): void {
+    if (this.isAiGenerating()) return;
+
+    const payload = this.buildDiagramAiRequest(userMessage);
+
+    this.isAiGenerating.set(true);
+    this.aiErrorMessage.set('');
+
+    this.diagramAiService
+      .MESSAGE(payload)
+      .pipe(finalize(() => this.isAiGenerating.set(false)))
+      .subscribe({
+        next: (response) => {
+          this.aiResponse.set(response);
+
+          this.collab.logs.update((current) => [
+            `${new Date().toLocaleTimeString()} - Propuesta IA generada: ${
+              response.diagram.cells.length
+            } celdas`,
+            ...current,
+          ]);
+        },
+        error: (error) => {
+          console.error(error);
+
+          const message =
+            error?.error?.detail?.message ??
+            error?.error?.message ??
+            'No se pudo generar la propuesta IA.';
+
+          const semanticErrors = error?.error?.detail?.errors;
+          const fullMessage = Array.isArray(semanticErrors)
+            ? `${message}: ${semanticErrors.join(' | ')}`
+            : message;
+
+          this.aiErrorMessage.set(fullMessage);
+
+          this.collab.logs.update((current) => [
+            `${new Date().toLocaleTimeString()} - Error IA: ${fullMessage}`,
+            ...current,
+          ]);
+        },
+      });
+  }
+
+  protected applyAiDiagram(): void {
+    const response = this.aiResponse();
+    const diagramId = this.collab.diagramId();
+
+    if (!response || !diagramId || this.isAiApplying()) return;
+
+    const confirmed = window.confirm(
+      'Esta acción cargará la propuesta de IA en el canvas actual. Luego podrás guardarla como siempre. ¿Deseas continuar?',
+    );
+
+    if (!confirmed) return;
+
+    this.isAiApplying.set(true);
+    this.aiErrorMessage.set('');
+
+    this.createMissingTemplatesFromAi(response)
+      .pipe(
+        map((createdTemplatesByNodeId) =>
+          this.buildDiagramFromAiResponse(response, createdTemplatesByNodeId),
+        ),
+        finalize(() => this.isAiApplying.set(false)),
+      )
+      .subscribe({
+        next: (diagram) => {
+          this.collab.replaceDiagramFromImport(diagram);
+          this.ui.closeSettingsPopover();
+          this.isAiModalOpen.set(false);
+
+          this.collab.logs.update((current) => [
+            `${new Date().toLocaleTimeString()} - Propuesta IA aplicada al canvas`,
+            ...current,
+          ]);
+
+          this.loadTemplates();
+        },
+        error: (error) => {
+          console.error(error);
+
+          const message =
+            error?.error?.message ?? error?.error?.detail ?? 'No se pudo aplicar la propuesta IA.';
+
+          this.aiErrorMessage.set(String(message));
+
+          this.collab.logs.update((current) => [
+            `${new Date().toLocaleTimeString()} - Error al aplicar IA: ${String(message)}`,
+            ...current,
+          ]);
+        },
+      });
   }
 
   protected onZoomInRequested(): void {
@@ -259,7 +393,9 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
     if (selectedCell.type === 'standard.Link') {
       this.collab.updateLinkLabel(payload.label);
       this.collab.logs.update((current) => [
-        `${new Date().toLocaleTimeString()} - Conector actualizado: ${payload.label || '(sin label)'}`,
+        `${new Date().toLocaleTimeString()} - Conector actualizado: ${
+          payload.label || '(sin label)'
+        }`,
         ...current,
       ]);
       return;
@@ -289,7 +425,9 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
           payload.lanes,
           () => {
             this.collab.logs.update((current) => [
-              `${new Date().toLocaleTimeString()} - Configuración actualizada: ${payload.name} | lanes=${payload.lanes.length}`,
+              `${new Date().toLocaleTimeString()} - Configuración actualizada: ${
+                payload.name
+              } | lanes=${payload.lanes.length}`,
               ...current,
             ]);
           },
@@ -365,7 +503,9 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
           this.collab.replaceDiagramFromImport(diagram);
           this.ui.closeSettingsPopover();
           this.collab.logs.update((current) => [
-            `${new Date().toLocaleTimeString()} - Importación .flowroad completada (${diagram.cells?.length ?? 0} celdas)`,
+            `${new Date().toLocaleTimeString()} - Importación .flowroad completada (${
+              diagram.cells?.length ?? 0
+            } celdas)`,
             ...current,
           ]);
         },
@@ -377,6 +517,142 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
           ]);
         },
       });
+  }
+
+  private buildDiagramAiRequest(userMessage: string): DiagramAiRequest {
+    return {
+      mode: 'CREATE',
+      user_message: userMessage,
+      current_diagram: null,
+      available_departments: this.ui.availableDepartments().map((department) => ({
+        id: department.id,
+        name: department.name,
+      })),
+      existing_templates: this.buildExistingTemplatesForAi(),
+    };
+  }
+
+  private buildExistingTemplatesForAi(): DiagramAiExistingTemplateContext[] {
+    return this.fullTemplates().map((template) => ({
+      id: template.id,
+      name: template.name,
+      description: template.description,
+      department_id: template.departmentId,
+      department_name: template.departmentName,
+      fields: template.fields.map((field) => ({
+        field_id: field.fieldId,
+        type: field.type,
+        label: field.label,
+        required: field.required,
+        options: field.options ?? [],
+        ui_props: {
+          grid_cols: field.uiProps?.gridCols ?? 1,
+        },
+      })),
+    }));
+  }
+
+  private createMissingTemplatesFromAi(response: DiagramAiResponse) {
+    const createSuggestions = response.template_suggestions.filter(
+      (suggestion) => suggestion.strategy === 'CREATE_NEW_TEMPLATE' && suggestion.template,
+    );
+
+    if (!createSuggestions.length) {
+      return of({});
+    }
+
+    const requests = createSuggestions.map((suggestion) => {
+      const payload = this.mapAiTemplateToCreateRequest(suggestion);
+
+      return this.templateService.CREATE(payload).pipe(
+        map((createdTemplate) => ({
+          nodeId: suggestion.node_id,
+          template: createdTemplate,
+        })),
+      );
+    });
+
+    return forkJoin(requests).pipe(
+      map((createdItems) => {
+        return createdItems.reduce<Record<string, TemplateResponse>>((acc, item) => {
+          acc[item.nodeId] = item.template;
+          return acc;
+        }, {});
+      }),
+    );
+  }
+
+  private mapAiTemplateToCreateRequest(
+    suggestion: DiagramAiTemplateSuggestion,
+  ): CreateTemplateRequest {
+    const template = suggestion.template;
+
+    if (!template) {
+      throw new Error(`La sugerencia ${suggestion.node_id} no tiene template.`);
+    }
+
+    return {
+      name: template.name,
+      description: template.description,
+      departmentId: template.department_id,
+      fields: template.fields.map((field, index): FieldDefinition => {
+        return {
+          fieldId: this.generateFieldId(),
+          type: field.type as FieldType,
+          label: field.label,
+          required: field.required,
+          isInternalOnly: false,
+          options: field.options ?? [],
+          uiProps: {
+            order: index + 1,
+            gridCols: field.ui_props?.grid_cols ?? 1,
+            placeholder: '',
+          },
+          aiSuggestions: [],
+        };
+      }),
+    };
+  }
+
+  private buildDiagramFromAiResponse(
+    response: DiagramAiResponse,
+    createdTemplatesByNodeId: Record<string, TemplateResponse>,
+  ): Diagram {
+    const diagramId = this.collab.diagramId();
+    const now = new Date().toISOString();
+
+    const cells = response.diagram.cells.map((cell) => {
+      if (cell.type === 'standard.Link') return cell;
+
+      const createdTemplate = createdTemplatesByNodeId[cell.id];
+      if (!createdTemplate) return cell;
+
+      return {
+        ...cell,
+        customData: {
+          ...(cell.customData ?? {}),
+          templateDocumentId: createdTemplate.id,
+        },
+      };
+    });
+
+    return {
+      id: diagramId,
+      orgId: '',
+      name: response.diagram.name,
+      description: response.diagram.description,
+      version: 1,
+      isActive: true,
+      cells,
+      lanes: response.diagram.lanes,
+      createdAt: now,
+      createdBy: '',
+      updatedAt: now,
+    };
+  }
+
+  private generateFieldId(): string {
+    return Math.random().toString(36).slice(2, 9);
   }
 
   private shouldIgnoreKeyboardShortcut(event: KeyboardEvent): boolean {
@@ -421,9 +697,19 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private loadTemplates(): void {
-    this.templateService.GET_SUMMARY_BY_MY_ORGANIZATION().subscribe({
+    this.templateService.GET_ALL_BY_ORGANIZATION().subscribe({
       next: (templates) => {
-        this.ui.setAvailableTemplates(templates);
+        this.fullTemplates.set(templates);
+
+        this.ui.setAvailableTemplates(
+          templates.map((template) => ({
+            id: template.id,
+            name: template.name,
+            departmentId: template.departmentId,
+            departmentName: template.departmentName,
+            isActive: template.isActive,
+          })),
+        );
       },
       error: (error) => {
         console.error(error);

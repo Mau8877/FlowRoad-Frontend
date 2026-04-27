@@ -1,0 +1,102 @@
+@if (isOpen) {
+  <div class="ai-modal-backdrop">
+    <div class="ai-modal-card">
+      <div class="ai-modal-header">
+        <div>
+          <h2>Asistente IA de diagramas</h2>
+          <p>Describe el proceso y la IA generará una propuesta de diagrama ejecutable.</p>
+        </div>
+
+        <button type="button" class="ai-icon-button" (click)="closeRequested.emit()">✕</button>
+      </div>
+
+      <div class="ai-modal-body">
+        <label class="ai-label" for="aiPrompt">Instrucción para la IA</label>
+
+        <textarea
+          id="aiPrompt"
+          class="ai-textarea"
+          [ngModel]="prompt()"
+          (ngModelChange)="onPromptChange($event)"
+          rows="7"
+          placeholder="Ej: Crea un flujo de compra de vehículo..."
+        ></textarea>
+
+        @if (errorMessage) {
+          <div class="ai-error">
+            {{ errorMessage }}
+          </div>
+        }
+
+        @if (response) {
+          <div class="ai-preview">
+            <h3>{{ response.diagram.name }}</h3>
+            <p>{{ response.diagram.description }}</p>
+
+            <div class="ai-stats">
+              <span>{{ response.diagram.cells.length }} celdas</span>
+              <span>{{ response.diagram.lanes.length }} departamentos</span>
+              <span>{{ response.template_suggestions.length }} plantillas</span>
+            </div>
+
+            <div class="ai-section">
+              <h4>Plantillas sugeridas</h4>
+
+              <div class="ai-template-list">
+                @for (suggestion of response.template_suggestions; track suggestion.node_id) {
+                  <div class="ai-template-item">
+                    <strong>{{ suggestion.node_name }}</strong>
+
+                    @if (suggestion.strategy === 'USE_EXISTING_TEMPLATE') {
+                      <span>Usa existente: {{ suggestion.existing_template_name }}</span>
+                    } @else {
+                      <span>Crea nueva: {{ suggestion.template?.name }}</span>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+
+            @if (response.warnings.length) {
+              <div class="ai-warning">
+                <strong>Advertencias</strong>
+
+                @for (warning of response.warnings; track warning) {
+                  <p>{{ warning }}</p>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="ai-modal-footer">
+        <button type="button" class="ai-secondary-button" (click)="closeRequested.emit()">
+          Cancelar
+        </button>
+
+        <button
+          type="button"
+          class="ai-primary-button"
+          [disabled]="isLoading"
+          (click)="onGenerate()"
+        >
+          @if (isLoading) {
+            Generando...
+          } @else {
+            Generar propuesta
+          }
+        </button>
+
+        <button
+          type="button"
+          class="ai-accept-button"
+          [disabled]="!response || isLoading"
+          (click)="applyRequested.emit()"
+        >
+          Aplicar al diagrama
+        </button>
+      </div>
+    </div>
+  </div>
+}

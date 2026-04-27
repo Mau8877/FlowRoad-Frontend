@@ -149,3 +149,89 @@ export interface SocketOperationMessage {
   userId: string;
   dragId?: string;
 }
+
+// ==========================================
+// 4. MODELOS IA DIAGRAMADOR
+// ==========================================
+
+export type DiagramAiMode = 'CREATE' | 'EDIT';
+
+export interface DiagramAiRequest {
+  mode: DiagramAiMode;
+  user_message: string;
+  current_diagram: unknown | null;
+  available_departments: DiagramAiDepartmentContext[];
+  existing_templates: DiagramAiExistingTemplateContext[];
+}
+
+export interface DiagramAiDepartmentContext {
+  id: string;
+  name: string;
+}
+
+export interface DiagramAiExistingTemplateContext {
+  id: string;
+  name: string;
+  description?: string | null;
+  department_id?: string | null;
+  department_name?: string | null;
+  fields: DiagramAiExistingTemplateField[];
+}
+
+export interface DiagramAiExistingTemplateField {
+  field_id?: string | null;
+  type: string;
+  label: string;
+  required: boolean;
+  options: DiagramAiTemplateOption[];
+  ui_props?: {
+    grid_cols: number;
+  } | null;
+}
+
+export interface DiagramAiTemplateOption {
+  label: string;
+  value: string;
+}
+
+export interface DiagramAiResponse {
+  message: string;
+  mode: DiagramAiMode;
+  diagram: {
+    name: string;
+    description: string;
+    cells: DiagramCell[];
+    lanes: DiagramLane[];
+  };
+  template_suggestions: DiagramAiTemplateSuggestion[];
+  warnings: string[];
+  changes_summary: string[];
+}
+
+export interface DiagramAiTemplateSuggestion {
+  node_id: string;
+  node_name: string;
+  strategy: 'USE_EXISTING_TEMPLATE' | 'CREATE_NEW_TEMPLATE';
+  existing_template_id?: string | null;
+  existing_template_name?: string | null;
+  template?: DiagramAiSuggestedTemplate | null;
+  reason?: string | null;
+}
+
+export interface DiagramAiSuggestedTemplate {
+  name: string;
+  description: string;
+  department_id: string;
+  department_name?: string | null;
+  fields: DiagramAiSuggestedTemplateField[];
+}
+
+export interface DiagramAiSuggestedTemplateField {
+  type: string;
+  label: string;
+  required: boolean;
+  options: DiagramAiTemplateOption[];
+  ui_props: {
+    grid_cols: number;
+  };
+}
