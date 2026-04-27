@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+﻿import { CommonModule } from '@angular/common';
 import {
   AfterViewInit,
   Component,
@@ -11,7 +11,7 @@ import {
   signal,
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { finalize, forkJoin, map, of } from 'rxjs';
+import { catchError, finalize, forkJoin, map, of, switchMap } from 'rxjs';
 
 import {
   CreateTemplateRequest,
@@ -225,9 +225,35 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
             'No se pudo generar la propuesta IA.';
 
           const semanticErrors = error?.error?.detail?.errors;
-          const fullMessage = Array.isArray(semanticErrors)
-            ? `${message}: ${semanticErrors.join(' | ')}`
-            : message;
+
+          const normalizedErrors = Array.isArray(semanticErrors)
+            ? semanticErrors
+                .map((item: unknown) => {
+                  if (typeof item === 'string') {
+                    return item;
+                  }
+
+                  if (item && typeof item === 'object') {
+                    const errorObject = item as {
+                      loc?: unknown;
+                      msg?: unknown;
+                      type?: unknown;
+                    };
+
+                    const loc = Array.isArray(errorObject.loc) ? errorObject.loc.join('.') : '';
+
+                    const msg =
+                      typeof errorObject.msg === 'string' ? errorObject.msg : JSON.stringify(item);
+
+                    return loc ? `${loc}: ${msg}` : msg;
+                  }
+
+                  return String(item);
+                })
+                .join(' | ')
+            : '';
+
+          const fullMessage = normalizedErrors ? `${message}: ${normalizedErrors}` : message;
 
           this.aiErrorMessage.set(fullMessage);
 
@@ -246,7 +272,7 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
     if (!response || !diagramId || this.isAiApplying()) return;
 
     const confirmed = window.confirm(
-      'Esta acción cargará la propuesta de IA en el canvas actual. Luego podrás guardarla como siempre. ¿Deseas continuar?',
+      'Esta accion guardara la propuesta generada por IA y reemplazara el diagrama actual. Deseas continuar?',
     );
 
     if (!confirmed) return;
@@ -259,16 +285,20 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
         map((createdTemplatesByNodeId) =>
           this.buildDiagramFromAiResponse(response, createdTemplatesByNodeId),
         ),
+        map((diagram) => this.buildFlowroadFileFromDiagram(diagram)),
+        switchMap((file) => this.diagramService.IMPORT_INTO_CURRENT(diagramId, file)),
         finalize(() => this.isAiApplying.set(false)),
       )
       .subscribe({
-        next: (diagram) => {
-          this.collab.replaceDiagramFromImport(diagram);
+        next: (savedDiagram) => {
+          this.collab.replaceDiagramFromImport(savedDiagram);
           this.ui.closeSettingsPopover();
           this.isAiModalOpen.set(false);
+          this.aiResponse.set(null);
+          this.aiErrorMessage.set('');
 
           this.collab.logs.update((current) => [
-            `${new Date().toLocaleTimeString()} - Propuesta IA aplicada al canvas`,
+            `${new Date().toLocaleTimeString()} - Propuesta IA aceptada y guardada correctamente`,
             ...current,
           ]);
 
@@ -278,12 +308,12 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
           console.error(error);
 
           const message =
-            error?.error?.message ?? error?.error?.detail ?? 'No se pudo aplicar la propuesta IA.';
+            error?.error?.message ?? error?.error?.detail ?? 'No se pudo guardar la propuesta IA.';
 
           this.aiErrorMessage.set(String(message));
 
           this.collab.logs.update((current) => [
-            `${new Date().toLocaleTimeString()} - Error al aplicar IA: ${String(message)}`,
+            `${new Date().toLocaleTimeString()} - Error al guardar propuesta IA: ${String(message)}`,
             ...current,
           ]);
         },
@@ -425,7 +455,7 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
           payload.lanes,
           () => {
             this.collab.logs.update((current) => [
-              `${new Date().toLocaleTimeString()} - Configuración actualizada: ${
+              `${new Date().toLocaleTimeString()} - ConfiguraciÃ³n actualizada: ${
                 payload.name
               } | lanes=${payload.lanes.length}`,
               ...current,
@@ -441,7 +471,7 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
       },
       () => {
         this.collab.logs.update((current) => [
-          `${new Date().toLocaleTimeString()} - Error al actualizar nombre/descripción`,
+          `${new Date().toLocaleTimeString()} - Error al actualizar nombre/descripciÃ³n`,
           ...current,
         ]);
       },
@@ -461,7 +491,7 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
         next: (blob) => {
           this.downloadFlowroadFile(blob);
           this.collab.logs.update((current) => [
-            `${new Date().toLocaleTimeString()} - Exportación .flowroad completada`,
+            `${new Date().toLocaleTimeString()} - ExportaciÃ³n .flowroad completada`,
             ...current,
           ]);
         },
@@ -480,7 +510,7 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
     if (!diagramId || !file || this.isImporting()) return;
 
     const confirmed = window.confirm(
-      'Esta acción reemplazará completamente el diagrama actual (nombre, descripción, lanes y nodos). ¿Deseas continuar?',
+      'Esta acciÃ³n reemplazarÃ¡ completamente el diagrama actual (nombre, descripciÃ³n, lanes y nodos). Â¿Deseas continuar?',
     );
 
     if (!confirmed) {
@@ -503,7 +533,7 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
           this.collab.replaceDiagramFromImport(diagram);
           this.ui.closeSettingsPopover();
           this.collab.logs.update((current) => [
-            `${new Date().toLocaleTimeString()} - Importación .flowroad completada (${
+            `${new Date().toLocaleTimeString()} - ImportaciÃ³n .flowroad completada (${
               diagram.cells?.length ?? 0
             } celdas)`,
             ...current,
@@ -562,24 +592,130 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
     }
 
     const requests = createSuggestions.map((suggestion) => {
+      const existingTemplate = this.findExistingTemplateForAiSuggestion(suggestion);
+
+      if (existingTemplate) {
+        this.collab.logs.update((current) => [
+          `${new Date().toLocaleTimeString()} - Plantilla existente reutilizada: ${
+            existingTemplate.name
+          }`,
+          ...current,
+        ]);
+
+        return of({
+          nodeId: suggestion.node_id,
+          template: existingTemplate,
+        });
+      }
+
       const payload = this.mapAiTemplateToCreateRequest(suggestion);
 
       return this.templateService.CREATE(payload).pipe(
-        map((createdTemplate) => ({
-          nodeId: suggestion.node_id,
-          template: createdTemplate,
-        })),
+        map((createdTemplate) => {
+          this.fullTemplates.update((current) => {
+            const alreadyExists = current.some((template) => template.id === createdTemplate.id);
+            return alreadyExists ? current : [...current, createdTemplate];
+          });
+
+          this.refreshAvailableTemplateSummariesFromFullTemplates();
+
+          return {
+            nodeId: suggestion.node_id,
+            template: createdTemplate,
+          };
+        }),
+        catchError((error) => {
+          return this.resolveDuplicatedTemplateAfterCreateError(suggestion, error);
+        }),
       );
     });
 
     return forkJoin(requests).pipe(
-      map((createdItems) => {
-        return createdItems.reduce<Record<string, TemplateResponse>>((acc, item) => {
+      map((items) => {
+        return items.reduce<Record<string, TemplateResponse>>((acc, item) => {
           acc[item.nodeId] = item.template;
           return acc;
         }, {});
       }),
     );
+  }
+
+  private findExistingTemplateForAiSuggestion(
+    suggestion: DiagramAiTemplateSuggestion,
+  ): TemplateResponse | null {
+    const aiTemplate = suggestion.template;
+
+    if (!aiTemplate) {
+      return null;
+    }
+
+    const normalizedAiName = this.normalizeTemplateName(aiTemplate.name);
+    const aiDepartmentId = aiTemplate.department_id;
+
+    if (!normalizedAiName || !aiDepartmentId) {
+      return null;
+    }
+
+    return (
+      this.fullTemplates().find((template) => {
+        const sameName = this.normalizeTemplateName(template.name) === normalizedAiName;
+        const sameDepartment = template.departmentId === aiDepartmentId;
+        const isActive = template.isActive !== false;
+
+        return sameName && sameDepartment && isActive;
+      }) ?? null
+    );
+  }
+
+  private resolveDuplicatedTemplateAfterCreateError(
+    suggestion: DiagramAiTemplateSuggestion,
+    originalError: unknown,
+  ) {
+    return this.templateService.GET_ALL_BY_ORGANIZATION().pipe(
+      map((templates) => {
+        this.fullTemplates.set(templates);
+        this.refreshAvailableTemplateSummariesFromFullTemplates();
+
+        const existingTemplate = this.findExistingTemplateForAiSuggestion(suggestion);
+
+        if (existingTemplate) {
+          this.collab.logs.update((current) => [
+            `${new Date().toLocaleTimeString()} - Plantilla duplicada detectada y reutilizada: ${
+              existingTemplate.name
+            }`,
+            ...current,
+          ]);
+
+          return {
+            nodeId: suggestion.node_id,
+            template: existingTemplate,
+          };
+        }
+
+        throw originalError;
+      }),
+    );
+  }
+
+  private refreshAvailableTemplateSummariesFromFullTemplates(): void {
+    this.ui.setAvailableTemplates(
+      this.fullTemplates().map((template) => ({
+        id: template.id,
+        name: template.name,
+        departmentId: template.departmentId,
+        departmentName: template.departmentName,
+        isActive: template.isActive,
+      })),
+    );
+  }
+
+  private normalizeTemplateName(value: string | null | undefined): string {
+    return String(value ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ' ');
   }
 
   private mapAiTemplateToCreateRequest(
@@ -621,17 +757,38 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
     const diagramId = this.collab.diagramId();
     const now = new Date().toISOString();
 
+    const templateIdByNodeId = response.template_suggestions.reduce<Record<string, string>>(
+      (acc, suggestion) => {
+        if (
+          suggestion.strategy === 'USE_EXISTING_TEMPLATE' &&
+          suggestion.existing_template_id &&
+          suggestion.existing_template_id.trim()
+        ) {
+          acc[suggestion.node_id] = suggestion.existing_template_id.trim();
+          return acc;
+        }
+
+        const createdTemplate = createdTemplatesByNodeId[suggestion.node_id];
+        if (createdTemplate?.id) {
+          acc[suggestion.node_id] = createdTemplate.id;
+        }
+
+        return acc;
+      },
+      {},
+    );
+
     const cells = response.diagram.cells.map((cell) => {
       if (cell.type === 'standard.Link') return cell;
 
-      const createdTemplate = createdTemplatesByNodeId[cell.id];
-      if (!createdTemplate) return cell;
+      const resolvedTemplateId = templateIdByNodeId[cell.id];
+      if (!resolvedTemplateId) return cell;
 
       return {
         ...cell,
         customData: {
           ...(cell.customData ?? {}),
-          templateDocumentId: createdTemplate.id,
+          templateDocumentId: resolvedTemplateId,
         },
       };
     });
@@ -649,6 +806,35 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
       createdBy: '',
       updatedAt: now,
     };
+  }
+
+  private buildFlowroadFileFromDiagram(diagram: Diagram): File {
+    const safeName =
+      diagram.name
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9_-]+/g, '-')
+        .replace(/^-+|-+$/g, '') || 'diagrama-ia';
+
+    const flowroadExport = {
+      schemaVersion: 1,
+      app: 'FlowRoad',
+      exportedAt: new Date().toISOString(),
+      diagram: {
+        name: diagram.name,
+        description: diagram.description,
+        cells: diagram.cells,
+        lanes: diagram.lanes ?? [],
+      },
+    };
+
+    const blob = new Blob([JSON.stringify(flowroadExport, null, 2)], {
+      type: 'application/json',
+    });
+
+    return new File([blob], `${safeName}.flowroad`, {
+      type: 'application/json',
+    });
   }
 
   private generateFieldId(): string {
@@ -689,7 +875,7 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
       error: (error) => {
         console.error(error);
         this.collab.logs.update((current) => [
-          `${new Date().toLocaleTimeString()} - Error al cargar departments de la organización`,
+          `${new Date().toLocaleTimeString()} - Error al cargar departments de la organizaciÃ³n`,
           ...current,
         ]);
       },
@@ -700,21 +886,12 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
     this.templateService.GET_ALL_BY_ORGANIZATION().subscribe({
       next: (templates) => {
         this.fullTemplates.set(templates);
-
-        this.ui.setAvailableTemplates(
-          templates.map((template) => ({
-            id: template.id,
-            name: template.name,
-            departmentId: template.departmentId,
-            departmentName: template.departmentName,
-            isActive: template.isActive,
-          })),
-        );
+        this.refreshAvailableTemplateSummariesFromFullTemplates();
       },
       error: (error) => {
         console.error(error);
         this.collab.logs.update((current) => [
-          `${new Date().toLocaleTimeString()} - Error al cargar plantillas de la organización`,
+          `${new Date().toLocaleTimeString()} - Error al cargar plantillas de la organizaciÃ³n`,
           ...current,
         ]);
       },
