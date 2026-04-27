@@ -1,6 +1,7 @@
 import { UiService } from '#/app/core/services/ui.service';
 import { AuthService } from '#/app/features/auth/services/auth.service';
-import { MENU_ITEMS } from '#/app/features/layout/interfaces/navigation.model';
+import { ProcessNotificationStateService } from '#/app/features/process-management/services/process-notification-state.service';
+import { MENU_ITEMS, NavItem } from '#/app/features/layout/interfaces/navigation.model';
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterLinkActive, RouterModule } from '@angular/router';
@@ -53,15 +54,21 @@ export class Sidebar implements OnInit {
   public authService = inject(AuthService);
   private router = inject(Router);
   public uiService = inject(UiService);
+  public processNotificationState = inject(ProcessNotificationStateService);
 
   // Signals de estado
   public openMenus = signal<string[]>([]);
+
+  public processUnreadCount = computed(() => this.processNotificationState.unreadAssignmentsCount());
+  private readonly configMenuLabel =
+    MENU_ITEMS.find((item) => item.children?.some((child) => child.route?.startsWith('/config')))
+      ?.label ?? 'Configuracion Organizacional';
 
   // Menu filtrado por roles
   public filteredMenu = computed(() => {
     const user = this.authService.currentUser();
 
-    // Si no hay usuario, devolvemos menú vacío por seguridad
+    // Si no hay usuario, devolvemos menu vacio por seguridad
     if (!user) return [];
 
     // En el nuevo modelo, 'role' es un string directo (ej: 'ADMIN')
@@ -80,17 +87,17 @@ export class Sidebar implements OnInit {
   }
 
   /**
-   * Escucha los cambios de ruta para cerrar el menú en móvil
+   * Escucha los cambios de ruta para cerrar el menu en movil
    * y expandir los acordeones necesarios.
    */
   private LISTEN_ROUTING(): void {
     this.router.events
       .pipe(filter((event) => event instanceof NavigationEnd))
       .subscribe((event: any) => {
-        // 1. Cerrar si estamos en resolución móvil
+        // 1. Cerrar si estamos en resolucion movil
         this.CLOSE_ON_MOBILE();
 
-        // 2. Expandir acordeón si aplica
+        // 2. Expandir acordeon si aplica
         this.CHECK_URL(event.url);
       });
   }
@@ -105,25 +112,27 @@ export class Sidebar implements OnInit {
   }
 
   /**
-   * Expande automáticamente el menú padre si la URL actual coincide con un hijo
+   * Expande automaticamente el menu padre si la URL actual coincide con un hijo
    */
   private AUTO_EXPAND_MENU(): void {
-    // Verificación inicial al cargar la página
+    // Verificacion inicial al cargar la pagina
     this.CHECK_URL(this.router.url);
   }
 
   private CHECK_URL(url: string): void {
     if (url.includes('/config')) {
       this.openMenus.update((prev) =>
-        prev.includes('Configuración Organizacional')
-          ? prev
-          : [...prev, 'Configuración Organizacional'],
+        prev.includes(this.configMenuLabel) ? prev : [...prev, this.configMenuLabel],
       );
     }
   }
 
+  public shouldShowProcessBadge(item: NavItem): boolean {
+    return item.route === '/process' && this.processUnreadCount() > 0;
+  }
+
   /**
-   * Abre/Cierra menús acordeón de forma manual
+   * Abre/Cierra menus acordeon de forma manual
    */
   TOGGLE_MENU(label: string): void {
     this.openMenus.update((menus: string[]) =>
@@ -132,7 +141,7 @@ export class Sidebar implements OnInit {
   }
 
   /**
-   * Helper para verificar si un submenú está abierto en el HTML
+   * Helper para verificar si un submenu esta abierto en el HTML
    */
   IS_OPEN(label: string): boolean {
     return this.openMenus().includes(label);

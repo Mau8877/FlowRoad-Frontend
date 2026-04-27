@@ -423,3 +423,7 @@
     }
   </section>
 </section>
+<app-process-toast-notifications
+  [notifications]="toastNotifications()"
+  (close)="removeToastNotification($event)"
+></app-process-toast-notifications>

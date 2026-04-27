@@ -1,7 +1,7 @@
 @if (uiService.isSidebarOpen()) {
   <div
     (click)="uiService.closeSidebar()"
-    class="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-sm transition-opacity duration-300"
+    class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity duration-300 lg:hidden"
   ></div>
 }
 
@@ -9,44 +9,44 @@
   [class.w-64]="uiService.isSidebarOpen()"
   [class.w-0]="!uiService.isSidebarOpen()"
   [class.-translate-x-full]="!uiService.isSidebarOpen()"
-  class="fixed lg:relative inset-y-0 left-0 z-50 bg-fr-black flex flex-col transition-all duration-300 ease-in-out border-r border-white/5 overflow-hidden lg:translate-x-0 lg:w-64"
+  class="fixed inset-y-0 left-0 z-50 flex flex-col overflow-hidden border-r border-white/5 bg-fr-black transition-all duration-300 ease-in-out lg:relative lg:w-64 lg:translate-x-0"
 >
-  <div class="w-64 flex flex-col h-full p-6">
+  <div class="flex h-full w-64 flex-col p-6">
     <button
       (click)="uiService.closeSidebar()"
-      class="lg:hidden absolute top-6 right-6 text-fr-gold hover:scale-110 transition-transform"
+      class="absolute top-6 right-6 text-fr-gold transition-transform hover:scale-110 lg:hidden"
     >
-      <lucide-icon name="x" class="w-6 h-6"></lucide-icon>
+      <lucide-icon name="x" class="h-6 w-6"></lucide-icon>
     </button>
 
-    <div class="mb-10 px-4 shrink-0">
-      <h1 class="text-4xl font-display text-white uppercase tracking-tighter">
+    <div class="mb-10 shrink-0 px-4">
+      <h1 class="font-display text-4xl tracking-tighter text-white uppercase">
         FLOW<span class="text-fr-gold">ROAD</span>
       </h1>
-      <div class="h-1.5 w-8 bg-fr-gold mt-1 opacity-60"></div>
+      <div class="mt-1 h-1.5 w-8 bg-fr-gold opacity-60"></div>
     </div>
 
-    <nav (click)="CLOSE_ON_MOBILE()" class="flex-1 space-y-2 overflow-y-auto pr-2 custom-scrollbar">
+    <nav (click)="CLOSE_ON_MOBILE()" class="custom-scrollbar flex-1 space-y-2 overflow-y-auto pr-2">
       @for (item of filteredMenu(); track item.label) {
         @if (item.children && item.children.length > 0) {
           <div class="group">
             <button
               (click)="TOGGLE_MENU(item.label); $event.stopPropagation()"
-              class="w-full flex items-center justify-between px-4 py-3 text-fr-taupe hover:bg-white/5 hover:text-white transition-all rounded-lg group"
+              class="group flex w-full items-center justify-between rounded-lg px-4 py-3 text-fr-taupe transition-all hover:bg-white/5 hover:text-white"
             >
               <div class="flex items-center gap-3">
                 <lucide-icon
                   [name]="item.icon || 'briefcase'"
-                  class="w-4 h-4 text-fr-gold"
+                  class="h-4 w-4 text-fr-gold"
                 ></lucide-icon>
-                <span class="text-[10px] font-black uppercase tracking-[0.2em]">{{
+                <span class="text-[10px] font-black tracking-[0.2em] uppercase">{{
                   item.label
                 }}</span>
               </div>
               <lucide-icon
                 name="chevron-down"
                 [class.rotate-180]="IS_OPEN(item.label)"
-                class="w-3 h-3 transition-transform duration-300"
+                class="h-3 w-3 transition-transform duration-300"
               >
               </lucide-icon>
             </button>
@@ -56,13 +56,13 @@
                 @for (child of item.children; track child.label) {
                   <a
                     [routerLink]="[child.route]"
-                    routerLinkActive="bg-fr-gold/10 text-fr-gold border-r-4 border-fr-gold"
-                    class="flex items-center gap-3 px-6 py-2.5 text-[9px] text-fr-taupe uppercase tracking-widest hover:bg-white/5 hover:text-white transition-all duration-300 no-underline group rounded-lg"
+                    routerLinkActive="border-r-4 border-fr-gold bg-fr-gold/10 text-fr-gold"
+                    class="group flex items-center gap-3 rounded-lg px-6 py-2.5 text-[9px] tracking-widest text-fr-taupe uppercase no-underline transition-all duration-300 hover:bg-white/5 hover:text-white"
                   >
                     @if (child.icon) {
-                      <lucide-icon [name]="child.icon" class="w-3 h-3 text-fr-gold"></lucide-icon>
+                      <lucide-icon [name]="child.icon" class="h-3 w-3 text-fr-gold"></lucide-icon>
                     }
-                    {{ child.label }}
+                    <span class="min-w-0">{{ child.label }}</span>
                   </a>
                 }
               </div>
@@ -71,23 +71,33 @@
         } @else {
           <a
             [routerLink]="[item.route]"
-            routerLinkActive="bg-fr-gold/10 text-fr-gold border-r-4 border-fr-gold"
-            class="flex items-center gap-3 px-4 py-3 text-fr-taupe hover:bg-white/5 hover:text-white transition-all rounded-lg group no-underline"
+            routerLinkActive="border-r-4 border-fr-gold bg-fr-gold/10 text-fr-gold"
+            class="group flex items-center justify-between gap-3 rounded-lg px-4 py-3 text-fr-taupe transition-all no-underline hover:bg-white/5 hover:text-white"
           >
-            <lucide-icon [name]="item.icon || 'home'" class="w-4 h-4 text-fr-gold"></lucide-icon>
-            <span class="text-[10px] font-black uppercase tracking-[0.2em]">{{ item.label }}</span>
+            <span class="flex min-w-0 items-center gap-3">
+              <lucide-icon [name]="item.icon || 'home'" class="h-4 w-4 text-fr-gold"></lucide-icon>
+              <span class="text-[10px] font-black tracking-[0.2em] uppercase">{{ item.label }}</span>
+            </span>
+
+            @if (shouldShowProcessBadge(item)) {
+              <span
+                class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-fr-gold px-1 text-xs font-extrabold text-fr-black"
+              >
+                {{ processUnreadCount() }}
+              </span>
+            }
           </a>
         }
       }
     </nav>
 
-    <div class="pt-6 border-t border-white/10 mt-auto shrink-0">
+    <div class="mt-auto shrink-0 border-t border-white/10 pt-6">
       @if (authService.currentUser(); as user) {
         <div class="px-2">
-          <p class="text-[9px] text-fr-gold font-black uppercase tracking-widest mb-1">
+          <p class="mb-1 text-[9px] font-black tracking-widest text-fr-gold uppercase">
             {{ user.role }}
           </p>
-          <p class="text-[11px] text-fr-taupe truncate opacity-70">{{ user.email }}</p>
+          <p class="truncate text-[11px] text-fr-taupe opacity-70">{{ user.email }}</p>
         </div>
       }
     </div>

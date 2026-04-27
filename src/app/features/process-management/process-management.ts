@@ -3,17 +3,19 @@ import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular
 import { RouterLink } from '@angular/router';
 import { Subscription, finalize } from 'rxjs';
 
+import { ProcessToastNotifications } from './components/process-toast-notifications/process-toast-notifications';
 import { ProcessAssignmentNotification } from './interfaces/process-assignment-notification.model';
 import { AssignmentResponse } from './interfaces/process-assignment.model';
 import { ProcessInstanceSummaryResponse } from './interfaces/process-instance.model';
 import { ProcessAssignmentService } from './services/process-assignment.service';
 import { ProcessInstanceService } from './services/process-instance.service';
+import { ProcessNotificationStateService } from './services/process-notification-state.service';
 import { ProcessSocketService } from './services/process-socket.service';
 
 @Component({
   selector: 'app-process-management',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, ProcessToastNotifications],
   templateUrl: './process-management.html',
   styleUrl: './process-management.css',
 })
@@ -21,8 +23,10 @@ export class ProcessManagement implements OnInit, OnDestroy {
   private readonly processSocketService = inject(ProcessSocketService);
   private readonly processInstanceService = inject(ProcessInstanceService);
   private readonly processAssignmentService = inject(ProcessAssignmentService);
+  private readonly processNotificationState = inject(ProcessNotificationStateService);
 
   private readonly subscriptions: Subscription[] = [];
+  private readonly toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 
   private readonly dateFormatter = new Intl.DateTimeFormat('es-BO', {
     dateStyle: 'medium',
@@ -34,6 +38,7 @@ export class ProcessManagement implements OnInit, OnDestroy {
   public connectionState = signal<'CONNECTED' | 'DISCONNECTED'>('DISCONNECTED');
 
   public notifications = signal<ProcessAssignmentNotification[]>([]);
+  public toastNotifications = signal<ProcessAssignmentNotification[]>([]);
   public processInstances = signal<ProcessInstanceSummaryResponse[]>([]);
   public myPendingAssignments = signal<AssignmentResponse[]>([]);
 
@@ -93,6 +98,8 @@ export class ProcessManagement implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.subscriptions.forEach((subscription) => subscription.unsubscribe());
+    this.toastTimeouts.forEach((timeoutId) => clearTimeout(timeoutId));
+    this.toastTimeouts.clear();
     this.processSocketService.DISCONNECT();
   }
 
@@ -129,10 +136,10 @@ export class ProcessManagement implements OnInit, OnDestroy {
   formatStatus(status: string): string {
     switch (status) {
       case 'RUNNING':
-        return 'En ejecución';
+        return 'En ejecuciÃ³n';
 
       case 'PENDING_ASSIGNMENT':
-        return 'Pendiente de asignación';
+        return 'Pendiente de asignaciÃ³n';
 
       case 'COMPLETED':
         return 'Completado';
@@ -146,6 +153,13 @@ export class ProcessManagement implements OnInit, OnDestroy {
       default:
         return status;
     }
+  }
+
+  removeToastNotification(assignmentId: string): void {
+    this.clearToastTimeout(assignmentId);
+    this.toastNotifications.update((current) =>
+      current.filter((item) => item.assignmentId !== assignmentId),
+    );
   }
 
   private loadInitialData(): void {
@@ -184,6 +198,7 @@ export class ProcessManagement implements OnInit, OnDestroy {
       .subscribe({
         next: (assignments) => {
           this.myPendingAssignments.set(assignments);
+          this.processNotificationState.setUnreadCount(assignments.length);
         },
         error: (error) => {
           console.error('[PROCESS-MANAGEMENT][LOAD_ASSIGNMENTS_ERROR]', error);
@@ -206,6 +221,9 @@ export class ProcessManagement implements OnInit, OnDestroy {
     this.subscriptions.push(
       this.processSocketService.onAssignmentNotification$.subscribe((notification) => {
         this.addNotification(notification);
+        this.addToastNotification(notification);
+        this.processNotificationState.incrementUnread();
+        this.processNotificationState.addAssignmentNotification(notification);
 
         this.loadMyPendingAssignments();
         this.loadProcessInstances();
@@ -242,6 +260,46 @@ export class ProcessManagement implements OnInit, OnDestroy {
 
       return [notification, ...current];
     });
+  }
+
+  private addToastNotification(notification: ProcessAssignmentNotification): void {
+    this.toastNotifications.update((current) => {
+      if (current.some((item) => item.assignmentId === notification.assignmentId)) {
+        return current;
+      }
+
+      const next = [notification, ...current].slice(0, 3);
+      const retainedIds = new Set(next.map((item) => item.assignmentId));
+
+      current
+        .filter((item) => !retainedIds.has(item.assignmentId))
+        .forEach((item) => this.clearToastTimeout(item.assignmentId));
+
+      return next;
+    });
+
+    this.startToastAutoClose(notification.assignmentId);
+  }
+
+  private startToastAutoClose(assignmentId: string): void {
+    this.clearToastTimeout(assignmentId);
+
+    const timeoutId = setTimeout(() => {
+      this.removeToastNotification(assignmentId);
+    }, 5000);
+
+    this.toastTimeouts.set(assignmentId, timeoutId);
+  }
+
+  private clearToastTimeout(assignmentId: string): void {
+    const timeoutId = this.toastTimeouts.get(assignmentId);
+
+    if (!timeoutId) {
+      return;
+    }
+
+    clearTimeout(timeoutId);
+    this.toastTimeouts.delete(assignmentId);
   }
 
   private clampCurrentProcessPage(): void {
