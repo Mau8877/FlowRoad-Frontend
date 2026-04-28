@@ -11,7 +11,17 @@ import {
   signal,
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { catchError, finalize, forkJoin, map, of, switchMap } from 'rxjs';
+import {
+  Observable,
+  catchError,
+  finalize,
+  forkJoin,
+  from,
+  map,
+  of,
+  switchMap,
+  throwError,
+} from 'rxjs';
 
 import {
   CreateTemplateRequest,
@@ -21,7 +31,10 @@ import {
 } from '#/app/features/config-org/interfaces/plantillas.models';
 import { DepartmentService } from '#/app/features/config-org/services/departamento.service';
 import { TemplateService } from '#/app/features/config-org/services/plantillas.service';
-import { EditorAiModalComponent } from './components/editor-ai-modal/editor-ai-modal';
+import {
+  EditorAiGeneratePayload,
+  EditorAiModalComponent,
+} from './components/editor-ai-modal/editor-ai-modal';
 import { EditorDebugModalComponent } from './components/editor-debug-modal/editor-debug-modal';
 import { EditorHeaderComponent } from './components/editor-header/editor-header';
 import {
@@ -194,25 +207,25 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
     this.aiErrorMessage.set('');
   }
 
-  protected generateAiDiagram(userMessage: string): void {
+  protected generateAiDiagram(payload: EditorAiGeneratePayload): void {
     if (this.isAiGenerating()) return;
-
-    const payload = this.buildDiagramAiRequest(userMessage);
 
     this.isAiGenerating.set(true);
     this.aiErrorMessage.set('');
 
-    this.diagramAiService
-      .MESSAGE(payload)
-      .pipe(finalize(() => this.isAiGenerating.set(false)))
+    this.buildDiagramAiRequest(payload)
+      .pipe(
+        switchMap((request) => this.diagramAiService.MESSAGE(request)),
+        finalize(() => this.isAiGenerating.set(false)),
+      )
       .subscribe({
         next: (response) => {
           this.aiResponse.set(response);
 
           this.collab.logs.update((current) => [
-            `${new Date().toLocaleTimeString()} - Propuesta IA generada: ${
-              response.diagram.cells.length
-            } celdas`,
+            `${new Date().toLocaleTimeString()} - Propuesta IA generada en modo ${
+              response.mode
+            }: ${response.diagram.cells.length} celdas`,
             ...current,
           ]);
         },
@@ -222,6 +235,7 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
           const message =
             error?.error?.detail?.message ??
             error?.error?.message ??
+            error?.message ??
             'No se pudo generar la propuesta IA.';
 
           const semanticErrors = error?.error?.detail?.errors;
@@ -313,7 +327,9 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
           this.aiErrorMessage.set(String(message));
 
           this.collab.logs.update((current) => [
-            `${new Date().toLocaleTimeString()} - Error al guardar propuesta IA: ${String(message)}`,
+            `${new Date().toLocaleTimeString()} - Error al guardar propuesta IA: ${String(
+              message,
+            )}`,
             ...current,
           ]);
         },
@@ -549,11 +565,45 @@ export class DiagramEditor implements OnInit, AfterViewInit, OnDestroy {
       });
   }
 
-  private buildDiagramAiRequest(userMessage: string): DiagramAiRequest {
+  private buildDiagramAiRequest(payload: EditorAiGeneratePayload): Observable<DiagramAiRequest> {
+    if (payload.mode === 'CREATE') {
+      return of(
+        this.buildDiagramAiPayload({
+          mode: 'CREATE',
+          userMessage: payload.userMessage,
+          currentDiagram: null,
+        }),
+      );
+    }
+
+    const diagramId = this.collab.diagramId();
+
+    if (!diagramId) {
+      return throwError(() => new Error('No se pudo editar porque no hay un diagrama cargado.'));
+    }
+
+    return this.diagramService.EXPORT(diagramId).pipe(
+      switchMap((blob) => from(blob.text())),
+      map((text) => JSON.parse(text) as Record<string, unknown>),
+      map((currentDiagram) =>
+        this.buildDiagramAiPayload({
+          mode: 'EDIT',
+          userMessage: payload.userMessage,
+          currentDiagram,
+        }),
+      ),
+    );
+  }
+
+  private buildDiagramAiPayload(params: {
+    mode: 'CREATE' | 'EDIT';
+    userMessage: string;
+    currentDiagram: Record<string, unknown> | null;
+  }): DiagramAiRequest {
     return {
-      mode: 'CREATE',
-      user_message: userMessage,
-      current_diagram: null,
+      mode: params.mode,
+      user_message: params.userMessage,
+      current_diagram: params.mode === 'EDIT' ? params.currentDiagram : null,
       available_departments: this.ui.availableDepartments().map((department) => ({
         id: department.id,
         name: department.name,

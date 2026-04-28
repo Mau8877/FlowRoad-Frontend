@@ -19,7 +19,7 @@
           [ngModel]="prompt()"
           (ngModelChange)="onPromptChange($event)"
           rows="7"
-          placeholder="Ej: Crea un flujo de compra de vehículo..."
+          placeholder="Ej: Crea un flujo de compra de vehículo... / Quita la actividad X del diagrama actual..."
         ></textarea>
 
         @if (errorMessage) {
@@ -34,6 +34,7 @@
             <p>{{ response.diagram.description }}</p>
 
             <div class="ai-stats">
+              <span>Modo: {{ response.mode }}</span>
               <span>{{ response.diagram.cells.length }} celdas</span>
               <span>{{ response.diagram.lanes.length }} departamentos</span>
               <span>{{ response.template_suggestions.length }} plantillas</span>
@@ -79,12 +80,25 @@
           type="button"
           class="ai-primary-button"
           [disabled]="isLoading"
-          (click)="onGenerate()"
+          (click)="onGenerate('CREATE')"
         >
           @if (isLoading) {
             Generando...
           } @else {
-            Generar propuesta
+            Crear nuevo diagrama
+          }
+        </button>
+
+        <button
+          type="button"
+          class="ai-primary-button"
+          [disabled]="isLoading"
+          (click)="onGenerate('EDIT')"
+        >
+          @if (isLoading) {
+            Editando...
+          } @else {
+            Editar diagrama actual
           }
         </button>
 
