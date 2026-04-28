@@ -1,222 +1,25 @@
-.ai-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(15, 23, 42, 0.45);
-  backdrop-filter: blur(4px);
-}
-
-.ai-modal-card {
-  width: min(920px, calc(100vw - 32px));
-  max-height: calc(100vh - 48px);
-  overflow: hidden;
-  border-radius: 22px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: #ffffff;
-  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.24);
-
-  display: flex;
-  flex-direction: column;
-}
-
-.ai-modal-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 22px 24px;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
-}
-
-.ai-modal-header h2 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 750;
-  color: #111827;
-}
-
-.ai-modal-header p {
-  margin: 6px 0 0;
-  font-size: 14px;
-  color: #64748b;
-}
-
-.ai-icon-button {
-  border: 0;
-  border-radius: 999px;
-  width: 36px;
-  height: 36px;
-  cursor: pointer;
-  background: #f1f5f9;
-  color: #334155;
-}
-
-.ai-modal-body {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  padding: 22px 24px;
-}
-
-.ai-label {
+:host {
   display: block;
-  margin-bottom: 8px;
-  font-size: 13px;
-  font-weight: 700;
-  color: #334155;
 }
 
-.ai-textarea {
-  width: 100%;
-  resize: vertical;
-  border-radius: 16px;
-  border: 1px solid #cbd5e1;
-  padding: 14px 16px;
-  outline: none;
-  font-size: 14px;
-  color: #111827;
+.ai-modal-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(84, 31, 20, 0.35) transparent;
 }
 
-.ai-textarea:focus {
-  border-color: #cc9e61;
-  box-shadow: 0 0 0 3px rgba(204, 158, 97, 0.18);
+.ai-modal-scroll::-webkit-scrollbar {
+  width: 10px;
 }
 
-.ai-error {
-  margin-top: 14px;
-  border-radius: 14px;
-  background: #fef2f2;
-  color: #991b1b;
-  padding: 12px 14px;
-  font-size: 13px;
+.ai-modal-scroll::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-.ai-preview {
-  margin-top: 18px;
-  border-radius: 18px;
-  border: 1px solid rgba(15, 23, 42, 0.1);
-  background: #f8fafc;
-  padding: 16px;
-}
-
-.ai-preview h3 {
-  margin: 0;
-  font-size: 17px;
-  color: #111827;
-}
-
-.ai-preview p {
-  margin: 6px 0 0;
-  color: #64748b;
-  font-size: 14px;
-}
-
-.ai-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 14px;
-}
-
-.ai-stats span {
+.ai-modal-scroll::-webkit-scrollbar-thumb {
+  background: rgba(84, 31, 20, 0.28);
   border-radius: 999px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  padding: 6px 10px;
-  font-size: 12px;
-  font-weight: 700;
-  color: #475569;
 }
 
-.ai-section {
-  margin-top: 16px;
-}
-
-.ai-section h4 {
-  margin: 0 0 10px;
-  font-size: 14px;
-  color: #111827;
-}
-
-.ai-template-list {
-  display: grid;
-  gap: 8px;
-}
-
-.ai-template-item {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  border-radius: 12px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  padding: 10px 12px;
-  font-size: 13px;
-}
-
-.ai-template-item strong {
-  color: #111827;
-}
-
-.ai-template-item span {
-  color: #64748b;
-}
-
-.ai-warning {
-  margin-top: 14px;
-  border-radius: 14px;
-  background: #fffbeb;
-  color: #92400e;
-  padding: 12px 14px;
-  font-size: 13px;
-}
-
-.ai-warning p {
-  margin: 6px 0 0;
-  color: #92400e;
-}
-
-.ai-modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 10px;
-  padding: 18px 24px;
-  border-top: 1px solid rgba(15, 23, 42, 0.08);
-  background: #ffffff;
-}
-
-.ai-secondary-button,
-.ai-primary-button,
-.ai-accept-button {
-  border: 0;
-  border-radius: 999px;
-  padding: 10px 16px;
-  font-size: 13px;
-  font-weight: 750;
-  cursor: pointer;
-}
-
-.ai-secondary-button {
-  background: #f1f5f9;
-  color: #334155;
-}
-
-.ai-primary-button {
-  background: #111827;
-  color: #ffffff;
-}
-
-.ai-accept-button {
-  background: #cc9e61;
-  color: #ffffff;
-}
-
-.ai-primary-button:disabled,
-.ai-accept-button:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
+.ai-modal-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(84, 31, 20, 0.42);
 }

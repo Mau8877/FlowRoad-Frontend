@@ -1,115 +1,372 @@
 @if (isOpen) {
-  <div class="ai-modal-backdrop">
-    <div class="ai-modal-card">
-      <div class="ai-modal-header">
-        <div>
-          <h2>Asistente IA de diagramas</h2>
-          <p>Describe el proceso y la IA generará una propuesta de diagrama ejecutable.</p>
+  <div
+    class="fixed inset-0 z-100 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm"
+  >
+    <div
+      class="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] border border-black/10 bg-white shadow-[0_24px_80px_rgba(2,3,4,0.35)]"
+    >
+      <div
+        class="shrink-0 border-b border-white/10 px-6 py-5 text-white"
+        [class.bg-gradient-to-r]="true"
+        [class.from-fr-black]="selectedMode() === 'CREATE'"
+        [class.via-fr-gray]="selectedMode() === 'CREATE'"
+        [class.to-fr-taupe]="selectedMode() === 'CREATE'"
+        [class.from-fr-brown]="selectedMode() === 'EDIT'"
+        [class.via-fr-brown]="selectedMode() === 'EDIT'"
+        [class.to-fr-gold]="selectedMode() === 'EDIT'"
+      >
+        <div class="flex items-start justify-between gap-4">
+          <div class="min-w-0">
+            <div class="mb-3 flex items-center gap-3">
+              <div
+                class="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/12 backdrop-blur-sm"
+              >
+                <lucide-angular [img]="icons.Bot" class="h-5 w-5"></lucide-angular>
+              </div>
+
+              <div>
+                <h2 class="m-0 text-xl font-semibold tracking-tight">Asistente IA de diagramas</h2>
+
+                <p class="mt-1 text-sm text-white/80">
+                  {{ modeDescription() }}
+                </p>
+              </div>
+            </div>
+
+            <div class="inline-flex rounded-2xl bg-white/10 p-1 backdrop-blur-sm">
+              <button
+                type="button"
+                class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition"
+                [class.bg-white]="selectedMode() === 'CREATE'"
+                [class.text-fr-black]="selectedMode() === 'CREATE'"
+                [class.text-white]="selectedMode() !== 'CREATE'"
+                (click)="setMode('CREATE')"
+              >
+                <lucide-angular [img]="icons.PlusCircle" class="h-4 w-4"></lucide-angular>
+                Crear
+              </button>
+
+              <button
+                type="button"
+                class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition"
+                [class.bg-white]="selectedMode() === 'EDIT'"
+                [class.text-fr-brown]="selectedMode() === 'EDIT'"
+                [class.text-white]="selectedMode() !== 'EDIT'"
+                (click)="setMode('EDIT')"
+              >
+                <lucide-angular [img]="icons.PencilLine" class="h-4 w-4"></lucide-angular>
+                Editar
+              </button>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
+            (click)="closeRequested.emit()"
+          >
+            <lucide-angular [img]="icons.X" class="h-5 w-5"></lucide-angular>
+          </button>
         </div>
-
-        <button type="button" class="ai-icon-button" (click)="closeRequested.emit()">✕</button>
       </div>
 
-      <div class="ai-modal-body">
-        <label class="ai-label" for="aiPrompt">Instrucción para la IA</label>
+      <div class="ai-modal-scroll min-h-0 flex-1 overflow-y-auto px-6 py-6">
+        <div class="grid gap-6 lg:grid-cols-[1.25fr_0.95fr]">
+          <div class="space-y-5">
+            <div class="rounded-3xl border border-black/10 bg-white p-5 shadow-sm">
+              <div class="mb-4 flex items-center justify-between gap-4">
+                <div>
+                  <div class="flex items-center gap-2">
+                    <lucide-angular
+                      [img]="icons.Wand2"
+                      class="h-4 w-4 text-fr-gold"
+                    ></lucide-angular>
 
-        <textarea
-          id="aiPrompt"
-          class="ai-textarea"
-          [ngModel]="prompt()"
-          (ngModelChange)="onPromptChange($event)"
-          rows="7"
-          placeholder="Ej: Crea un flujo de compra de vehículo... / Quita la actividad X del diagrama actual..."
-        ></textarea>
-
-        @if (errorMessage) {
-          <div class="ai-error">
-            {{ errorMessage }}
-          </div>
-        }
-
-        @if (response) {
-          <div class="ai-preview">
-            <h3>{{ response.diagram.name }}</h3>
-            <p>{{ response.diagram.description }}</p>
-
-            <div class="ai-stats">
-              <span>Modo: {{ response.mode }}</span>
-              <span>{{ response.diagram.cells.length }} celdas</span>
-              <span>{{ response.diagram.lanes.length }} departamentos</span>
-              <span>{{ response.template_suggestions.length }} plantillas</span>
-            </div>
-
-            <div class="ai-section">
-              <h4>Plantillas sugeridas</h4>
-
-              <div class="ai-template-list">
-                @for (suggestion of response.template_suggestions; track suggestion.node_id) {
-                  <div class="ai-template-item">
-                    <strong>{{ suggestion.node_name }}</strong>
-
-                    @if (suggestion.strategy === 'USE_EXISTING_TEMPLATE') {
-                      <span>Usa existente: {{ suggestion.existing_template_name }}</span>
-                    } @else {
-                      <span>Crea nueva: {{ suggestion.template?.name }}</span>
-                    }
+                    <span class="text-sm font-semibold text-fr-black">
+                      {{ modeTitle() }}
+                    </span>
                   </div>
+
+                  <p class="mt-1 text-sm text-fr-gray">Escribe una instrucción clara para la IA.</p>
+                </div>
+
+                <span
+                  class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
+                  [class.bg-fr-black]="selectedMode() === 'CREATE'"
+                  [class.text-white]="selectedMode() === 'CREATE'"
+                  [class.bg-fr-brown]="selectedMode() === 'EDIT'"
+                  [class.text-white]="selectedMode() === 'EDIT'"
+                >
+                  {{ selectedMode() }}
+                </span>
+              </div>
+
+              <label class="mb-2 block text-sm font-semibold text-fr-black" for="aiPrompt">
+                Instrucción para la IA
+              </label>
+
+              <textarea
+                id="aiPrompt"
+                class="min-h-55 w-full resize-y rounded-2xl border bg-white px-4 py-4 text-sm text-fr-black outline-none transition placeholder:text-fr-gray/70"
+                [class.border-fr-gold/40]="selectedMode() === 'CREATE'"
+                [class.focus:border-fr-gold]="selectedMode() === 'CREATE'"
+                [class.focus:ring-4]="true"
+                [class.focus:ring-fr-gold/15]="selectedMode() === 'CREATE'"
+                [class.border-fr-brown/35]="selectedMode() === 'EDIT'"
+                [class.focus:border-fr-brown]="selectedMode() === 'EDIT'"
+                [class.focus:ring-fr-brown/15]="selectedMode() === 'EDIT'"
+                [ngModel]="prompt()"
+                (ngModelChange)="onPromptChange($event)"
+                rows="8"
+                placeholder="Ej: Crea un flujo de compra de vehículo... / Quita la actividad X del diagrama actual..."
+              ></textarea>
+
+              <div class="mt-4 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition"
+                  [class.border-fr-gold/40]="!isRecording()"
+                  [class.text-fr-black]="!isRecording()"
+                  [class.hover:bg-fr-gold/8]="!isRecording()"
+                  [class.border-red-300]="isRecording()"
+                  [class.bg-red-50]="isRecording()"
+                  [class.text-red-700]="isRecording()"
+                  [disabled]="!isSpeechSupported()"
+                  (click)="toggleDictation()"
+                >
+                  @if (isRecording()) {
+                    <lucide-angular [img]="icons.MicOff" class="h-4 w-4"></lucide-angular>
+                    Detener dictado
+                  } @else {
+                    <lucide-angular [img]="icons.Mic" class="h-4 w-4"></lucide-angular>
+                    Dictar instrucción
+                  }
+                </button>
+
+                @if (!isSpeechSupported()) {
+                  <span class="text-xs text-fr-gray">
+                    Speech-to-text no disponible en este navegador.
+                  </span>
+                } @else {
+                  <span class="text-xs text-fr-gray"> Recomendado: Habla claro y fuerte </span>
                 }
               </div>
+
+              @if (speechError()) {
+                <div
+                  class="mt-4 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+                >
+                  <lucide-angular
+                    [img]="icons.AlertTriangle"
+                    class="mt-0.5 h-4 w-4 shrink-0"
+                  ></lucide-angular>
+
+                  <span>{{ speechError() }}</span>
+                </div>
+              }
+
+              @if (errorMessage) {
+                <div
+                  class="mt-4 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+                >
+                  <lucide-angular
+                    [img]="icons.AlertTriangle"
+                    class="mt-0.5 h-4 w-4 shrink-0"
+                  ></lucide-angular>
+
+                  <span>{{ errorMessage }}</span>
+                </div>
+              }
             </div>
-
-            @if (response.warnings.length) {
-              <div class="ai-warning">
-                <strong>Advertencias</strong>
-
-                @for (warning of response.warnings; track warning) {
-                  <p>{{ warning }}</p>
-                }
-              </div>
-            }
           </div>
-        }
+
+          <div class="space-y-5">
+            <div class="rounded-3xl border border-black/10 bg-zinc-50 p-5 shadow-sm">
+              <div class="mb-4 flex items-center gap-2">
+                <lucide-angular
+                  [img]="icons.Sparkles"
+                  class="h-4 w-4 text-fr-gold"
+                ></lucide-angular>
+
+                <h3 class="text-sm font-semibold text-fr-black">Vista previa de propuesta</h3>
+              </div>
+
+              @if (response) {
+                <div class="space-y-4">
+                  <div
+                    class="rounded-2xl border p-4"
+                    [class.border-fr-gold/30]="response.mode === 'CREATE'"
+                    [class.bg-fr-gold/5]="response.mode === 'CREATE'"
+                    [class.border-fr-brown/25]="response.mode === 'EDIT'"
+                    [class.bg-fr-brown/5]="response.mode === 'EDIT'"
+                  >
+                    <h4 class="text-base font-semibold text-fr-black">
+                      {{ response.diagram.name }}
+                    </h4>
+
+                    <p class="mt-1 text-sm text-fr-gray">
+                      {{ response.diagram.description }}
+                    </p>
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-3">
+                    <div class="rounded-2xl border border-black/10 bg-white p-4">
+                      <div class="text-xs font-semibold uppercase tracking-wide text-fr-gray">
+                        Modo
+                      </div>
+
+                      <div class="mt-1 text-sm font-semibold text-fr-black">
+                        {{ response.mode }}
+                      </div>
+                    </div>
+
+                    <div class="rounded-2xl border border-black/10 bg-white p-4">
+                      <div class="text-xs font-semibold uppercase tracking-wide text-fr-gray">
+                        Celdas
+                      </div>
+
+                      <div class="mt-1 text-sm font-semibold text-fr-black">
+                        {{ response.diagram.cells.length }}
+                      </div>
+                    </div>
+
+                    <div class="rounded-2xl border border-black/10 bg-white p-4">
+                      <div class="text-xs font-semibold uppercase tracking-wide text-fr-gray">
+                        Departamentos
+                      </div>
+
+                      <div class="mt-1 text-sm font-semibold text-fr-black">
+                        {{ response.diagram.lanes.length }}
+                      </div>
+                    </div>
+
+                    <div class="rounded-2xl border border-black/10 bg-white p-4">
+                      <div class="text-xs font-semibold uppercase tracking-wide text-fr-gray">
+                        Plantillas
+                      </div>
+
+                      <div class="mt-1 text-sm font-semibold text-fr-black">
+                        {{ response.template_suggestions.length }}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="rounded-2xl border border-black/10 bg-white p-4">
+                    <div class="mb-3 flex items-center gap-2">
+                      <lucide-angular
+                        [img]="icons.FileText"
+                        class="h-4 w-4 text-fr-gold"
+                      ></lucide-angular>
+
+                      <h4 class="text-sm font-semibold text-fr-black">Plantillas sugeridas</h4>
+                    </div>
+
+                    <div class="space-y-2">
+                      @for (suggestion of response.template_suggestions; track suggestion.node_id) {
+                        <div
+                          class="flex items-start justify-between gap-3 rounded-2xl border border-black/8 bg-zinc-50 px-3 py-3"
+                        >
+                          <div class="min-w-0">
+                            <div class="truncate text-sm font-semibold text-fr-black">
+                              {{ suggestion.node_name }}
+                            </div>
+
+                            <div class="mt-1 text-xs text-fr-gray">
+                              @if (suggestion.strategy === 'USE_EXISTING_TEMPLATE') {
+                                Usa plantilla existente
+                              } @else {
+                                Crea plantilla nueva
+                              }
+                            </div>
+                          </div>
+
+                          <div class="shrink-0 text-right text-xs text-fr-gray">
+                            @if (suggestion.strategy === 'USE_EXISTING_TEMPLATE') {
+                              {{ suggestion.existing_template_name }}
+                            } @else {
+                              {{ suggestion.template?.name }}
+                            }
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  </div>
+
+                  @if (response.warnings.length) {
+                    <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                      <div class="mb-2 flex items-center gap-2 text-amber-800">
+                        <lucide-angular
+                          [img]="icons.AlertTriangle"
+                          class="h-4 w-4"
+                        ></lucide-angular>
+
+                        <span class="text-sm font-semibold">Advertencias</span>
+                      </div>
+
+                      <div class="space-y-1 text-sm text-amber-800">
+                        @for (warning of response.warnings; track warning) {
+                          <p>{{ warning }}</p>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <div
+                  class="flex min-h-80 flex-col items-center justify-center rounded-2xl border border-dashed border-black/10 bg-white px-6 py-10 text-center"
+                >
+                  <div
+                    class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-fr-gold/12"
+                  >
+                    <lucide-angular [img]="icons.Bot" class="h-6 w-6 text-fr-gold"></lucide-angular>
+                  </div>
+
+                  <h4 class="text-base font-semibold text-fr-black">
+                    Aún no hay propuesta generada
+                  </h4>
+
+                  <p class="mt-2 max-w-sm text-sm text-fr-gray">
+                    Escribe tu instrucción, elige crear o editar y genera una propuesta para revisar
+                    antes de aplicarla al diagrama.
+                  </p>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div class="ai-modal-footer">
-        <button type="button" class="ai-secondary-button" (click)="closeRequested.emit()">
-          Cancelar
-        </button>
+      <div class="shrink-0 border-t border-black/8 bg-white px-6 py-4">
+        <div class="flex flex-wrap items-center justify-end gap-3">
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60"
+            [class.bg-fr-black]="selectedMode() === 'CREATE'"
+            [class.hover:bg-fr-gray]="selectedMode() === 'CREATE'"
+            [class.bg-fr-brown]="selectedMode() === 'EDIT'"
+            [class.hover:bg-[#6a2d1f]]="selectedMode() === 'EDIT'"
+            [disabled]="isLoading"
+            (click)="onGenerate()"
+          >
+            @if (selectedMode() === 'CREATE') {
+              <lucide-angular [img]="icons.PlusCircle" class="h-4 w-4"></lucide-angular>
+            } @else {
+              <lucide-angular [img]="icons.PencilLine" class="h-4 w-4"></lucide-angular>
+            }
 
-        <button
-          type="button"
-          class="ai-primary-button"
-          [disabled]="isLoading"
-          (click)="onGenerate('CREATE')"
-        >
-          @if (isLoading) {
-            Generando...
-          } @else {
-            Crear nuevo diagrama
-          }
-        </button>
+            {{ generateButtonLabel() }}
+          </button>
 
-        <button
-          type="button"
-          class="ai-primary-button"
-          [disabled]="isLoading"
-          (click)="onGenerate('EDIT')"
-        >
-          @if (isLoading) {
-            Editando...
-          } @else {
-            Editar diagrama actual
-          }
-        </button>
-
-        <button
-          type="button"
-          class="ai-accept-button"
-          [disabled]="!response || isLoading"
-          (click)="applyRequested.emit()"
-        >
-          Aplicar al diagrama
-        </button>
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-full bg-fr-gold px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+            [disabled]="!response || isLoading"
+            (click)="applyRequested.emit()"
+          >
+            <lucide-angular [img]="icons.Check" class="h-4 w-4"></lucide-angular>
+            Aplicar propuesta
+          </button>
+        </div>
       </div>
     </div>
   </div>
