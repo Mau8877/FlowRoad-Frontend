@@ -27,6 +27,7 @@ import {
   Plus,
   Settings2,
   Trash2,
+  X,
 } from 'lucide-angular';
 
 @Component({
@@ -38,7 +39,7 @@ import {
     {
       provide: LUCIDE_ICONS,
       multi: true,
-      useValue: new LucideIconProvider({ Plus, Settings2, Trash2, Layers, FileJson }),
+      useValue: new LucideIconProvider({ Plus, Settings2, Trash2, Layers, FileJson, X }),
     },
   ],
 })

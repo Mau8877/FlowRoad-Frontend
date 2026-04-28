@@ -1,19 +1,20 @@
-import { Component, inject, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { Router, NavigationEnd } from '@angular/router';
-import { filter } from 'rxjs';
-import { AuthService } from '#/app/features/auth/services/auth.service';
 import { UiService } from '#/app/core/services/ui.service';
+import { AuthService } from '#/app/features/auth/services/auth.service';
+import { CommonModule } from '@angular/common';
+import { Component, inject, OnInit } from '@angular/core';
+import { NavigationEnd, Router } from '@angular/router';
+import { filter } from 'rxjs';
 
 // Icons
 import {
-  LucideAngularModule,
+  LogOut,
   LUCIDE_ICONS,
+  LucideAngularModule,
   LucideIconProvider,
   Menu,
-  LogOut,
-  User,
   Settings,
+  User,
+  X,
 } from 'lucide-angular';
 
 @Component({
@@ -26,7 +27,7 @@ import {
     {
       provide: LUCIDE_ICONS,
       multi: true,
-      useValue: new LucideIconProvider({ Menu, LogOut, User, Settings }),
+      useValue: new LucideIconProvider({ Menu, LogOut, User, Settings, X }),
     },
   ],
 })

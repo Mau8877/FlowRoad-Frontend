@@ -11,6 +11,7 @@ import {
   Paperclip,
   Plus,
   Trash2,
+  X,
 } from 'lucide-angular';
 
 @Component({
@@ -23,7 +24,7 @@ import {
     {
       provide: LUCIDE_ICONS,
       multi: true,
-      useValue: new LucideIconProvider({ GripVertical, Trash2, Hash, Paperclip, Plus }),
+      useValue: new LucideIconProvider({ GripVertical, Trash2, Hash, Paperclip, Plus, X }),
     },
   ],
 })
