@@ -35,8 +35,20 @@ export class LoginModal {
 
     this.authService.LOGIN(credentials).subscribe({
       next: () => {
-        // Redirigir al Dashboard tras login exitoso
-        this.router.navigate(['/dashboard']);
+        // Redirigir basado en el rol tras login exitoso
+        const user = this.authService.currentUser();
+        const role = user?.role;
+
+        if (role === 'ADMIN') {
+          this.router.navigate(['/dashboard']);
+        } else if (role === 'DESIGNER') {
+          this.router.navigate(['/diagram']);
+        } else if (role === 'RECEP' || role === 'WORKER') {
+          this.router.navigate(['/process']);
+        } else {
+          // Fallback por defecto
+          this.router.navigate(['/dashboard']);
+        }
       },
       error: (err) => {
         this.IS_LOADING.set(false);
