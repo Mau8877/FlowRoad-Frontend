@@ -1,0 +1,117 @@
+:host {
+  display: block;
+}
+
+.chart-card {
+  height: 100%;
+  border: 1px solid rgb(2 3 4 / 0.08);
+  border-radius: 1.25rem;
+  background: #ffffff;
+  padding: 1.25rem;
+  box-shadow: 0 10px 30px rgb(2 3 4 / 0.06);
+}
+
+.card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.card-header h2 {
+  color: #020304;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.card-header p {
+  margin-top: 0.25rem;
+  color: #626266;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.card-badge {
+  border-radius: 999px;
+  background: rgb(204 158 97 / 0.14);
+  color: #541f14;
+  padding: 0.38rem 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.bar-list {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.bar-item {
+  border-radius: 1rem;
+  background: #f7f4ef;
+  padding: 0.9rem;
+}
+
+.bar-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.bar-label {
+  min-width: 0;
+}
+
+.bar-label strong {
+  display: block;
+  color: #020304;
+  font-size: 0.86rem;
+  font-weight: 850;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bar-label span {
+  display: block;
+  margin-top: 0.2rem;
+  color: #938172;
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bar-value {
+  color: #020304;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.bar-track {
+  margin-top: 0.8rem;
+  height: 0.55rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(2 3 4 / 0.08);
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #541f14, #cc9e61);
+}
+
+.empty-state {
+  border: 1px dashed rgb(2 3 4 / 0.14);
+  border-radius: 1rem;
+  background: #f7f4ef;
+  color: #626266;
+  padding: 1rem;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+}

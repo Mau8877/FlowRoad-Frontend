@@ -1,0 +1,41 @@
+<article class="chart-card">
+  <header class="card-header">
+    <div>
+      <h2>Trámites por estado</h2>
+      <p>Distribución general de las instancias de proceso.</p>
+    </div>
+
+    <span class="card-badge"> {{ total() }} trámites </span>
+  </header>
+
+  <div class="donut-layout">
+    <div class="donut-wrapper">
+      <div class="donut" [style.background]="donutGradient()">
+        <div class="donut-center">
+          <strong>{{ total() }}</strong>
+          <span>Total</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="legend-list">
+      @for (item of statuses(); track item.status) {
+        <div class="legend-item">
+          <div class="legend-left">
+            <span class="legend-dot" [style.background-color]="statusColor(item.status)"></span>
+
+            <div class="legend-text">
+              <strong>{{ item.label }}</strong>
+              <span>{{ item.status }}</span>
+            </div>
+          </div>
+
+          <div class="legend-right">
+            <strong>{{ item.count }}</strong>
+            <span>{{ percentage(item.count) }}%</span>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+</article>

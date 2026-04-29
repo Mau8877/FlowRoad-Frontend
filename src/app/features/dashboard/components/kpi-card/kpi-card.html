@@ -1,0 +1,23 @@
+<article class="kpi-card">
+  <p class="kpi-title">
+    {{ title() }}
+  </p>
+
+  <div class="kpi-main">
+    <strong class="kpi-value">
+      {{ value() }}
+    </strong>
+
+    @if (helper()) {
+      <span class="kpi-helper">
+        {{ helper() }}
+      </span>
+    }
+  </div>
+
+  @if (description()) {
+    <p class="kpi-description">
+      {{ description() }}
+    </p>
+  }
+</article>

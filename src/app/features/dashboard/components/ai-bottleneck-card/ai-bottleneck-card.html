@@ -1,0 +1,83 @@
+<article class="ai-card">
+  <header class="ai-header">
+    <div>
+      <p class="ai-eyebrow">Análisis inteligente</p>
+      <h2>Cuello de botella operativo</h2>
+      <p>
+        Interpretación automática de los KPIs para detectar riesgos, evidencias y recomendaciones.
+      </p>
+    </div>
+
+    @if (analysis()) {
+      <span class="ai-chip" [class]="getSeverityClass(analysis()?.severity)">
+        {{ getSeverityLabel(analysis()?.severity) }}
+      </span>
+    }
+  </header>
+
+  @if (isLoading()) {
+    <div class="ai-loading">
+      <div class="spinner"></div>
+      <span>Generando análisis IA...</span>
+    </div>
+  } @else if (errorMessage()) {
+    <div class="ai-error">
+      <strong>No se pudo generar el análisis IA</strong>
+      <p>{{ errorMessage() }}</p>
+    </div>
+  } @else if (analysis(); as data) {
+    <div class="ai-content">
+      <div class="main-result">
+        <span>Posible cuello de botella</span>
+        <strong>{{ data.mainBottleneck }}</strong>
+      </div>
+
+      <p class="summary">
+        {{ data.summary }}
+      </p>
+
+      <div class="meta-row">
+        <span>{{ getGeneratedByLabel(data.generatedBy) }}</span>
+        <span>{{ formatGeneratedAt(data.generatedAt) }}</span>
+      </div>
+
+      @if (data.providerError) {
+        <div class="provider-warning">
+          {{ data.providerError }}
+        </div>
+      }
+
+      <div class="ai-grid">
+        <section>
+          <h3>Evidencias</h3>
+
+          @if (data.evidence.length > 0) {
+            <ul>
+              @for (item of data.evidence; track item) {
+                <li>{{ item }}</li>
+              }
+            </ul>
+          } @else {
+            <p class="empty-text">No se registraron evidencias.</p>
+          }
+        </section>
+
+        <section>
+          <h3>Recomendaciones</h3>
+
+          @if (data.recommendations.length > 0) {
+            <ul>
+              @for (item of data.recommendations; track item) {
+                <li>{{ item }}</li>
+              }
+            </ul>
+          } @else {
+            <p class="empty-text">No se generaron recomendaciones.</p>
+          }
+        </section>
+      </div>
+    </div>
+  } @else {
+    <div class="empty-state">El análisis IA aparecerá cuando se carguen los KPIs.</div>
+  }
+</article>

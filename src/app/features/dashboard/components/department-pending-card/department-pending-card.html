@@ -1,0 +1,35 @@
+<article class="chart-card">
+  <header class="card-header">
+    <div>
+      <h2>Tareas pendientes por departamento</h2>
+      <p>Áreas con tareas pendientes activas dentro de los trámites.</p>
+    </div>
+
+    <span class="card-badge">Carga operativa</span>
+  </header>
+
+  <div class="department-list">
+    @if (departments().length > 0) {
+      @for (item of departments(); track item.departmentId ?? item.departmentName) {
+        <div class="department-item">
+          <div class="department-row">
+            <div class="department-label">
+              <strong>{{ item.departmentName }}</strong>
+              <span>{{ item.departmentId || 'Sin ID de departamento' }}</span>
+            </div>
+
+            <strong class="department-value">
+              {{ item.pendingTasks }}
+            </strong>
+          </div>
+
+          <div class="bar-track">
+            <div class="bar-fill" [style.width.%]="barWidth(item.pendingTasks)"></div>
+          </div>
+        </div>
+      }
+    } @else {
+      <div class="empty-state">No hay tareas pendientes por departamento en este momento.</div>
+    }
+  </div>
+</article>

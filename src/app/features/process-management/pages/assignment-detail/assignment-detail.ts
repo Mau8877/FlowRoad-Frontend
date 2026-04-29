@@ -1,10 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, NgZone, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Bot, LucideAngularModule, Mic, MicOff, Sparkles, Wand2 } from 'lucide-angular';
-import { finalize } from 'rxjs';
-
+import { Subscription, finalize } from 'rxjs';
 import {
   FieldDefinition,
   FieldType,
@@ -25,48 +24,9 @@ import { WorkerAiRequest, WorkerFieldSuggestion } from '../../interfaces/worker-
 import { ProcessAssignmentService } from '../../services/process-assignment.service';
 import { ProcessInstanceService } from '../../services/process-instance.service';
 import { WorkerAiService } from '../../services/worker-ai.service';
+import { SpeechService } from '#/app/core/services/speech.service';
 
-interface BrowserSpeechRecognitionAlternative {
-  transcript: string;
-  confidence?: number;
-}
 
-interface BrowserSpeechRecognitionResult {
-  isFinal: boolean;
-  length: number;
-  [index: number]: BrowserSpeechRecognitionAlternative;
-}
-
-interface BrowserSpeechRecognitionResultList {
-  length: number;
-  [index: number]: BrowserSpeechRecognitionResult;
-}
-
-interface BrowserSpeechRecognitionEvent {
-  resultIndex: number;
-  results: BrowserSpeechRecognitionResultList;
-}
-
-interface BrowserSpeechRecognitionErrorEvent {
-  error?: string;
-  message?: string;
-}
-
-interface BrowserSpeechRecognition {
-  lang: string;
-  continuous: boolean;
-  interimResults: boolean;
-  maxAlternatives: number;
-  onstart: (() => void) | null;
-  onend: (() => void) | null;
-  onerror: ((event: BrowserSpeechRecognitionErrorEvent) => void) | null;
-  onresult: ((event: BrowserSpeechRecognitionEvent) => void) | null;
-  start: () => void;
-  stop: () => void;
-  abort: () => void;
-}
-
-type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognition;
 
 @Component({
   selector: 'app-assignment-detail',
@@ -77,18 +37,18 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognition;
 export class AssignmentDetail implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  private readonly ngZone = inject(NgZone);
   private readonly processAssignmentService = inject(ProcessAssignmentService);
   private readonly processInstanceService = inject(ProcessInstanceService);
   private readonly templateService = inject(TemplateService);
   private readonly workerAiService = inject(WorkerAiService);
+  private readonly speechService = inject(SpeechService);
 
   private readonly dateFormatter = new Intl.DateTimeFormat('es-BO', {
     dateStyle: 'medium',
     timeStyle: 'short',
   });
 
-  private speechRecognition: BrowserSpeechRecognition | null = null;
+  private speechSubscription: Subscription | null = null;
   private activeSpeechField: FieldDefinition | null = null;
   private baseFieldTextBeforeRecording = '';
 
@@ -126,7 +86,7 @@ export class AssignmentDetail implements OnInit, OnDestroy {
   public speechErrorByFieldId = signal<Record<string, string>>({});
 
   public isSpeechSupported = computed(() => {
-    return Boolean(this.getSpeechRecognitionConstructor());
+    return this.speechService.isSupported();
   });
 
   public sortedTemplateFields = computed(() => {
@@ -158,7 +118,9 @@ export class AssignmentDetail implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.abortDictation();
+    if (this.speechSubscription) {
+      this.speechSubscription.unsubscribe();
+    }
   }
 
   loadAssignment(assignmentId: string): void {
@@ -565,9 +527,7 @@ export class AssignmentDetail implements OnInit, OnDestroy {
   startFieldDictation(field: FieldDefinition): void {
     this.setSpeechFieldError(field.fieldId, '');
 
-    const SpeechRecognitionConstructor = this.getSpeechRecognitionConstructor();
-
-    if (!SpeechRecognitionConstructor) {
+    if (!this.speechService.isSupported()) {
       this.setSpeechFieldError(
         field.fieldId,
         'El navegador no soporta reconocimiento de voz. Para tus pruebas usa Microsoft Edge.',
@@ -575,139 +535,55 @@ export class AssignmentDetail implements OnInit, OnDestroy {
       return;
     }
 
-    this.abortDictation();
+    if (this.speechSubscription) {
+      this.speechSubscription.unsubscribe();
+    }
 
-    const recognition = new SpeechRecognitionConstructor();
-
-    this.speechRecognition = recognition;
     this.activeSpeechField = field;
     this.baseFieldTextBeforeRecording = this.getStringFieldValue(field.fieldId).trim();
+    this.recordingFieldId.set(field.fieldId);
 
-    recognition.lang = 'es-ES';
-    recognition.continuous = false;
-    recognition.interimResults = true;
-    recognition.maxAlternatives = 1;
-
-    recognition.onstart = () => {
-      this.ngZone.run(() => {
-        this.recordingFieldId.set(field.fieldId);
-        this.setSpeechFieldError(field.fieldId, '');
-      });
-    };
-
-    recognition.onresult = (event: BrowserSpeechRecognitionEvent) => {
-      const transcript = this.extractTranscript(event);
-
-      this.ngZone.run(() => {
-        if (!transcript || !this.activeSpeechField) {
+    this.speechSubscription = this.speechService.listen().subscribe({
+      next: (result) => {
+        if (!this.activeSpeechField) {
           return;
         }
 
-        const merged = `${this.baseFieldTextBeforeRecording} ${transcript}`
+        const merged = `${this.baseFieldTextBeforeRecording} ${result.transcript}`
           .replace(/\s+/g, ' ')
           .trim();
 
         this.updateFieldValue(this.activeSpeechField, merged);
-      });
-    };
-
-    recognition.onerror = (event: BrowserSpeechRecognitionErrorEvent) => {
-      this.ngZone.run(() => {
-        const error = event.error ?? event.message ?? 'desconocido';
-        const activeFieldId = this.activeSpeechField?.fieldId ?? field.fieldId;
-
+      },
+      error: (error: Error) => {
         this.recordingFieldId.set(null);
-
-        if (error === 'aborted') {
-          return;
-        }
-
-        if (error === 'no-speech') {
-          this.setSpeechFieldError(
-            activeFieldId,
-            'No se detectó voz. Intenta hablar más cerca del micrófono.',
-          );
-          return;
-        }
-
-        if (error === 'not-allowed') {
-          this.setSpeechFieldError(
-            activeFieldId,
-            'El navegador bloqueó el micrófono. Revisa los permisos del sitio.',
-          );
-          return;
-        }
-
-        if (error === 'audio-capture') {
-          this.setSpeechFieldError(
-            activeFieldId,
-            'No se pudo capturar audio. Revisa que el micrófono esté disponible.',
-          );
-          return;
-        }
-
-        if (error === 'network') {
-          this.setSpeechFieldError(
-            activeFieldId,
-            'No se pudo conectar con el reconocimiento de voz. Prueba nuevamente en Edge.',
-          );
-          return;
-        }
-
-        this.setSpeechFieldError(
-          activeFieldId,
-          `No se pudo completar el dictado. Error: ${error}.`,
-        );
-      });
-    };
-
-    recognition.onend = () => {
-      this.ngZone.run(() => {
-        this.recordingFieldId.set(null);
-        this.speechRecognition = null;
         this.activeSpeechField = null;
-      });
-    };
-
-    try {
-      recognition.start();
-    } catch {
-      this.recordingFieldId.set(null);
-      this.speechRecognition = null;
-      this.activeSpeechField = null;
-      this.setSpeechFieldError(
-        field.fieldId,
-        'No se pudo iniciar el dictado. Recarga la página e intenta nuevamente.',
-      );
-    }
+        this.setSpeechFieldError(field.fieldId, error.message);
+        this.speechSubscription = null;
+      },
+      complete: () => {
+        this.recordingFieldId.set(null);
+        this.activeSpeechField = null;
+        this.speechSubscription = null;
+      },
+    });
   }
 
   stopDictation(): void {
-    if (!this.speechRecognition) {
+    if (!this.speechSubscription) {
       this.recordingFieldId.set(null);
       return;
     }
 
-    try {
-      this.speechRecognition.stop();
-    } catch {
-      this.abortDictation();
-    }
+    this.speechService.stop();
   }
 
   abortDictation(): void {
-    if (!this.speechRecognition) {
-      this.recordingFieldId.set(null);
-      return;
+    if (this.speechSubscription) {
+      this.speechSubscription.unsubscribe();
+      this.speechSubscription = null;
     }
 
-    try {
-      this.speechRecognition.abort();
-    } catch {
-      // Solo limpiamos estado local.
-    }
-
-    this.speechRecognition = null;
     this.activeSpeechField = null;
     this.recordingFieldId.set(null);
   }
@@ -950,29 +826,5 @@ export class AssignmentDetail implements OnInit, OnDestroy {
     return String(value);
   }
 
-  private extractTranscript(event: BrowserSpeechRecognitionEvent): string {
-    const results = Array.from(
-      { length: event.results.length },
-      (_, index) => event.results[index],
-    );
 
-    return results
-      .map((result) => result[0]?.transcript ?? '')
-      .join(' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-  }
-
-  private getSpeechRecognitionConstructor(): BrowserSpeechRecognitionConstructor | null {
-    if (typeof window === 'undefined') {
-      return null;
-    }
-
-    const speechWindow = window as Window & {
-      SpeechRecognition?: BrowserSpeechRecognitionConstructor;
-      webkitSpeechRecognition?: BrowserSpeechRecognitionConstructor;
-    };
-
-    return speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition ?? null;
-  }
 }

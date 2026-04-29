@@ -1,62 +1,75 @@
-<div class="p-10 bg-slate-50 min-h-screen">
-  <div class="max-w-4xl mx-auto">
-    <h1 class="text-4xl font-display text-fr-black uppercase tracking-tighter">
-      Panel de Control <span class="text-fr-gold">FlowRoad</span>
-    </h1>
+<section class="dashboard-page">
+  <div class="dashboard-container">
+    <header class="dashboard-header">
+      <div>
+        <p class="eyebrow">FlowRoad Analytics</p>
+        <h1>Dashboard de KPIs</h1>
+        <p class="description">
+          Indicadores operativos de procesos, estados, finalización, carga pendiente y uso de
+          diagramas.
+        </p>
 
-    <div class="h-1 w-20 bg-fr-brown mt-2 mb-10"></div>
-
-    @if (authService.currentUser(); as user) {
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="card bg-white shadow-xl border border-slate-200">
-          <div class="card-body">
-            <h2 class="card-title text-fr-brown uppercase text-sm tracking-widest">
-              Información del Perfil
-            </h2>
-            <div class="space-y-2 mt-4">
-              <p class="text-slate-600 text-sm">
-                <span class="font-bold text-fr-black">Nombre:</span> {{ user.displayName }}
-              </p>
-              <p class="text-slate-600 text-sm">
-                <span class="font-bold text-fr-black">Email:</span> {{ user.email }}
-              </p>
-              <p class="text-slate-600 text-sm">
-                <span class="font-bold text-fr-black">ID de Usuario:</span>
-                <code class="bg-slate-100 px-2 py-0.5 rounded text-[10px]">{{ user.id }}</code>
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div class="card bg-fr-black text-white shadow-xl">
-          <div class="card-body">
-            <h2 class="card-title text-fr-gold uppercase text-sm tracking-widest">
-              Estado de Acceso
-            </h2>
-            <div class="flex items-center gap-3 mt-4">
-              <div class="badge badge-success gap-2 p-4 font-black">
-                {{ user.role }}
-              </div>
-              <span class="text-[10px] uppercase tracking-widest opacity-60"
-                >Acceso Autorizado</span
-              >
-            </div>
-
-            <div class="card-actions justify-end mt-6">
-              <button
-                (click)="authService.LOGOUT()"
-                class="btn btn-error btn-outline btn-sm uppercase text-[10px]"
-              >
-                Cerrar Sesión
-              </button>
-            </div>
-          </div>
-        </div>
+        @if (kpis()) {
+          <p class="generated-at">
+            Actualizado:
+            <span>{{ formatGeneratedAt(kpis()?.generatedAt) }}</span>
+          </p>
+        }
       </div>
-    } @else {
-      <div class="alert alert-warning">
-        <span>No se encontró información de sesión activa.</span>
+
+      <button
+        type="button"
+        class="refresh-button"
+        [disabled]="isLoading() || isAiLoading()"
+        (click)="loadKpis()"
+      >
+        @if (isLoading() || isAiLoading()) {
+          Actualizando...
+        } @else {
+          Actualizar
+        }
+      </button>
+    </header>
+
+    @if (isLoading() && !kpis()) {
+      <div class="loading-card">
+        <div class="spinner"></div>
+        <p>Cargando KPIs del dashboard...</p>
       </div>
     }
+
+    @if (errorMessage()) {
+      <div class="error-card">
+        <strong>No se pudieron cargar los KPIs</strong>
+        <p>{{ errorMessage() }}</p>
+      </div>
+    }
+
+    @if (kpis(); as data) {
+      <div class="kpi-grid">
+        @for (card of kpiCards(); track trackCard($index, card)) {
+          <app-kpi-card
+            [title]="card.title"
+            [value]="card.value"
+            [helper]="card.helper"
+            [description]="card.description"
+          />
+        }
+      </div>
+
+      <app-ai-bottleneck-card
+        [analysis]="aiAnalysis()"
+        [isLoading]="isAiLoading()"
+        [errorMessage]="aiErrorMessage()"
+      />
+
+      <div class="charts-grid">
+        <app-status-donut-chart [statuses]="data.processesByStatus" />
+
+        <app-top-processes-chart [processes]="data.mostUsedProcesses" />
+      </div>
+
+      <app-department-pending-card [departments]="data.pendingTasksByDepartment" />
+    }
   </div>
-</div>
+</section>
