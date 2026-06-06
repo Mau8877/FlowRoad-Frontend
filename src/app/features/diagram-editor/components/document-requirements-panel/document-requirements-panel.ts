@@ -43,6 +43,9 @@ export class DocumentRequirementsPanelComponent implements OnChanges {
   public draftReadDepartmentIds = signal<string[]>([]);
   public draftUploadDepartmentIds = signal<string[]>([]);
   public draftEditDepartmentIds = signal<string[]>([]);
+  readonly draftClientCanRead = signal(false);
+  readonly draftClientCanUpload = signal(false);
+  readonly draftClientCanReplace = signal(false);
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['diagramId'] || changes['nodeId']) {
@@ -62,7 +65,7 @@ export class DocumentRequirementsPanelComponent implements OnChanges {
 
     this.service.LIST_BY_NODE(this.diagramId, this.nodeId).subscribe({
       next: (requirements) => {
-        this.requirements.set(requirements);
+        this.requirements.set(requirements.map((requirement) => this.normalizeRequirement(requirement)));
         this.isLoading.set(false);
       },
       error: (error) => {
@@ -83,6 +86,9 @@ export class DocumentRequirementsPanelComponent implements OnChanges {
   startCreate(): void {
     if (this.disabled) return;
     this.resetForm();
+    this.draftClientCanRead.set(false);
+    this.draftClientCanUpload.set(false);
+    this.draftClientCanReplace.set(false);
     this.isFormOpen.set(true);
   }
 
@@ -98,6 +104,9 @@ export class DocumentRequirementsPanelComponent implements OnChanges {
     this.draftReadDepartmentIds.set([...(requirement.readDepartmentIds ?? [])]);
     this.draftUploadDepartmentIds.set([...(requirement.uploadDepartmentIds ?? [])]);
     this.draftEditDepartmentIds.set([...(requirement.editDepartmentIds ?? [])]);
+    this.draftClientCanRead.set(Boolean(requirement.clientCanRead));
+    this.draftClientCanUpload.set(Boolean(requirement.clientCanUpload));
+    this.draftClientCanReplace.set(Boolean(requirement.clientCanReplace));
     this.errorMessage.set(null);
     this.successMessage.set(null);
     this.isFormOpen.set(true);
@@ -205,6 +214,42 @@ export class DocumentRequirementsPanelComponent implements OnChanges {
     return this.draftEditDepartmentIds().includes(departmentId);
   }
 
+  setClientPermission(
+    permission: 'clientCanRead' | 'clientCanUpload' | 'clientCanReplace',
+    value: boolean,
+  ): void {
+    const checked = Boolean(value);
+
+    if (permission === 'clientCanRead') {
+      this.draftClientCanRead.set(checked);
+
+      if (!checked) {
+        this.draftClientCanUpload.set(false);
+        this.draftClientCanReplace.set(false);
+      }
+
+      return;
+    }
+
+    if (permission === 'clientCanUpload') {
+      this.draftClientCanUpload.set(checked);
+
+      if (checked) {
+        this.draftClientCanRead.set(true);
+      }
+
+      return;
+    }
+
+    if (permission === 'clientCanReplace') {
+      this.draftClientCanReplace.set(checked);
+
+      if (checked) {
+        this.draftClientCanRead.set(true);
+      }
+    }
+  }
+
   formatFileTypes(types: AllowedDocumentFileType[] | null | undefined): string {
     return (types ?? []).join(', ').toUpperCase();
   }
@@ -231,6 +276,9 @@ export class DocumentRequirementsPanelComponent implements OnChanges {
     this.draftReadDepartmentIds.set([]);
     this.draftUploadDepartmentIds.set([]);
     this.draftEditDepartmentIds.set([]);
+    this.draftClientCanRead.set(false);
+    this.draftClientCanUpload.set(false);
+    this.draftClientCanReplace.set(false);
     this.errorMessage.set(null);
   }
 
@@ -252,9 +300,11 @@ export class DocumentRequirementsPanelComponent implements OnChanges {
       this.draftReadDepartmentIds().length > 0 ||
       this.draftUploadDepartmentIds().length > 0 ||
       this.draftEditDepartmentIds().length > 0;
+    const hasAnyClientPermission =
+      this.draftClientCanRead() || this.draftClientCanUpload() || this.draftClientCanReplace();
 
-    if (!hasAnyDepartment) {
-      return 'Selecciona al menos un departamento en lectura, carga o edicion.';
+    if (!hasAnyDepartment && !hasAnyClientPermission) {
+      return 'Selecciona al menos un departamento o un permiso de cliente.';
     }
 
     return null;
@@ -270,6 +320,9 @@ export class DocumentRequirementsPanelComponent implements OnChanges {
       readDepartmentIds: [...this.draftReadDepartmentIds()],
       uploadDepartmentIds: [...this.draftUploadDepartmentIds()],
       editDepartmentIds: [...this.draftEditDepartmentIds()],
+      clientCanRead: this.draftClientCanRead(),
+      clientCanUpload: this.draftClientCanUpload(),
+      clientCanReplace: this.draftClientCanReplace(),
     };
   }
 
@@ -290,5 +343,18 @@ export class DocumentRequirementsPanelComponent implements OnChanges {
     }
 
     return fallback;
+  }
+
+  private normalizeRequirement(requirement: DocumentRequirement): DocumentRequirement {
+    const clientCanRead = Boolean(requirement.clientCanRead);
+    const clientCanUpload = Boolean(requirement.clientCanUpload);
+    const clientCanReplace = Boolean(requirement.clientCanReplace);
+
+    return {
+      ...requirement,
+      clientCanRead,
+      clientCanUpload,
+      clientCanReplace,
+    };
   }
 }

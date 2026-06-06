@@ -34,6 +34,9 @@ export interface DocumentRequirement {
   readDepartmentIds: string[];
   uploadDepartmentIds: string[];
   editDepartmentIds: string[];
+  clientCanRead?: boolean | null;
+  clientCanUpload?: boolean | null;
+  clientCanReplace?: boolean | null;
   status: DocumentRequirementStatus;
   createdAt?: string;
   createdBy?: string;
@@ -50,4 +53,7 @@ export interface DocumentRequirementRequest {
   readDepartmentIds: string[];
   uploadDepartmentIds: string[];
   editDepartmentIds: string[];
+  clientCanRead: boolean;
+  clientCanUpload: boolean;
+  clientCanReplace: boolean;
 }
