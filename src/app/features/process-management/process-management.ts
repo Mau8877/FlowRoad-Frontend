@@ -155,6 +155,14 @@ export class ProcessManagement implements OnInit, OnDestroy {
     }
   }
 
+  getClientName(process: ProcessInstanceSummaryResponse): string {
+    return process.clientName?.trim() || 'Cliente no asociado';
+  }
+
+  getClientEmail(process: ProcessInstanceSummaryResponse): string {
+    return process.clientEmail?.trim() || '';
+  }
+
   removeToastNotification(assignmentId: string): void {
     this.clearToastTimeout(assignmentId);
     this.toastNotifications.update((current) =>

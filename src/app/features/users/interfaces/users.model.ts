@@ -41,6 +41,13 @@ export interface UserResponse {
   createdAt: string;
 }
 
+export interface ClientSearchResponse {
+  id: string;
+  fullName: string;
+  email: string;
+  avatarUrl?: string | null;
+}
+
 export interface UpdateUserRequest {
   profile: UserProfile;
   departmentId?: string | null;

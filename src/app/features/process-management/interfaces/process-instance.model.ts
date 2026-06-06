@@ -6,6 +6,7 @@ export type ProcessInstanceStatus = 'RUNNING' | 'PENDING_ASSIGNMENT' | 'COMPLETE
 
 export interface CreateProcessInstanceRequest {
   diagramId: string;
+  clientId: string;
   requestData?: Record<string, unknown>;
 }
 
@@ -21,6 +22,10 @@ export interface ProcessInstanceSummaryResponse {
 
   activeNodeIds: string[];
   completedNodeIds: string[];
+
+  clientId?: string | null;
+  clientName?: string | null;
+  clientEmail?: string | null;
 
   startedByUserId: string;
   startedByUserName: string;
