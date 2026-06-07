@@ -862,7 +862,9 @@ export class AssignmentDetail implements OnInit, OnDestroy {
   getDocumentAcceptAttribute(item: DocumentExpedientItemResponse): string | null {
     const allowedTypes = item.requirement.allowedFileTypes ?? [];
 
-    return allowedTypes.length > 0 ? allowedTypes.join(',') : null;
+    return allowedTypes.length > 0
+      ? allowedTypes.map((type) => this.toDocumentAcceptToken(type)).join(',')
+      : null;
   }
 
   validateTemplateRequiredFields(): string | null {
@@ -1002,6 +1004,16 @@ export class AssignmentDetail implements OnInit, OnDestroy {
 
       return fileName.endsWith(extension);
     });
+  }
+
+  private toDocumentAcceptToken(fileType: string): string {
+    const normalizedType = fileType.toLowerCase().trim();
+
+    if (!normalizedType || normalizedType.includes('/') || normalizedType.startsWith('.')) {
+      return normalizedType;
+    }
+
+    return `.${normalizedType}`;
   }
 
   private getSelectedDocumentFile(event: Event): File | null {

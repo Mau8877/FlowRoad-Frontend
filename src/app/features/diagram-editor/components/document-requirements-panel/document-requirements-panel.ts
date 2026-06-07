@@ -292,8 +292,8 @@ export class DocumentRequirementsPanelComponent implements OnChanges {
     }
 
     const maxFileSizeMb = Number(this.draftMaxFileSizeMb());
-    if (!Number.isFinite(maxFileSizeMb) || maxFileSizeMb < 1 || maxFileSizeMb > 25) {
-      return 'El tamano maximo debe estar entre 1 y 25 MB.';
+    if (!Number.isFinite(maxFileSizeMb) || maxFileSizeMb < 1 || maxFileSizeMb > 100) {
+      return 'El tamano maximo debe estar entre 1 y 100 MB.';
     }
 
     const hasAnyDepartment =

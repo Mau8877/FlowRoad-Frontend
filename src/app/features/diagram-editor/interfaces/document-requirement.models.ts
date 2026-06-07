@@ -8,7 +8,8 @@ export type AllowedDocumentFileType =
   | 'xlsx'
   | 'jpg'
   | 'jpeg'
-  | 'png';
+  | 'png'
+  | 'mp4';
 
 export const ALLOWED_DOCUMENT_FILE_TYPES: AllowedDocumentFileType[] = [
   'pdf',
@@ -19,6 +20,7 @@ export const ALLOWED_DOCUMENT_FILE_TYPES: AllowedDocumentFileType[] = [
   'jpg',
   'jpeg',
   'png',
+  'mp4',
 ];
 
 export interface DocumentRequirement {

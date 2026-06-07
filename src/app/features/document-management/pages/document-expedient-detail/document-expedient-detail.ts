@@ -251,7 +251,9 @@ export class DocumentExpedientDetail implements OnInit {
   getAcceptAttribute(item: DocumentExpedientItemResponse): string | null {
     const allowedTypes = item.requirement.allowedFileTypes ?? [];
 
-    return allowedTypes.length > 0 ? allowedTypes.join(',') : null;
+    return allowedTypes.length > 0
+      ? allowedTypes.map((type) => this.toAcceptToken(type)).join(',')
+      : null;
   }
 
   goBack(): void {
@@ -301,6 +303,16 @@ export class DocumentExpedientDetail implements OnInit {
 
       return fileName.endsWith(extension);
     });
+  }
+
+  private toAcceptToken(fileType: string): string {
+    const normalizedType = fileType.toLowerCase().trim();
+
+    if (!normalizedType || normalizedType.includes('/') || normalizedType.startsWith('.')) {
+      return normalizedType;
+    }
+
+    return `.${normalizedType}`;
   }
 
   private getSelectedFile(event: Event): File | null {
