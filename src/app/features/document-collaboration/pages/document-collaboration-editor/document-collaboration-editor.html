@@ -1,4 +1,4 @@
-<section class="editor-page">
+<section class="editor-page" [class.focus-mode]="isFocusMode()">
   <header class="editor-header">
     <button type="button" class="back-button" (click)="goBack()">Volver</button>
 
@@ -9,6 +9,9 @@
     </div>
 
     <span class="mode-badge">{{ modeLabel() }}</span>
+    <button type="button" class="focus-button" (click)="toggleFocusMode()">
+      {{ isFocusMode() ? 'Vista normal' : 'Pantalla amplia' }}
+    </button>
   </header>
 
   @if (errorMessage()) {

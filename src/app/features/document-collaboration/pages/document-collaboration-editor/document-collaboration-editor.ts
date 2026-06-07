@@ -29,6 +29,7 @@ export class DocumentCollaborationEditor implements OnInit, OnDestroy {
   public errorMessage = signal<string | null>(null);
   public documentTitle = signal('Documento colaborativo');
   public modeLabel = signal('Modo lectura');
+  public isFocusMode = signal(false);
 
   ngOnInit(): void {
     this.processInstanceId = this.route.snapshot.paramMap.get('processInstanceId');
@@ -77,6 +78,11 @@ export class DocumentCollaborationEditor implements OnInit, OnDestroy {
 
   refreshExpedient(): void {
     this.goBack();
+  }
+
+  toggleFocusMode(): void {
+    this.isFocusMode.update((current) => !current);
+    setTimeout(() => window.dispatchEvent(new Event('resize')));
   }
 
   private loadEditorConfig(documentFileId: string): void {
@@ -159,6 +165,10 @@ export class DocumentCollaborationEditor implements OnInit, OnDestroy {
     }
 
     this.editor?.destroyEditor?.();
-    this.editor = new DocsAPI.DocEditor('onlyoffice-editor', config);
+    this.editor = new DocsAPI.DocEditor('onlyoffice-editor', {
+      ...config,
+      width: '100%',
+      height: '100%',
+    });
   }
 }
