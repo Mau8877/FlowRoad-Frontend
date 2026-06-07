@@ -4,8 +4,20 @@
   <div class="flex flex-col flex-1 min-w-0 h-full overflow-hidden">
     <app-header class="w-full shrink-0"></app-header>
 
-    <main class="flex-1 overflow-y-auto p-8 bg-slate-50 custom-scrollbar">
-      <div class="max-w-7xl mx-auto">
+    <main
+      class="flex-1 bg-slate-50 custom-scrollbar"
+      [class.overflow-hidden]="isFullscreenEditorRoute()"
+      [class.overflow-y-auto]="!isFullscreenEditorRoute()"
+      [class.p-0]="isFullscreenEditorRoute()"
+      [class.p-8]="!isFullscreenEditorRoute()"
+    >
+      <div
+        [class.h-full]="isFullscreenEditorRoute()"
+        [class.min-h-0]="isFullscreenEditorRoute()"
+        [class.max-w-none]="isFullscreenEditorRoute()"
+        [class.max-w-7xl]="!isFullscreenEditorRoute()"
+        [class.mx-auto]="!isFullscreenEditorRoute()"
+      >
         <router-outlet></router-outlet>
       </div>
     </main>

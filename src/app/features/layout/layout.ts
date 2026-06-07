@@ -1,5 +1,5 @@
-import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Component, inject } from '@angular/core';
+import { Router, RouterOutlet } from '@angular/router';
 import { Sidebar } from './components/sidebar/sidebar';
 import { Header } from './components/header/header';
 
@@ -10,4 +10,12 @@ import { Header } from './components/header/header';
   templateUrl: './layout.html',
   styleUrl: './layout.css',
 })
-export class Layout {}
+export class Layout {
+  private readonly router = inject(Router);
+
+  isFullscreenEditorRoute(): boolean {
+    return /^\/document-management\/[^/]+\/documents\/[^/]+\/editor(?:[?#].*)?$/.test(
+      this.router.url,
+    );
+  }
+}

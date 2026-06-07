@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Bot, LucideAngularModule, Mic, MicOff, Sparkles, Wand2 } from 'lucide-angular';
@@ -57,6 +57,8 @@ export class AssignmentDetail implements OnInit, OnDestroy {
   private speechSubscription: Subscription | null = null;
   private activeSpeechField: FieldDefinition | null = null;
   private baseFieldTextBeforeRecording = '';
+  private taskDocumentsPollingTimeout: ReturnType<typeof setTimeout> | null = null;
+  private shouldSyncDocumentsFromCollaboration = false;
 
   public readonly FieldType = FieldType;
 
@@ -84,6 +86,7 @@ export class AssignmentDetail implements OnInit, OnDestroy {
   public successMessage = signal<string | null>(null);
   public documentErrorMessage = signal<string | null>(null);
   public documentSuccessMessage = signal<string | null>(null);
+  public isDocumentCollaborationSyncing = signal(false);
 
   public comment = signal('');
 
@@ -137,6 +140,9 @@ export class AssignmentDetail implements OnInit, OnDestroy {
       return;
     }
 
+    this.shouldSyncDocumentsFromCollaboration =
+      this.route.snapshot.queryParamMap.get('fromCollaboration') === 'true';
+
     this.loadAssignment(assignmentId);
   }
 
@@ -144,6 +150,19 @@ export class AssignmentDetail implements OnInit, OnDestroy {
     if (this.speechSubscription) {
       this.speechSubscription.unsubscribe();
     }
+
+    this.clearTaskDocumentsPolling();
+  }
+
+  @HostListener('window:focus')
+  refreshDocumentsOnFocus(): void {
+    const assignment = this.assignment();
+
+    if (!assignment || this.isDocumentCollaborationSyncing()) {
+      return;
+    }
+
+    this.loadTaskDocuments(assignment.processInstanceId, true);
   }
 
   loadAssignment(assignmentId: string): void {
@@ -154,7 +173,11 @@ export class AssignmentDetail implements OnInit, OnDestroy {
       next: (assignment) => {
         this.assignment.set(assignment);
         this.loadProcessDetail(assignment.processInstanceId);
-        this.loadTaskDocuments(assignment.processInstanceId);
+        if (this.shouldSyncDocumentsFromCollaboration) {
+          this.startTaskDocumentsCollaborationRefresh(assignment.processInstanceId);
+        } else {
+          this.loadTaskDocuments(assignment.processInstanceId);
+        }
 
         if (assignment.templateDocumentId) {
           this.loadTemplate(assignment.templateDocumentId);
@@ -170,13 +193,19 @@ export class AssignmentDetail implements OnInit, OnDestroy {
     });
   }
 
-  loadTaskDocuments(processInstanceId: string): void {
-    this.isLoadingDocuments.set(true);
+  loadTaskDocuments(processInstanceId: string, backgroundRefresh = false): void {
+    if (!backgroundRefresh) {
+      this.isLoadingDocuments.set(true);
+    }
     this.documentErrorMessage.set(null);
 
     this.documentExpedientService
       .getExpedient(processInstanceId)
-      .pipe(finalize(() => this.isLoadingDocuments.set(false)))
+      .pipe(finalize(() => {
+        if (!backgroundRefresh) {
+          this.isLoadingDocuments.set(false);
+        }
+      }))
       .subscribe({
         next: (expedient) => this.documentExpedient.set(expedient),
         error: (error) => {
@@ -716,7 +745,7 @@ export class AssignmentDetail implements OnInit, OnDestroy {
     const file = this.getSelectedDocumentFile(event);
     this.resetDocumentFileInput(event);
 
-    if (!assignment || !file) {
+    if (this.isDocumentCollaborationSyncing() || !assignment || !file) {
       return;
     }
 
@@ -748,7 +777,7 @@ export class AssignmentDetail implements OnInit, OnDestroy {
     const file = this.getSelectedDocumentFile(event);
     this.resetDocumentFileInput(event);
 
-    if (!assignment || !file || !item.currentFile) {
+    if (this.isDocumentCollaborationSyncing() || !assignment || !file || !item.currentFile) {
       return;
     }
 
@@ -786,7 +815,7 @@ export class AssignmentDetail implements OnInit, OnDestroy {
   downloadTaskDocument(item: DocumentExpedientItemResponse): void {
     const assignment = this.assignment();
 
-    if (!assignment || !item.currentFile || !item.canRead) {
+    if (this.isDocumentCollaborationSyncing() || !assignment || !item.currentFile || !item.canRead) {
       return;
     }
 
@@ -806,6 +835,47 @@ export class AssignmentDetail implements OnInit, OnDestroy {
       });
   }
 
+  openTaskDocumentCollaborativeEditor(item: DocumentExpedientItemResponse): void {
+    const assignment = this.assignment();
+
+    if (
+      this.isDocumentCollaborationSyncing() ||
+      !assignment ||
+      !item.currentFile ||
+      !this.canOpenTaskDocumentCollaboratively(item)
+    ) {
+      return;
+    }
+
+    this.router.navigate(
+      [
+        '/document-management',
+        assignment.processInstanceId,
+        'documents',
+        item.currentFile.id,
+        'editor',
+      ],
+      {
+        queryParams: { returnTo: 'assignment', assignmentId: assignment.id },
+      },
+    );
+  }
+
+  canOpenTaskDocumentCollaboratively(item: DocumentExpedientItemResponse): boolean {
+    return Boolean(
+      item.currentFile &&
+        this.isCollaborativeDocumentFile(
+          item.currentFile.fileExtension,
+          item.currentFile.originalFileName,
+        ) &&
+        (item.canEdit || item.canRead),
+    );
+  }
+
+  getTaskDocumentCollaborationButtonLabel(item: DocumentExpedientItemResponse): string {
+    return item.canEdit ? 'Editar colaborativamente' : 'Abrir en modo lectura';
+  }
+
   isDocumentItemLoading(
     item: DocumentExpedientItemResponse,
     action?: 'upload' | 'replace' | 'download',
@@ -813,6 +883,10 @@ export class AssignmentDetail implements OnInit, OnDestroy {
     const currentAction = this.documentActionLoading()[item.requirement.id];
 
     return action ? currentAction === action : Boolean(currentAction);
+  }
+
+  areTaskDocumentActionsDisabled(item: DocumentExpedientItemResponse): boolean {
+    return this.isDocumentCollaborationSyncing() || this.isDocumentItemLoading(item);
   }
 
   getDocumentItemError(item: DocumentExpedientItemResponse): string | null {
@@ -961,6 +1035,45 @@ export class AssignmentDetail implements OnInit, OnDestroy {
     this.router.navigate(['/process']);
   }
 
+  private startTaskDocumentsCollaborationRefresh(processInstanceId: string): void {
+    this.isDocumentCollaborationSyncing.set(true);
+    this.documentSuccessMessage.set('Actualizando documento colaborativo...');
+    this.clearTaskDocumentsPolling();
+    this.pollTaskDocumentsAfterCollaboration(processInstanceId, 1);
+
+    this.router.navigate([], {
+      queryParams: { fromCollaboration: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
+  private pollTaskDocumentsAfterCollaboration(processInstanceId: string, attempt: number): void {
+    this.loadTaskDocuments(processInstanceId, attempt > 1);
+
+    if (attempt >= 5) {
+      this.finishTaskDocumentsCollaborationRefresh();
+      return;
+    }
+
+    this.taskDocumentsPollingTimeout = setTimeout(() => {
+      this.pollTaskDocumentsAfterCollaboration(processInstanceId, attempt + 1);
+    }, 2000);
+  }
+
+  private finishTaskDocumentsCollaborationRefresh(): void {
+    this.clearTaskDocumentsPolling();
+    this.isDocumentCollaborationSyncing.set(false);
+    this.documentSuccessMessage.set(null);
+  }
+
+  private clearTaskDocumentsPolling(): void {
+    if (this.taskDocumentsPollingTimeout) {
+      clearTimeout(this.taskDocumentsPollingTimeout);
+      this.taskDocumentsPollingTimeout = null;
+    }
+  }
+
   private validateDocumentFile(item: DocumentExpedientItemResponse, file: File): boolean {
     const maxBytes = (item.requirement.maxFileSizeMb ?? 0) * 1024 * 1024;
 
@@ -1014,6 +1127,31 @@ export class AssignmentDetail implements OnInit, OnDestroy {
     }
 
     return `.${normalizedType}`;
+  }
+
+  private isCollaborativeDocumentFile(
+    fileExtension?: string | null,
+    originalFileName?: string | null,
+  ): boolean {
+    const extension = this.resolveDocumentExtension(fileExtension, originalFileName);
+
+    return ['doc', 'docx', 'xls', 'xlsx'].includes(extension);
+  }
+
+  private resolveDocumentExtension(
+    fileExtension?: string | null,
+    originalFileName?: string | null,
+  ): string {
+    const cleanExtension = (fileExtension ?? '').trim().toLowerCase().replace(/^\./, '');
+
+    if (cleanExtension) {
+      return cleanExtension;
+    }
+
+    const cleanName = (originalFileName ?? '').trim().toLowerCase();
+    const lastDot = cleanName.lastIndexOf('.');
+
+    return lastDot >= 0 ? cleanName.slice(lastDot + 1) : '';
   }
 
   private getSelectedDocumentFile(event: Event): File | null {

@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { finalize } from 'rxjs';
 
+import { DocumentCollaborationService } from '#/app/features/document-collaboration/services/document-collaboration.service';
 import {
   DocumentExpedientItemResponse,
   DocumentManagementExpedientDetailResponse,
@@ -10,6 +11,7 @@ import {
 import { DocumentExpedientService } from '../../services/document-expedient.service';
 
 type DocumentAction = 'upload' | 'replace' | 'download';
+type CollaborationAction = 'edit' | 'view';
 
 @Component({
   selector: 'app-document-expedient-detail',
@@ -18,10 +20,12 @@ type DocumentAction = 'upload' | 'replace' | 'download';
   templateUrl: './document-expedient-detail.html',
   styleUrl: './document-expedient-detail.css',
 })
-export class DocumentExpedientDetail implements OnInit {
+export class DocumentExpedientDetail implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly documentExpedientService = inject(DocumentExpedientService);
+  private readonly documentCollaborationService = inject(DocumentCollaborationService);
+  private collaborationPollingTimeout: ReturnType<typeof setTimeout> | null = null;
 
   private readonly dateFormatter = new Intl.DateTimeFormat('es-BO', {
     dateStyle: 'medium',
@@ -32,6 +36,8 @@ export class DocumentExpedientDetail implements OnInit {
   public isLoading = signal(false);
   public errorMessage = signal<string | null>(null);
   public successMessage = signal<string | null>(null);
+  public collaborationSyncMessage = signal<string | null>(null);
+  public isCollaborationSyncing = signal(false);
   public itemActionLoading = signal<Record<string, DocumentAction>>({});
   public itemErrors = signal<Record<string, string>>({});
 
@@ -54,11 +60,27 @@ export class DocumentExpedientDetail implements OnInit {
       return;
     }
 
+    if (this.route.snapshot.queryParamMap.get('fromCollaboration') === 'true') {
+      this.startCollaborationRefresh(processInstanceId);
+      return;
+    }
+
     this.loadExpedient(processInstanceId);
   }
 
-  loadExpedient(processInstanceId: string, keepSuccessMessage = false): void {
-    this.isLoading.set(true);
+  ngOnDestroy(): void {
+    this.clearCollaborationPolling();
+  }
+
+  loadExpedient(
+    processInstanceId: string,
+    keepSuccessMessage = false,
+    backgroundRefresh = false,
+    onLoaded?: (expedient: DocumentManagementExpedientDetailResponse) => void,
+  ): void {
+    if (!backgroundRefresh) {
+      this.isLoading.set(true);
+    }
     this.errorMessage.set(null);
 
     if (!keepSuccessMessage) {
@@ -67,12 +89,20 @@ export class DocumentExpedientDetail implements OnInit {
 
     this.documentExpedientService
       .getExpedient(processInstanceId)
-      .pipe(finalize(() => this.isLoading.set(false)))
+      .pipe(finalize(() => {
+        if (!backgroundRefresh) {
+          this.isLoading.set(false);
+        }
+      }))
       .subscribe({
-        next: (expedient) => this.expedient.set(expedient),
+        next: (expedient) => {
+          this.expedient.set(expedient);
+          onLoaded?.(expedient);
+        },
         error: (error) => {
           console.error('[DOCUMENT-MANAGEMENT][LOAD_EXPEDIENT_ERROR]', error);
           this.errorMessage.set('No se pudo cargar el expediente documental.');
+          this.finishCollaborationRefresh();
         },
       });
   }
@@ -81,7 +111,7 @@ export class DocumentExpedientDetail implements OnInit {
     const file = this.getSelectedFile(event);
     this.resetFileInput(event);
 
-    if (!file || !this.expedient()) {
+    if (this.isCollaborationSyncing() || !file || !this.expedient()) {
       return;
     }
 
@@ -112,7 +142,7 @@ export class DocumentExpedientDetail implements OnInit {
     const file = this.getSelectedFile(event);
     this.resetFileInput(event);
 
-    if (!file || !this.expedient() || !item.currentFile) {
+    if (this.isCollaborationSyncing() || !file || !this.expedient() || !item.currentFile) {
       return;
     }
 
@@ -148,7 +178,7 @@ export class DocumentExpedientDetail implements OnInit {
   }
 
   downloadDocument(item: DocumentExpedientItemResponse): void {
-    if (!this.expedient() || !item.currentFile || !item.canRead) {
+    if (this.isCollaborationSyncing() || !this.expedient() || !item.currentFile || !item.canRead) {
       return;
     }
 
@@ -170,10 +200,68 @@ export class DocumentExpedientDetail implements OnInit {
       });
   }
 
+  openCollaborativeEditor(item: DocumentExpedientItemResponse): void {
+    const expedient = this.expedient();
+
+    if (
+      this.isCollaborationSyncing() ||
+      !expedient ||
+      !item.currentFile ||
+      !this.canOpenCollaboratively(item)
+    ) {
+      return;
+    }
+
+    this.router.navigate([
+      '/document-management',
+      expedient.processInstanceId,
+      'documents',
+      item.currentFile.id,
+      'editor',
+    ]);
+  }
+
+  canOpenCollaboratively(item: DocumentExpedientItemResponse): boolean {
+    return Boolean(
+      item.currentFile &&
+        this.isCollaborativeFile(item.currentFile.fileExtension, item.currentFile.originalFileName) &&
+        (item.canEdit || item.canRead),
+    );
+  }
+
+  getCollaborationAction(item: DocumentExpedientItemResponse): CollaborationAction | null {
+    if (!this.canOpenCollaboratively(item)) {
+      return null;
+    }
+
+    return item.canEdit ? 'edit' : 'view';
+  }
+
+  getCollaborationButtonLabel(item: DocumentExpedientItemResponse): string {
+    return this.getCollaborationAction(item) === 'edit'
+      ? 'Editar colaborativamente'
+      : 'Abrir en modo lectura';
+  }
+
+  refreshExpedientNow(): void {
+    const processInstanceId = this.expedient()?.processInstanceId
+      ?? this.route.snapshot.paramMap.get('processInstanceId');
+
+    if (!processInstanceId) {
+      return;
+    }
+
+    this.loadExpedient(processInstanceId, true);
+  }
+
   isItemLoading(item: DocumentExpedientItemResponse, action?: DocumentAction): boolean {
     const currentAction = this.itemActionLoading()[item.requirement.id];
 
     return action ? currentAction === action : Boolean(currentAction);
+  }
+
+  areDocumentActionsDisabled(item: DocumentExpedientItemResponse): boolean {
+    return this.isCollaborationSyncing() || this.isItemLoading(item);
   }
 
   getItemError(item: DocumentExpedientItemResponse): string | null {
@@ -260,6 +348,70 @@ export class DocumentExpedientDetail implements OnInit {
     this.router.navigate(['/document-management']);
   }
 
+  private startCollaborationRefresh(processInstanceId: string): void {
+    this.isCollaborationSyncing.set(true);
+    this.collaborationSyncMessage.set('Actualizando documento colaborativo...');
+    this.clearCollaborationPolling();
+    this.pollCollaborationRefresh(processInstanceId, 1);
+
+    this.router.navigate([], {
+      queryParams: { fromCollaboration: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
+  private pollCollaborationRefresh(processInstanceId: string, attempt: number): void {
+    this.loadExpedient(processInstanceId, true, attempt > 1, (expedient) => {
+      const collaborativeFile = this.findFirstCollaborativeCurrentFile(expedient);
+
+      if (!collaborativeFile) {
+        this.scheduleNextCollaborationPoll(processInstanceId, attempt);
+        return;
+      }
+
+      this.documentCollaborationService.getOnlyOfficeEditorConfig(collaborativeFile.id).subscribe({
+        next: () => this.finishCollaborationRefresh(),
+        error: (error) => {
+          console.warn('[DOCUMENT-MANAGEMENT][COLLABORATION_SYNC_WAIT]', error);
+          this.scheduleNextCollaborationPoll(processInstanceId, attempt);
+        },
+      });
+    });
+  }
+
+  private scheduleNextCollaborationPoll(processInstanceId: string, attempt: number): void {
+    if (attempt >= 5) {
+      this.finishCollaborationRefresh();
+      return;
+    }
+
+    this.collaborationPollingTimeout = setTimeout(() => {
+      this.pollCollaborationRefresh(processInstanceId, attempt + 1);
+    }, 2000);
+  }
+
+  private finishCollaborationRefresh(): void {
+    this.clearCollaborationPolling();
+    this.isCollaborationSyncing.set(false);
+    this.collaborationSyncMessage.set(null);
+  }
+
+  private clearCollaborationPolling(): void {
+    if (this.collaborationPollingTimeout) {
+      clearTimeout(this.collaborationPollingTimeout);
+      this.collaborationPollingTimeout = null;
+    }
+  }
+
+  private findFirstCollaborativeCurrentFile(
+    expedient: DocumentManagementExpedientDetailResponse,
+  ) {
+    return expedient.items
+      .map((item) => item.currentFile)
+      .find((file) => file && this.isCollaborativeFile(file.fileExtension, file.originalFileName));
+  }
+
   private validateFile(item: DocumentExpedientItemResponse, file: File): boolean {
     const maxBytes = (item.requirement.maxFileSizeMb ?? 0) * 1024 * 1024;
 
@@ -313,6 +465,28 @@ export class DocumentExpedientDetail implements OnInit {
     }
 
     return `.${normalizedType}`;
+  }
+
+  private isCollaborativeFile(fileExtension?: string | null, originalFileName?: string | null): boolean {
+    const extension = this.resolveDocumentExtension(fileExtension, originalFileName);
+
+    return ['doc', 'docx', 'xls', 'xlsx'].includes(extension);
+  }
+
+  private resolveDocumentExtension(
+    fileExtension?: string | null,
+    originalFileName?: string | null,
+  ): string {
+    const cleanExtension = (fileExtension ?? '').trim().toLowerCase().replace(/^\./, '');
+
+    if (cleanExtension) {
+      return cleanExtension;
+    }
+
+    const cleanName = (originalFileName ?? '').trim().toLowerCase();
+    const lastDot = cleanName.lastIndexOf('.');
+
+    return lastDot >= 0 ? cleanName.slice(lastDot + 1) : '';
   }
 
   private getSelectedFile(event: Event): File | null {
