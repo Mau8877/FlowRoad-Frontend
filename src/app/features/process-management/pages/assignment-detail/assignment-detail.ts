@@ -10,6 +10,11 @@ import {
   TemplateResponse,
 } from '#/app/features/config-org/interfaces/plantillas.models';
 import { TemplateService } from '#/app/features/config-org/services/plantillas.service';
+import {
+  DocumentExpedientItemResponse,
+  DocumentManagementExpedientDetailResponse,
+} from '#/app/features/document-management/interfaces/document-expedient.model';
+import { DocumentExpedientService } from '#/app/features/document-management/services/document-expedient.service';
 
 import {
   AssignmentResponse,
@@ -42,6 +47,7 @@ export class AssignmentDetail implements OnInit, OnDestroy {
   private readonly templateService = inject(TemplateService);
   private readonly workerAiService = inject(WorkerAiService);
   private readonly speechService = inject(SpeechService);
+  private readonly documentExpedientService = inject(DocumentExpedientService);
 
   private readonly dateFormatter = new Intl.DateTimeFormat('es-BO', {
     dateStyle: 'medium',
@@ -65,15 +71,19 @@ export class AssignmentDetail implements OnInit, OnDestroy {
   public assignment = signal<AssignmentResponse | null>(null);
   public processDetail = signal<ProcessInstanceDetailResponse | null>(null);
   public template = signal<TemplateResponse | null>(null);
+  public documentExpedient = signal<DocumentManagementExpedientDetailResponse | null>(null);
 
   public templateResponseData = signal<Record<string, unknown>>({});
 
   public isLoading = signal(false);
   public isLoadingTemplate = signal(false);
   public isSubmitting = signal(false);
+  public isLoadingDocuments = signal(false);
 
   public errorMessage = signal<string | null>(null);
   public successMessage = signal<string | null>(null);
+  public documentErrorMessage = signal<string | null>(null);
+  public documentSuccessMessage = signal<string | null>(null);
 
   public comment = signal('');
 
@@ -84,6 +94,8 @@ export class AssignmentDetail implements OnInit, OnDestroy {
 
   public recordingFieldId = signal<string | null>(null);
   public speechErrorByFieldId = signal<Record<string, string>>({});
+  public documentActionLoading = signal<Record<string, 'upload' | 'replace' | 'download'>>({});
+  public documentItemErrors = signal<Record<string, string>>({});
 
   public isSpeechSupported = computed(() => {
     return this.speechService.isSupported();
@@ -104,6 +116,17 @@ export class AssignmentDetail implements OnInit, OnDestroy {
     return history
       .filter((item) => item.assignmentId !== currentAssignment?.id)
       .sort((a, b) => new Date(b.performedAt).getTime() - new Date(a.performedAt).getTime());
+  });
+
+  public taskDocumentItems = computed(() => {
+    const assignment = this.assignment();
+    const items = this.documentExpedient()?.items ?? [];
+
+    if (!assignment) {
+      return [];
+    }
+
+    return items.filter((item) => item.requirement.nodeId === assignment.nodeId);
   });
 
   ngOnInit(): void {
@@ -131,6 +154,7 @@ export class AssignmentDetail implements OnInit, OnDestroy {
       next: (assignment) => {
         this.assignment.set(assignment);
         this.loadProcessDetail(assignment.processInstanceId);
+        this.loadTaskDocuments(assignment.processInstanceId);
 
         if (assignment.templateDocumentId) {
           this.loadTemplate(assignment.templateDocumentId);
@@ -144,6 +168,22 @@ export class AssignmentDetail implements OnInit, OnDestroy {
         this.isLoading.set(false);
       },
     });
+  }
+
+  loadTaskDocuments(processInstanceId: string): void {
+    this.isLoadingDocuments.set(true);
+    this.documentErrorMessage.set(null);
+
+    this.documentExpedientService
+      .getExpedient(processInstanceId)
+      .pipe(finalize(() => this.isLoadingDocuments.set(false)))
+      .subscribe({
+        next: (expedient) => this.documentExpedient.set(expedient),
+        error: (error) => {
+          console.error('[ASSIGNMENT-DETAIL][LOAD_DOCUMENTS_ERROR]', error);
+          this.documentErrorMessage.set('No se pudieron cargar los documentos de la tarea.');
+        },
+      });
   }
 
   loadProcessDetail(processInstanceId: string): void {
@@ -671,6 +711,160 @@ export class AssignmentDetail implements OnInit, OnDestroy {
       });
   }
 
+  uploadTaskDocument(item: DocumentExpedientItemResponse, event: Event): void {
+    const assignment = this.assignment();
+    const file = this.getSelectedDocumentFile(event);
+    this.resetDocumentFileInput(event);
+
+    if (!assignment || !file) {
+      return;
+    }
+
+    if (!this.validateDocumentFile(item, file)) {
+      return;
+    }
+
+    this.setDocumentItemLoading(item.requirement.id, 'upload');
+    this.clearDocumentItemError(item.requirement.id);
+    this.documentSuccessMessage.set(null);
+
+    this.documentExpedientService
+      .uploadDocument(assignment.processInstanceId, item.requirement.id, file, assignment.id)
+      .pipe(finalize(() => this.clearDocumentItemLoading(item.requirement.id)))
+      .subscribe({
+        next: () => {
+          this.documentSuccessMessage.set('Documento subido correctamente.');
+          this.loadTaskDocuments(assignment.processInstanceId);
+        },
+        error: (error) => {
+          console.error('[ASSIGNMENT-DETAIL][DOCUMENT_UPLOAD_ERROR]', error);
+          this.setDocumentItemError(item.requirement.id, 'No se pudo subir el documento.');
+        },
+      });
+  }
+
+  replaceTaskDocument(item: DocumentExpedientItemResponse, event: Event): void {
+    const assignment = this.assignment();
+    const file = this.getSelectedDocumentFile(event);
+    this.resetDocumentFileInput(event);
+
+    if (!assignment || !file || !item.currentFile) {
+      return;
+    }
+
+    if (!this.validateDocumentFile(item, file)) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `¿Deseas reemplazar "${item.currentFile.originalFileName}" por "${file.name}"?`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    this.setDocumentItemLoading(item.requirement.id, 'replace');
+    this.clearDocumentItemError(item.requirement.id);
+    this.documentSuccessMessage.set(null);
+
+    this.documentExpedientService
+      .replaceDocument(assignment.processInstanceId, item.currentFile.id, file, assignment.id)
+      .pipe(finalize(() => this.clearDocumentItemLoading(item.requirement.id)))
+      .subscribe({
+        next: () => {
+          this.documentSuccessMessage.set('Documento reemplazado correctamente.');
+          this.loadTaskDocuments(assignment.processInstanceId);
+        },
+        error: (error) => {
+          console.error('[ASSIGNMENT-DETAIL][DOCUMENT_REPLACE_ERROR]', error);
+          this.setDocumentItemError(item.requirement.id, 'No se pudo reemplazar el documento.');
+        },
+      });
+  }
+
+  downloadTaskDocument(item: DocumentExpedientItemResponse): void {
+    const assignment = this.assignment();
+
+    if (!assignment || !item.currentFile || !item.canRead) {
+      return;
+    }
+
+    this.setDocumentItemLoading(item.requirement.id, 'download');
+    this.clearDocumentItemError(item.requirement.id);
+    this.documentSuccessMessage.set(null);
+
+    this.documentExpedientService
+      .getDownloadUrl(assignment.processInstanceId, item.currentFile.id)
+      .pipe(finalize(() => this.clearDocumentItemLoading(item.requirement.id)))
+      .subscribe({
+        next: (response) => window.open(response.downloadUrl, '_blank'),
+        error: (error) => {
+          console.error('[ASSIGNMENT-DETAIL][DOCUMENT_DOWNLOAD_ERROR]', error);
+          this.setDocumentItemError(item.requirement.id, 'No se pudo preparar la descarga.');
+        },
+      });
+  }
+
+  isDocumentItemLoading(
+    item: DocumentExpedientItemResponse,
+    action?: 'upload' | 'replace' | 'download',
+  ): boolean {
+    const currentAction = this.documentActionLoading()[item.requirement.id];
+
+    return action ? currentAction === action : Boolean(currentAction);
+  }
+
+  getDocumentItemError(item: DocumentExpedientItemResponse): string | null {
+    return this.documentItemErrors()[item.requirement.id] ?? null;
+  }
+
+  formatDocumentStatus(status?: string | null): string {
+    switch (status) {
+      case 'UPLOADED':
+        return 'Subido';
+      case 'PENDING':
+        return 'Pendiente';
+      default:
+        return status || 'Sin estado';
+    }
+  }
+
+  getDocumentStatusBadgeClass(status?: string | null): string {
+    switch (status) {
+      case 'UPLOADED':
+        return 'bg-green-50 text-green-700';
+      case 'PENDING':
+        return 'bg-amber-50 text-amber-700';
+      default:
+        return 'bg-slate-100 text-slate-700';
+    }
+  }
+
+  formatDocumentFileSize(bytes?: number | null): string {
+    if (!bytes || bytes <= 0) {
+      return '0 B';
+    }
+
+    const units = ['B', 'KB', 'MB', 'GB'];
+    const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+    const size = bytes / Math.pow(1024, index);
+
+    return `${size.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+  }
+
+  formatAllowedDocumentTypes(item: DocumentExpedientItemResponse): string {
+    const allowedTypes = item.requirement.allowedFileTypes ?? [];
+
+    return allowedTypes.length > 0 ? allowedTypes.join(', ') : 'Sin restricción';
+  }
+
+  getDocumentAcceptAttribute(item: DocumentExpedientItemResponse): string | null {
+    const allowedTypes = item.requirement.allowedFileTypes ?? [];
+
+    return allowedTypes.length > 0 ? allowedTypes.join(',') : null;
+  }
+
   validateTemplateRequiredFields(): string | null {
     const fields = this.sortedTemplateFields();
     const response = this.templateResponseData();
@@ -763,6 +957,89 @@ export class AssignmentDetail implements OnInit, OnDestroy {
 
   goBack(): void {
     this.router.navigate(['/process']);
+  }
+
+  private validateDocumentFile(item: DocumentExpedientItemResponse, file: File): boolean {
+    const maxBytes = (item.requirement.maxFileSizeMb ?? 0) * 1024 * 1024;
+
+    if (maxBytes > 0 && file.size > maxBytes) {
+      this.setDocumentItemError(
+        item.requirement.id,
+        `El archivo supera el tamaño máximo de ${item.requirement.maxFileSizeMb} MB.`,
+      );
+      return false;
+    }
+
+    const allowedTypes = item.requirement.allowedFileTypes ?? [];
+
+    if (allowedTypes.length > 0 && !this.isAllowedDocumentFileType(file, allowedTypes)) {
+      this.setDocumentItemError(
+        item.requirement.id,
+        `Tipo no permitido. Usa: ${allowedTypes.join(', ')}.`,
+      );
+      return false;
+    }
+
+    return true;
+  }
+
+  private isAllowedDocumentFileType(file: File, allowedTypes: string[]): boolean {
+    const fileName = file.name.toLowerCase();
+    const mimeType = file.type.toLowerCase();
+
+    return allowedTypes.some((allowedType) => {
+      const normalizedType = allowedType.toLowerCase().trim();
+
+      if (!normalizedType) {
+        return false;
+      }
+
+      if (normalizedType.includes('/')) {
+        return mimeType === normalizedType;
+      }
+
+      const extension = normalizedType.startsWith('.') ? normalizedType : `.${normalizedType}`;
+
+      return fileName.endsWith(extension);
+    });
+  }
+
+  private getSelectedDocumentFile(event: Event): File | null {
+    const input = event.target as HTMLInputElement;
+
+    return input.files?.item(0) ?? null;
+  }
+
+  private resetDocumentFileInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    input.value = '';
+  }
+
+  private setDocumentItemLoading(
+    itemId: string,
+    action: 'upload' | 'replace' | 'download',
+  ): void {
+    this.documentActionLoading.update((current) => ({ ...current, [itemId]: action }));
+  }
+
+  private clearDocumentItemLoading(itemId: string): void {
+    this.documentActionLoading.update((current) => {
+      const next = { ...current };
+      delete next[itemId];
+      return next;
+    });
+  }
+
+  private setDocumentItemError(itemId: string, message: string): void {
+    this.documentItemErrors.update((current) => ({ ...current, [itemId]: message }));
+  }
+
+  private clearDocumentItemError(itemId: string): void {
+    this.documentItemErrors.update((current) => {
+      const next = { ...current };
+      delete next[itemId];
+      return next;
+    });
   }
 
   private setAiFieldError(fieldId: string, message: string): void {

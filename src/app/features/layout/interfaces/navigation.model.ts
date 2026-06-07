@@ -46,6 +46,12 @@ export const MENU_ITEMS: NavItem[] = [
     roles: ['ADMIN', 'WORKER', 'RECEP'],
   },
   {
+    label: 'Gestión Documental',
+    icon: 'file-text',
+    route: '/document-management',
+    roles: ['ADMIN', 'WORKER', 'RECEP'],
+  },
+  {
     label: 'Iniciar Procesos',
     icon: 'list-plus',
     route: '/process/list',

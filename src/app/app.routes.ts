@@ -68,6 +68,15 @@ export const routes: Routes = [
             (m) => m.PROCESS_MANAGEMENT_ROUTES,
           ),
       },
+      {
+        path: 'document-management',
+        canActivate: [roleGuard],
+        data: { roles: ['ADMIN', 'WORKER', 'RECEP'] },
+        loadChildren: () =>
+          import('./features/document-management/document-management.routes').then(
+            (m) => m.DOCUMENT_MANAGEMENT_ROUTES,
+          ),
+      },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
     ],
   },

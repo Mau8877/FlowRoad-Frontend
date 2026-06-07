@@ -14,13 +14,25 @@
       </p>
     </div>
 
-    <button
-      type="button"
-      class="w-fit rounded-xl border border-fr-taupe/60 bg-white/10 px-4 py-2 text-sm font-bold text-white transition hover:border-fr-gold hover:bg-white/15"
-      (click)="goBack()"
-    >
-      Volver
-    </button>
+    <div class="flex flex-wrap items-center gap-3">
+      @if (instance()?.id) {
+        <button
+          type="button"
+          class="w-fit rounded-xl border border-fr-gold/70 bg-fr-gold px-4 py-2 text-sm font-bold text-fr-black transition hover:bg-white"
+          (click)="goToDocumentExpedient()"
+        >
+          Ver expediente documental
+        </button>
+      }
+
+      <button
+        type="button"
+        class="w-fit rounded-xl border border-fr-taupe/60 bg-white/10 px-4 py-2 text-sm font-bold text-white transition hover:border-fr-gold hover:bg-white/15"
+        (click)="goBack()"
+      >
+        Volver
+      </button>
+    </div>
   </header>
 
   @if (isLoading()) {
