@@ -57,11 +57,7 @@
         }
       </div>
 
-      <app-ai-bottleneck-card
-        [analysis]="aiAnalysis()"
-        [isLoading]="isAiLoading()"
-        [errorMessage]="aiErrorMessage()"
-      />
+      <app-deep-learning-dashboard />
 
       <div class="charts-grid">
         <app-status-donut-chart [statuses]="data.processesByStatus" />

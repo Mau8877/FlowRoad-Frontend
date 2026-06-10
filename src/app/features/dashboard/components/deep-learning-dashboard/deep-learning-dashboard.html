@@ -1,0 +1,438 @@
+<div class="dl-dashboard">
+  
+  <!-- Banner Fallback si modelUsed es false -->
+  @if (data() && !data()?.modelUsed) {
+    <div class="fallback-warning-banner">
+      <span class="warning-icon">⚠</span>
+      <div>
+        <strong>Modo de Fallback Operacional Activo</strong>
+        <p>El servicio de Inteligencia Artificial (FastAPI/TensorFlow) no se encuentra disponible. Los indicadores y priorizaciones se están calculando mediante reglas de negocio heurísticas en el servidor.</p>
+      </div>
+    </div>
+  }
+
+  <!-- Header -->
+  <header class="dl-header">
+    <div class="dl-header-info">
+      <div class="title-row">
+        <span class="eyebrow">Panel predictivo</span>
+        <h1>Analítica Inteligente de Riesgos</h1>
+      </div>
+      <p class="subtitle">Monitoreo predictivo de tareas, SLA y cuellos de botella mediante redes neuronales de TensorFlow.</p>
+      
+      @if (data()) {
+        <p class="generated-at">
+          Generado: <span>{{ formatDate(data()?.generatedAt) }}</span>
+        </p>
+      }
+    </div>
+
+    <div class="header-actions">
+      @if (data()) {
+        <div class="model-status-badge" [class.status-real]="data()?.modelUsed" [class.status-fallback]="!data()?.modelUsed">
+          <span class="pulse-indicator"></span>
+          {{ data()?.modelUsed ? 'IA activa · TensorFlow' : 'Modo fallback · Reglas heurísticas' }}
+        </div>
+      }
+      <button class="dl-btn-refresh" [disabled]="isLoading()" (click)="loadPredictions()">
+        {{ isLoading() ? 'Procesando...' : 'Recargar' }}
+      </button>
+    </div>
+  </header>
+
+  <!-- Error Alert -->
+  @if (errorMessage()) {
+    <div class="dl-error-card">
+      <span class="error-icon">❌</span>
+      <div>
+        <strong>Error de Conectividad</strong>
+        <p>{{ errorMessage() }}</p>
+        <button class="dl-btn-retry" (click)="loadPredictions()">Reintentar conexión</button>
+      </div>
+    </div>
+  }
+
+  <!-- Loader -->
+  @if (isLoading() && !data()) {
+    <div class="dl-loading-card">
+      <div class="spinner"></div>
+      <p>Calculando matrices de riesgo e inferencia en lote...</p>
+    </div>
+  }
+
+  @if (data(); as res) {
+    <!-- KPIs Summary Cards (Globales) -->
+    <div class="dl-kpis-grid">
+      
+      <div class="dl-kpi-card">
+        <span class="kpi-title">Total Analizado</span>
+        <span class="kpi-value">{{ res.totalItems }}</span>
+        <span class="kpi-helper">Asignaciones</span>
+      </div>
+
+      <div class="dl-kpi-card">
+        <span class="kpi-title">Prioridad Normal</span>
+        <span class="kpi-value value-normal">{{ res.summary.normalCount }}</span>
+        <span class="kpi-helper">Bajo control</span>
+      </div>
+
+      <div class="dl-kpi-card">
+        <span class="kpi-title">Riesgo Medio</span>
+        <span class="kpi-value value-medium">{{ res.summary.mediumCount }}</span>
+        <span class="kpi-helper">Seguimiento</span>
+      </div>
+
+      <div class="dl-kpi-card">
+        <span class="kpi-title">Riesgo Alto</span>
+        <span class="kpi-value value-high">{{ res.summary.highCount }}</span>
+        <span class="kpi-helper">Atención inmediata</span>
+      </div>
+
+      <div class="dl-kpi-card">
+        <span class="kpi-title">Cuellos de Botella</span>
+        <span class="kpi-value value-bottleneck">{{ res.summary.bottleneckCount }}</span>
+        <span class="kpi-helper">Retraso acumulado</span>
+      </div>
+
+      <div class="dl-kpi-card">
+        <span class="kpi-title">SLA Excedidos</span>
+        <span class="kpi-value value-sla">{{ res.summary.slaExceededCount }}</span>
+        <span class="kpi-helper">Fuera de plazo</span>
+      </div>
+
+      <div class="dl-kpi-card">
+        <span class="kpi-title">Riesgo Promedio</span>
+        <span class="kpi-value">{{ res.summary.averageRiskScore }}%</span>
+        <span class="kpi-helper">Nivel global</span>
+      </div>
+
+      <div class="dl-kpi-card">
+        <span class="kpi-title">Desvío Promedio</span>
+        <span class="kpi-value">{{ res.summary.averageBottleneckScore }} hs</span>
+        <span class="kpi-helper">Sobre el SLA</span>
+      </div>
+
+    </div>
+
+    <!-- Visual Charts/Progress Bars (Reactivos a los Filtros) -->
+    <div class="dl-charts-container">
+      <div class="dl-chart-box">
+        <h3>Distribución de Riesgo (Resultados Filtrados)</h3>
+        
+        <div class="vertical-chart-container">
+          <div class="v-bar-item">
+            <div class="v-bar-value">{{ filteredSummary().normal }}<br>({{ filteredSummary().normalPercent | number:'1.0-1' }}%)</div>
+            <div class="v-bar-bg">
+              <div class="v-bar-fill fill-normal" [class.is-zero]="filteredSummary().normalPercent === 0" [style.height.%]="filteredSummary().normalPercent"></div>
+            </div>
+            <span class="v-bar-label">NORMAL</span>
+          </div>
+
+          <div class="v-bar-item">
+            <div class="v-bar-value">{{ filteredSummary().medium }}<br>({{ filteredSummary().mediumPercent | number:'1.0-1' }}%)</div>
+            <div class="v-bar-bg">
+              <div class="v-bar-fill fill-medium" [class.is-zero]="filteredSummary().mediumPercent === 0" [style.height.%]="filteredSummary().mediumPercent"></div>
+            </div>
+            <span class="v-bar-label">MEDIUM</span>
+          </div>
+
+          <div class="v-bar-item">
+            <div class="v-bar-value">{{ filteredSummary().high }}<br>({{ filteredSummary().highPercent | number:'1.0-1' }}%)</div>
+            <div class="v-bar-bg">
+              <div class="v-bar-fill fill-high" [class.is-zero]="filteredSummary().highPercent === 0" [style.height.%]="filteredSummary().highPercent"></div>
+            </div>
+            <span class="v-bar-label">HIGH</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="dl-chart-box">
+        <h3>Cumplimiento SLA (Resultados Filtrados)</h3>
+        
+        <div class="vertical-chart-container">
+          <div class="v-bar-item">
+            <div class="v-bar-value">{{ filteredSummary().slaMetCount }}<br>({{ filteredSummary().slaMetPercent | number:'1.0-1' }}%)</div>
+            <div class="v-bar-bg">
+              <div class="v-bar-fill fill-normal" [class.is-zero]="filteredSummary().slaMetPercent === 0" [style.height.%]="filteredSummary().slaMetPercent"></div>
+            </div>
+            <span class="v-bar-label">A Tiempo</span>
+          </div>
+
+          <div class="v-bar-item">
+            <div class="v-bar-value">{{ filteredSummary().slaExceeded }}<br>({{ filteredSummary().slaExceededPercent | number:'1.0-1' }}%)</div>
+            <div class="v-bar-bg">
+              <div class="v-bar-fill fill-high" [class.is-zero]="filteredSummary().slaExceededPercent === 0" [style.height.%]="filteredSummary().slaExceededPercent"></div>
+            </div>
+            <span class="v-bar-label">Excedido</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="dl-chart-box full-width-chart">
+        <h3>Top Departamentos con Mayor Riesgo (Resultados Filtrados)</h3>
+        @if (topDepartmentsRisk().length > 0) {
+          <div class="dept-risk-list">
+            @for (dept of topDepartmentsRisk(); track dept.name) {
+              <div class="dept-risk-row">
+                <div class="dept-name-wrapper">
+                  <strong>{{ dept.name }}</strong>
+                  <span>{{ dept.taskCount }} tareas totales ({{ dept.highCount }} críticas)</span>
+                </div>
+                <div class="dept-progress-wrapper">
+                  <div class="chart-bar-bg">
+                    <div class="chart-bar-fill fill-high" [style.width.%]="dept.avgRisk"></div>
+                  </div>
+                  <span class="dept-avg-label">Riesgo Promedio: <strong>{{ dept.avgRisk | number:'1.0-1' }}%</strong></span>
+                </div>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="empty-chart-text">Sin datos disponibles para el filtro actual.</p>
+        }
+      </div>
+    </div>
+
+    <!-- Top Cuellos de Botella Detectados -->
+    <div class="dl-bottlenecks-card">
+      <div class="bottlenecks-header">
+        <h3>Top Cuellos de Botella Detectados</h3>
+        <span class="bottlenecks-subtitle">Impacto y severidad en los nodos del proceso según filtros actuales</span>
+      </div>
+
+      @if (topBottlenecks().length > 0) {
+        <div class="bottlenecks-list">
+          @for (bn of topBottlenecks(); track bn.diagramName + bn.nodeId) {
+            <div class="bottleneck-row">
+              <div class="bn-info">
+                <strong class="bn-diagram">{{ bn.diagramName }}</strong>
+                <code class="bn-node" [title]="bn.nodeId">{{ formatNodeId(bn.nodeId) }}</code>
+                <span class="bn-occurrences">({{ bn.occurrences }} asignaciones afectadas)</span>
+              </div>
+              <div class="bn-metrics">
+                <div class="bn-bar-container">
+                  <span class="bn-score-label">Severidad:</span>
+                  <div class="bn-bar-bg">
+                    <div class="bn-bar-fill" [style.width.%]="bn.avgBottleneckScore"></div>
+                  </div>
+                  <span class="bn-score">{{ bn.avgBottleneckScore | number:'1.0-1' }}%</span>
+                </div>
+                <div class="bn-stats">
+                  <span class="bn-stat-item bn-stat-icon" title="Retraso máximo estimado">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="svg-icon" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
+                    </svg>
+                    {{ bn.maxDelayHours | number:'1.0-1' }} hs retraso
+                  </span>
+                  <span class="bn-stat-item bn-stat-icon" title="Ratio promedio sobre el SLA">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="svg-icon" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
+                    </svg>
+                    {{ bn.avgRatio | number:'1.1-1' }}x SLA
+                  </span>
+                  @if (bn.slaExceededCount > 0) {
+                    <span class="sla-badge sla-exceeded bn-stat-icon">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="svg-icon" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                      </svg>
+                      SLA EXCEDIDO ({{ bn.slaExceededCount }})
+                    </span>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      } @else {
+        <p class="empty-state-text">No se detectaron cuellos de botella relevantes con los filtros actuales.</p>
+      }
+    </div>
+
+    <!-- Filters Section -->
+    <div class="dl-filters-card">
+      <div class="filters-grid">
+        <div class="filter-group group-search">
+          <label for="search">Buscar Trámite / Tarea</label>
+          <input 
+            id="search" 
+            type="text" 
+            placeholder="Ej: Apertura de Cuenta, KYC, Riesgos..." 
+            [ngModel]="searchQuery()" 
+            (ngModelChange)="searchQuery.set($event)"
+          />
+        </div>
+
+        <div class="filter-group">
+          <label for="priority">Prioridad de Riesgo</label>
+          <select id="priority" [ngModel]="filterPriority()" (ngModelChange)="filterPriority.set($event)">
+            <option value="ALL">Todos</option>
+            <option value="NORMAL">NORMAL</option>
+            <option value="MEDIUM">MEDIUM</option>
+            <option value="HIGH">HIGH</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="sla">Estado de SLA</label>
+          <select id="sla" [ngModel]="filterSla()" (ngModelChange)="filterSla.set($event)">
+            <option value="ALL">Todos</option>
+            <option value="MET">SLA Cumplido</option>
+            <option value="EXCEEDED">SLA Excedido</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="dept">Departamento</label>
+          <select id="dept" [ngModel]="filterDepartment()" (ngModelChange)="filterDepartment.set($event)">
+            <option value="ALL">Todos</option>
+            @for (dept of departments(); track dept) {
+              <option [value]="dept">{{ dept }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="filter-group select-limit">
+          <label for="limit">Límite Dataset</label>
+          <select id="limit" [ngModel]="limit()" (ngModelChange)="onLimitChange($event)">
+            <option [ngValue]="50">50 items</option>
+            <option [ngValue]="100">100 items</option>
+            <option [ngValue]="200">200 items</option>
+            <option [ngValue]="840">840 items (Todos)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Predictions Table -->
+    <div class="dl-table-container">
+      <table class="dl-table">
+        <thead>
+          <tr>
+            <th class="col-process">Proceso / Trámite</th>
+            <th class="col-node">Tarea (Nodo)</th>
+            <th class="col-dept">Departamento</th>
+            <th class="col-duration">Duración</th>
+            <th class="col-sla">SLA</th>
+            <th class="col-risk">Riesgo</th>
+            <th class="col-bottleneck">Severidad Cuello</th>
+            <th class="col-action">Acción Recomendada</th>
+            <th class="col-priority">Prioridad</th>
+            <th class="col-sla-badge">SLA Plazo</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of paginatedItems(); track item.assignmentId) {
+            <tr>
+              <td class="col-process">
+                <div class="process-name">{{ item.diagramName }}</div>
+                <div class="instance-id">Instancia: {{ item.processInstanceId }}</div>
+              </td>
+              <td class="col-node">
+                <code class="node-code" [title]="item.nodeId">{{ item.nodeId }}</code>
+              </td>
+              <td class="col-dept"><span class="dept-label">{{ item.assignedDepartmentName }}</span></td>
+              <td class="col-duration">{{ item.currentStepDurationHours | number:'1.1-2' }} hs</td>
+              <td class="col-sla">{{ item.slaHoursTarget | number:'1.1-1' }} hs</td>
+              <td class="col-risk">
+                <div class="risk-score-wrapper">
+                  <div class="score-bar-bg">
+                    <div class="score-bar-fill" [style.width.%]="item.prediction.priorityScore" [class.fill-high]="item.prediction.priorityLabel === 'HIGH'" [class.fill-medium]="item.prediction.priorityLabel === 'MEDIUM'"></div>
+                  </div>
+                  <span class="score-value">{{ item.prediction.priorityScore | number:'1.0-0' }}%</span>
+                </div>
+              </td>
+              <td class="col-bottleneck">
+                <span class="bottleneck-score" [class.bottleneck-active]="item.prediction.bottleneckScore > 0">
+                  {{ item.prediction.bottleneckScore | number:'1.0-1' }}
+                </span>
+              </td>
+              <td class="col-action">
+                <span class="action-badge" [class]="getActionClass(item.prediction.recommendedAction)">
+                  {{ item.prediction.recommendedAction }}
+                </span>
+              </td>
+              <td class="col-priority">
+                <span class="priority-badge" [class]="getPriorityClass(item.prediction.priorityLabel)">
+                  {{ item.prediction.priorityLabel }}
+                </span>
+              </td>
+              <td class="col-sla-badge">
+                @if (item.prediction.slaExceeded) {
+                  <span class="sla-badge sla-exceeded">EXCEDIDO (+{{ item.prediction.bottleneckDelayHours | number:'1.0-1' }} hs)</span>
+                } @else {
+                  <span class="sla-badge sla-ok">A TIEMPO</span>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="10" class="empty-table-cell">
+                No hay asignaciones que coincidan con los filtros seleccionados.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Paginación y Resumen Inferior -->
+    <div class="dl-pagination-footer">
+      <div class="pagination-summary">
+        {{ paginationLabel() }} / <strong>{{ res.totalItems }}</strong> asignaciones analizadas
+      </div>
+      
+      <div class="pagination-controls">
+        <button class="dl-btn-page" [disabled]="currentPage() === 1" (click)="prevPage()">Anterior</button>
+        <span class="page-indicator">Página {{ currentPage() }} de {{ totalPages() }}</span>
+        <button class="dl-btn-page" [disabled]="currentPage() === totalPages()" (click)="nextPage()">Siguiente</button>
+      </div>
+    </div>
+
+    <!-- Guía rápida de interpretación -->
+    <div class="dl-guide-card">
+      <h3>Guía rápida de interpretación</h3>
+      <div class="guide-grid">
+        <div class="guide-item">
+          <strong>Riesgo</strong>
+          <p>Probabilidad estimada de que una tarea requiera atención o pueda afectar el flujo.</p>
+        </div>
+        <div class="guide-item">
+          <strong>Cuello de botella</strong>
+          <p>Indica qué tanto una tarea está frenando el avance del proceso global.</p>
+        </div>
+        <div class="guide-item">
+          <strong>Severidad de cuello</strong>
+          <p>Porcentaje que representa la intensidad del cuello de botella detectado.</p>
+        </div>
+        <div class="guide-item">
+          <strong>Retraso acumulado</strong>
+          <p>Cantidad estimada de horas de retraso asociadas a la tarea en cuestión.</p>
+        </div>
+        <div class="guide-item">
+          <strong>Ratio de cuello</strong>
+          <p>Relación entre el tiempo actual y el SLA esperado (ej. 2.0x = el doble de lo esperado).</p>
+        </div>
+        <div class="guide-item">
+          <strong>SLA excedido</strong>
+          <p>Señala si la tarea ya superó el tiempo máximo esperado de completitud.</p>
+        </div>
+        <div class="guide-item guide-item-wide">
+          <strong>Recomendación</strong>
+          <div class="guide-badges">
+            <span class="action-badge action-continue">CONTINUE</span> <span class="guide-desc">Continuar normalmente</span>
+            <span class="action-badge action-monitor">MONITOR</span> <span class="guide-desc">Monitorear avance</span>
+            <span class="action-badge action-escalate">ESCALATE</span> <span class="guide-desc">Intervenir o escalar</span>
+          </div>
+        </div>
+        <div class="guide-item guide-item-wide">
+          <strong>IA activa / Fallback</strong>
+          <p>
+            <strong>IA activa:</strong> Predicción generada por TensorFlow.<br/>
+            <strong>Modo fallback:</strong> Predicción heurística por falta de respuesta del servicio IA.
+          </p>
+        </div>
+      </div>
+    </div>
+  }
+
+</div>
