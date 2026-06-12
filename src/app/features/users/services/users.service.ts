@@ -1,7 +1,12 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { environment } from '#/environments/environment';
-import { UserResponse, RegisterWorkerRequest, UpdateUserRequest } from '../interfaces/users.model';
+import {
+  ClientSearchResponse,
+  UserResponse,
+  RegisterWorkerRequest,
+  UpdateUserRequest,
+} from '../interfaces/users.model';
 import { AuthService } from '#/app/features/auth/services/auth.service';
 import { Observable, throwError } from 'rxjs';
 
@@ -23,6 +28,11 @@ export class UserService {
   }
 
   // Se registra a través de /auth/register-worker
+  searchClients(query: string, limit = 10): Observable<ClientSearchResponse[]> {
+    const params = new HttpParams().set('q', query).set('limit', String(limit));
+    return this.http.get<ClientSearchResponse[]>(`${this.USERS_URL}/clients/search`, { params });
+  }
+
   CREATE(payload: RegisterWorkerRequest): Observable<any> {
     return this.http.post<any>(`${this.AUTH_URL}/register-worker`, payload);
   }

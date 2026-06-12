@@ -1,0 +1,36 @@
+<section class="editor-page" [class.focus-mode]="isFocusMode()">
+  <header class="editor-header">
+    <button type="button" class="back-button" (click)="goBack()">Volver</button>
+
+    <div class="editor-title">
+      <p class="eyebrow">ONLYOFFICE</p>
+      <h1>Edicion colaborativa</h1>
+      <p>{{ documentTitle() }}</p>
+    </div>
+
+    <span class="mode-badge">{{ modeLabel() }}</span>
+    <button type="button" class="focus-button" (click)="toggleFocusMode()">
+      {{ isFocusMode() ? 'Vista normal' : 'Pantalla amplia' }}
+    </button>
+  </header>
+
+  @if (errorMessage()) {
+    <div class="editor-feedback">
+      <p>{{ errorMessage() }}</p>
+      <div class="feedback-actions">
+        <button type="button" (click)="retry()">Reintentar</button>
+        <button type="button" (click)="refreshExpedient()">Actualizar expediente</button>
+      </div>
+    </div>
+  } @else {
+    <div class="editor-shell">
+      @if (isLoading()) {
+        <div class="editor-loading">
+          <p>Cargando editor colaborativo...</p>
+        </div>
+      }
+
+      <div id="onlyoffice-editor" class="onlyoffice-container"></div>
+    </div>
+  }
+</section>

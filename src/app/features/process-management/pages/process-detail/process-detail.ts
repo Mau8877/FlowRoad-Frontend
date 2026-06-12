@@ -218,4 +218,14 @@ export class ProcessDetail implements OnInit {
   goBack(): void {
     this.router.navigate(['/process']);
   }
+
+  goToDocumentExpedient(): void {
+    const processInstanceId = this.instance()?.id;
+
+    if (!processInstanceId) {
+      return;
+    }
+
+    this.router.navigate(['/document-management', processInstanceId]);
+  }
 }

@@ -1,0 +1,292 @@
+<section
+  class="min-h-[calc(100vh-64px)] bg-linear-to-b from-fr-black via-[#101113] to-[#171717] px-4 py-6 text-white sm:px-6 lg:px-8"
+>
+  <header
+    class="mb-6 flex flex-col gap-4 rounded-3xl border border-fr-taupe/40 bg-fr-black/80 p-5 shadow-lg lg:flex-row lg:items-center lg:justify-between"
+  >
+    <div>
+      <p class="mb-1 text-xs font-extrabold uppercase tracking-[0.18em] text-fr-gold">FlowRoad</p>
+      <h1 class="text-2xl font-extrabold text-white sm:text-3xl">Expediente documental</h1>
+      <p class="mt-2 text-sm text-slate-300">
+        Archivos y requisitos documentales visibles para este trámite.
+      </p>
+    </div>
+
+    <button
+      type="button"
+      class="w-fit rounded-xl border border-fr-taupe/60 bg-white/10 px-4 py-2 text-sm font-bold text-white transition hover:border-fr-gold hover:bg-white/15"
+      (click)="goBack()"
+    >
+      Volver
+    </button>
+  </header>
+
+  @if (isLoading()) {
+    <div class="rounded-3xl border border-fr-taupe/35 bg-white p-8 text-center text-slate-900 shadow-lg">
+      <p class="text-sm font-bold text-slate-500">Cargando expediente documental...</p>
+    </div>
+  } @else if (errorMessage()) {
+    <div class="rounded-2xl border border-red-300/50 bg-red-500/15 px-5 py-4 text-sm font-semibold text-red-100">
+      {{ errorMessage() }}
+    </div>
+  } @else if (expedient()) {
+    <div class="space-y-6">
+      @if (successMessage()) {
+        <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-semibold text-emerald-700">
+          {{ successMessage() }}
+        </div>
+      }
+
+      @if (collaborationSyncMessage()) {
+        <div class="flex flex-col gap-3 rounded-2xl border border-fr-gold/45 bg-fr-gold/15 px-5 py-4 text-sm font-semibold text-fr-gold sm:flex-row sm:items-center sm:justify-between">
+          <span>{{ collaborationSyncMessage() }}</span>
+          <button
+            type="button"
+            class="w-fit rounded-xl border border-fr-gold/60 bg-fr-black/30 px-4 py-2 text-xs font-extrabold text-white transition hover:bg-fr-black/50"
+            (click)="refreshExpedientNow()"
+          >
+            Actualizar expediente
+          </button>
+        </div>
+      }
+
+      <section class="rounded-3xl border border-fr-taupe/35 bg-white p-5 text-slate-900 shadow-lg">
+        <div class="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p class="text-xs font-extrabold uppercase tracking-[0.16em] text-fr-gold">
+              Información general
+            </p>
+            <h2 class="mt-1 text-2xl font-extrabold text-fr-black">
+              {{ expedient()?.processCode }}
+            </h2>
+            <p class="mt-2 text-sm text-slate-500">
+              {{ expedient()?.diagramName }} · Versión {{ expedient()?.diagramVersion }}
+            </p>
+          </div>
+
+          <span
+            class="w-fit rounded-full px-4 py-2 text-xs font-extrabold uppercase tracking-wide"
+            [ngClass]="getStatusBadgeClass(expedient()?.processStatus)"
+          >
+            {{ formatStatus(expedient()?.processStatus) }}
+          </span>
+        </div>
+
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <article class="rounded-2xl border border-fr-taupe/35 bg-fr-black/5 p-4">
+            <p class="text-xs font-extrabold uppercase tracking-wide text-fr-gray">Cliente</p>
+            <p class="mt-2 text-sm font-extrabold text-fr-black">
+              {{ expedient()?.clientName || 'Cliente no asociado' }}
+            </p>
+            @if (expedient()?.clientEmail) {
+              <p class="mt-1 text-xs font-semibold text-slate-500">{{ expedient()?.clientEmail }}</p>
+            }
+          </article>
+
+          <article class="rounded-2xl border border-fr-taupe/35 bg-fr-black/5 p-4">
+            <p class="text-xs font-extrabold uppercase tracking-wide text-fr-gray">Iniciado</p>
+            <p class="mt-2 text-sm font-extrabold text-fr-black">
+              {{ formatDate(expedient()?.startedAt) }}
+            </p>
+          </article>
+
+          <article class="rounded-2xl border border-fr-taupe/35 bg-fr-black/5 p-4">
+            <p class="text-xs font-extrabold uppercase tracking-wide text-fr-gray">Actualizado</p>
+            <p class="mt-2 text-sm font-extrabold text-fr-black">
+              {{ formatDate(expedient()?.updatedAt) }}
+            </p>
+          </article>
+
+          <article class="rounded-2xl border border-fr-taupe/35 bg-fr-black/5 p-4">
+            <p class="text-xs font-extrabold uppercase tracking-wide text-fr-gray">Finalizado</p>
+            <p class="mt-2 text-sm font-extrabold text-fr-black">
+              {{ formatDate(expedient()?.finishedAt) }}
+            </p>
+          </article>
+
+          <article class="rounded-2xl border border-fr-taupe/35 bg-fr-black/5 p-4">
+            <p class="text-xs font-extrabold uppercase tracking-wide text-fr-gray">Proceso</p>
+            <p class="mt-2 break-all font-mono text-xs font-extrabold leading-relaxed text-fr-black">
+              {{ expedient()?.processInstanceId }}
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <article class="rounded-2xl border border-fr-taupe/35 bg-fr-black/75 p-5 shadow-md">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Requisitos visibles</span>
+          <strong class="mt-2 block text-3xl font-extrabold text-fr-gold">{{ totalRequirements() }}</strong>
+        </article>
+        <article class="rounded-2xl border border-fr-taupe/35 bg-fr-black/75 p-5 shadow-md">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Subidos</span>
+          <strong class="mt-2 block text-3xl font-extrabold text-fr-gold">{{ uploadedDocuments() }}</strong>
+        </article>
+        <article class="rounded-2xl border border-fr-taupe/35 bg-fr-black/75 p-5 shadow-md">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Pendientes</span>
+          <strong class="mt-2 block text-3xl font-extrabold text-fr-gold">{{ pendingDocuments() }}</strong>
+        </article>
+        <article class="rounded-2xl border border-fr-taupe/35 bg-fr-black/75 p-5 shadow-md">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Requeridos pendientes</span>
+          <strong class="mt-2 block text-3xl font-extrabold text-fr-gold">{{ requiredPendingDocuments() }}</strong>
+        </article>
+      </section>
+
+      <section class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        @for (item of expedient()?.items || []; track item.requirement.id) {
+          <article class="min-w-0 rounded-3xl border border-fr-taupe/35 bg-white p-5 text-slate-900 shadow-lg">
+            <div class="mb-4 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div class="min-w-0 max-w-full">
+                <div class="flex flex-wrap items-center gap-2">
+                  <h3 class="min-w-0 max-w-full overflow-hidden break-words text-lg font-extrabold text-fr-black">
+                    {{ item.requirement.name }}
+                  </h3>
+                  <span
+                    class="rounded-full px-3 py-1 text-xs font-extrabold"
+                    [class.bg-red-50]="item.requirement.required"
+                    [class.text-red-700]="item.requirement.required"
+                    [class.bg-slate-100]="!item.requirement.required"
+                    [class.text-slate-700]="!item.requirement.required"
+                  >
+                    {{ item.requirement.required ? 'Obligatorio' : 'Opcional' }}
+                  </span>
+                </div>
+
+                @if (item.requirement.description) {
+                  <p class="mt-2 text-sm text-slate-600">{{ item.requirement.description }}</p>
+                }
+              </div>
+
+              <span
+                class="w-fit rounded-full px-3 py-1 text-xs font-extrabold"
+                [ngClass]="getStatusBadgeClass(item.status)"
+              >
+                {{ formatStatus(item.status) }}
+              </span>
+            </div>
+
+            <div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div class="rounded-2xl border border-fr-taupe/35 bg-fr-black/5 p-3">
+                <p class="text-xs font-extrabold uppercase tracking-wide text-fr-gray">Tipos permitidos</p>
+                <p class="mt-1 text-sm font-semibold text-slate-800">{{ formatAllowedTypes(item) }}</p>
+              </div>
+              <div class="rounded-2xl border border-fr-taupe/35 bg-fr-black/5 p-3">
+                <p class="text-xs font-extrabold uppercase tracking-wide text-fr-gray">Tamaño máximo</p>
+                <p class="mt-1 text-sm font-semibold text-slate-800">{{ item.requirement.maxFileSizeMb }} MB</p>
+              </div>
+            </div>
+
+            @if (item.currentFile) {
+              <div class="mb-4 min-w-0 rounded-2xl border border-fr-taupe/35 bg-fr-black/5 p-4">
+                <div class="mb-3 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div class="min-w-0 max-w-full flex-1">
+                    <p class="text-xs font-extrabold uppercase tracking-wide text-fr-gray">Archivo actual</p>
+                    <h4 class="mt-1 max-w-full overflow-hidden break-words text-base font-extrabold leading-snug text-fr-black [overflow-wrap:anywhere]">
+                      {{ item.currentFile.originalFileName }}
+                    </h4>
+                  </div>
+                  <span class="max-w-full shrink-0 self-start rounded-full bg-fr-gold/20 px-3 py-1 text-xs font-extrabold text-fr-brown">
+                    v{{ item.currentFile.version }}
+                  </span>
+                </div>
+
+                <dl class="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                  <div>
+                    <dt class="text-xs font-extrabold uppercase tracking-wide text-slate-500">Extensión</dt>
+                    <dd class="mt-1 font-semibold text-slate-800">{{ item.currentFile.fileExtension }}</dd>
+                  </div>
+                  <div>
+                    <dt class="text-xs font-extrabold uppercase tracking-wide text-slate-500">Tamaño</dt>
+                    <dd class="mt-1 font-semibold text-slate-800">{{ formatFileSize(item.currentFile.fileSizeBytes) }}</dd>
+                  </div>
+                  <div>
+                    <dt class="text-xs font-extrabold uppercase tracking-wide text-slate-500">Subido por</dt>
+                    <dd class="mt-1 font-semibold text-slate-800">{{ item.currentFile.uploadedByName || 'Sin usuario' }}</dd>
+                  </div>
+                  <div>
+                    <dt class="text-xs font-extrabold uppercase tracking-wide text-slate-500">Fecha</dt>
+                    <dd class="mt-1 font-semibold text-slate-800">{{ formatDate(item.currentFile.createdAt) }}</dd>
+                  </div>
+                </dl>
+              </div>
+            } @else {
+              <div class="mb-4 rounded-2xl border border-dashed border-fr-taupe/50 bg-fr-black/5 px-4 py-6 text-center">
+                <p class="text-sm font-bold text-slate-500">Todavía no hay archivo subido.</p>
+              </div>
+            }
+
+            @if (getItemError(item)) {
+              <div class="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                {{ getItemError(item) }}
+              </div>
+            }
+
+            <div class="flex min-w-0 max-w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+              @if (item.canRead && item.currentFile) {
+                <button
+                  type="button"
+                  class="max-w-full rounded-xl border border-fr-taupe/45 bg-white px-4 py-2 text-sm font-bold text-fr-black transition hover:bg-fr-black/5 disabled:cursor-not-allowed disabled:opacity-50"
+                  [disabled]="areDocumentActionsDisabled(item)"
+                  (click)="downloadDocument(item)"
+                >
+                  {{ isItemLoading(item, 'download') ? 'Preparando...' : 'Descargar' }}
+                </button>
+              }
+
+              @if (canOpenCollaboratively(item)) {
+                <button
+                  type="button"
+                  class="max-w-full rounded-xl border border-fr-gold/55 bg-fr-gold/15 px-4 py-2 text-sm font-bold text-fr-brown transition hover:bg-fr-gold/25 disabled:cursor-not-allowed disabled:opacity-50"
+                  [disabled]="areDocumentActionsDisabled(item)"
+                  (click)="openCollaborativeEditor(item)"
+                >
+                  {{ getCollaborationButtonLabel(item) }}
+                </button>
+              }
+
+              @if (item.canUpload && !item.currentFile) {
+                <input
+                  #uploadInput
+                  type="file"
+                  class="hidden"
+                  [accept]="getAcceptAttribute(item)"
+                  (change)="handleUpload(item, $event)"
+                />
+                <button
+                  type="button"
+                  class="max-w-full rounded-xl bg-fr-brown px-4 py-2 text-sm font-bold text-white transition hover:bg-fr-black disabled:cursor-not-allowed disabled:opacity-50"
+                  [disabled]="areDocumentActionsDisabled(item)"
+                  (click)="uploadInput.click()"
+                >
+                  {{ isItemLoading(item, 'upload') ? 'Subiendo...' : 'Subir' }}
+                </button>
+              } @else if (!item.currentFile) {
+                <span class="text-sm font-semibold text-slate-500">Sin permiso para subir</span>
+              }
+
+              @if (item.canEdit && item.currentFile) {
+                <input
+                  #replaceInput
+                  type="file"
+                  class="hidden"
+                  [accept]="getAcceptAttribute(item)"
+                  (change)="handleReplace(item, $event)"
+                />
+                <button
+                  type="button"
+                  class="max-w-full rounded-xl bg-fr-black px-4 py-2 text-sm font-bold text-white transition hover:bg-fr-brown disabled:cursor-not-allowed disabled:opacity-50"
+                  [disabled]="areDocumentActionsDisabled(item)"
+                  (click)="replaceInput.click()"
+                >
+                  {{ isItemLoading(item, 'replace') ? 'Reemplazando...' : 'Reemplazar' }}
+                </button>
+              } @else if (item.currentFile) {
+                <span class="text-sm font-semibold text-slate-500">Sin permiso para reemplazar</span>
+              }
+            </div>
+          </article>
+        }
+      </section>
+    </div>
+  }
+</section>

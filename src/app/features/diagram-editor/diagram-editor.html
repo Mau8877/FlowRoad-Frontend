@@ -148,7 +148,9 @@
         <div class="editor-right-inspector-inner">
           <app-editor-node-inspector
             [selectedCell]="getSelectedCell()"
+            [diagramId]="collab.diagramId()"
             [availableTemplates]="ui.availableTemplates()"
+            [availableDepartments]="ui.availableDepartments()"
             [isSaving]="false"
             (saveRequested)="onInspectorSave($event)"
             (deleteRequested)="onInspectorDelete()"

@@ -317,6 +317,7 @@
             <tr>
               <th class="px-4 py-3 font-extrabold text-fr-gray">Código</th>
               <th class="px-4 py-3 font-extrabold text-fr-gray">Diagrama</th>
+              <th class="px-4 py-3 font-extrabold text-fr-gray">Cliente</th>
               <th class="px-4 py-3 font-extrabold text-fr-gray">Estado</th>
               <th class="px-4 py-3 font-extrabold text-fr-gray">Iniciado por</th>
               <th class="px-4 py-3 font-extrabold text-fr-gray">Iniciado</th>
@@ -337,6 +338,13 @@
 
                 <td class="px-4 py-3 text-slate-700">
                   {{ process.diagramName }}
+                </td>
+
+                <td class="px-4 py-3 text-slate-700">
+                  <div class="font-semibold text-slate-800">{{ getClientName(process) }}</div>
+                  @if (getClientEmail(process)) {
+                    <div class="mt-1 text-xs text-slate-500">{{ getClientEmail(process) }}</div>
+                  }
                 </td>
 
                 <td class="px-4 py-3">

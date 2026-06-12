@@ -1,4 +1,5 @@
 import { TemplateSummaryResponse } from '#/app/features/config-org/interfaces/plantillas.models';
+import { DepartmentResponse } from '#/app/features/config-org/interfaces/departamentos.model';
 import { CommonModule } from '@angular/common';
 import {
   Component,
@@ -11,6 +12,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DiagramCell } from '../../interfaces/diagram.models';
+import { DocumentRequirementsPanelComponent } from '../document-requirements-panel/document-requirements-panel';
 
 export interface NodeInspectorSubmitPayload {
   label: string;
@@ -22,13 +24,15 @@ export interface NodeInspectorSubmitPayload {
 @Component({
   selector: 'app-editor-node-inspector',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, DocumentRequirementsPanelComponent],
   templateUrl: './editor-node-inspector.html',
   styleUrl: './editor-node-inspector.css',
 })
 export class EditorNodeInspectorComponent implements OnChanges {
   @Input() selectedCell: DiagramCell | null = null;
+  @Input() diagramId = '';
   @Input() availableTemplates: TemplateSummaryResponse[] = [];
+  @Input() availableDepartments: DepartmentResponse[] = [];
   @Input() isSaving = false;
 
   @Output() saveRequested = new EventEmitter<NodeInspectorSubmitPayload>();

@@ -31,6 +31,12 @@ export const MENU_ITEMS: NavItem[] = [
     ],
   },
   { label: 'Gestión Usuarios', icon: 'users', route: '/users', roles: ['ADMIN'] },
+  {
+    label: 'Reportes Inteligentes',
+    icon: 'bar-chart-3',
+    route: '/reports/intelligent',
+    roles: ['ADMIN'],
+  },
 
   {
     label: 'Diagrama De Actividades',
@@ -43,6 +49,12 @@ export const MENU_ITEMS: NavItem[] = [
     label: 'Mis Procesos',
     icon: 'list-checks',
     route: '/process',
+    roles: ['ADMIN', 'WORKER', 'RECEP'],
+  },
+  {
+    label: 'Gestión Documental',
+    icon: 'file-text',
+    route: '/document-management',
     roles: ['ADMIN', 'WORKER', 'RECEP'],
   },
   {

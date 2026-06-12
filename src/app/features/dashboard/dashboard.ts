@@ -2,7 +2,6 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { finalize } from 'rxjs';
 
-import { AiBottleneckCardComponent } from './components/ai-bottleneck-card/ai-bottleneck-card';
 import { DepartmentPendingCardComponent } from './components/department-pending-card/department-pending-card';
 import { KpiCardComponent } from './components/kpi-card/kpi-card';
 import { StatusDonutChartComponent } from './components/status-donut-chart/status-donut-chart';
@@ -12,6 +11,8 @@ import {
   DashboardKpiResponse,
 } from './interfaces/dashboard-kpi.model';
 import { DashboardKpiService } from './services/dashboard-kpi.service';
+
+import { DeepLearningDashboardComponent } from './components/deep-learning-dashboard/deep-learning-dashboard';
 
 interface DashboardCardData {
   title: string;
@@ -29,7 +30,7 @@ interface DashboardCardData {
     StatusDonutChartComponent,
     TopProcessesChartComponent,
     DepartmentPendingCardComponent,
-    AiBottleneckCardComponent,
+    DeepLearningDashboardComponent,
   ],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',

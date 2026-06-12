@@ -5,6 +5,8 @@ import { Router, RouterLink } from '@angular/router';
 
 import { DiagramSummaryResponse } from '#/app/features/diagram-editor/interfaces/diagram.models';
 import { DiagramService } from '#/app/features/diagram-editor/services/diagram.service';
+import { ClientSearchResponse } from '#/app/features/users/interfaces/users.model';
+import { UserService } from '#/app/features/users/services/users.service';
 
 import { CreateModal } from '#/app/features/shared/components/common-table/components/create-modal/create-modal';
 import { FormField } from '#/app/features/shared/components/common-table/interfaces/field.interface';
@@ -21,6 +23,9 @@ import {
   LucideAngularModule,
   LucideIconProvider,
   Plus,
+  Search,
+  UserRound,
+  X,
 } from 'lucide-angular';
 
 @Component({
@@ -35,6 +40,9 @@ import {
       useValue: new LucideIconProvider({
         ClipboardList,
         Plus,
+        Search,
+        UserRound,
+        X,
       }),
     },
   ],
@@ -42,7 +50,9 @@ import {
 export class ProcessCreate implements OnInit {
   private readonly diagramService = inject(DiagramService);
   private readonly processInstanceService = inject(ProcessInstanceService);
+  private readonly userService = inject(UserService);
   private readonly router = inject(Router);
+  private clientSearchTimeout: ReturnType<typeof setTimeout> | null = null;
   private readonly dateFormatter = new Intl.DateTimeFormat('es-BO', {
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -50,8 +60,12 @@ export class ProcessCreate implements OnInit {
 
   public diagrams = signal<DiagramSummaryResponse[]>([]);
   public processInstances = signal<ProcessInstanceSummaryResponse[]>([]);
+  public clientSearchQuery = signal('');
+  public clientSearchResults = signal<ClientSearchResponse[]>([]);
+  public selectedClient = signal<ClientSearchResponse | null>(null);
 
   public isLoading = signal(false);
+  public isSearchingClients = signal(false);
   public isCreateModalOpen = signal(false);
   public cancellingProcessIds = signal<Set<string>>(new Set());
 
@@ -114,7 +128,9 @@ export class ProcessCreate implements OnInit {
   }
 
   handleSave(formData: any): void {
-    if (!formData?.diagramId) {
+    const client = this.selectedClient();
+
+    if (!formData?.diagramId || !client) {
       return;
     }
 
@@ -122,6 +138,7 @@ export class ProcessCreate implements OnInit {
 
     const request: CreateProcessInstanceRequest = {
       diagramId: formData.diagramId,
+      clientId: client.id,
       requestData: {
         selectedDiagramName: selectedDiagram?.name ?? null,
         selectedDiagramVersion: selectedDiagram?.version ?? null,
@@ -135,6 +152,7 @@ export class ProcessCreate implements OnInit {
         this.processInstances.update((current) => [createdProcess, ...current]);
         this.isLoading.set(false);
         this.isCreateModalOpen.set(false);
+        this.clearSelectedClient();
       },
       error: (error) => {
         console.error('[PROCESS-CREATE][CREATE_PROCESS_ERROR]', error);
@@ -145,6 +163,61 @@ export class ProcessCreate implements OnInit {
 
   goBack(): void {
     this.router.navigate(['/process']);
+  }
+
+  openCreateModal(): void {
+    if (!this.selectedClient()) {
+      return;
+    }
+
+    this.isCreateModalOpen.set(true);
+  }
+
+  onClientSearchInput(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.clientSearchQuery.set(value);
+
+    if (this.clientSearchTimeout) {
+      clearTimeout(this.clientSearchTimeout);
+    }
+
+    const query = value.trim();
+
+    if (query.length < 2) {
+      this.clientSearchResults.set([]);
+      this.isSearchingClients.set(false);
+      return;
+    }
+
+    this.clientSearchTimeout = setTimeout(() => this.searchClients(query), 300);
+  }
+
+  searchClients(query: string): void {
+    this.isSearchingClients.set(true);
+
+    this.userService.searchClients(query, 10).subscribe({
+      next: (clients) => {
+        this.clientSearchResults.set(clients);
+        this.isSearchingClients.set(false);
+      },
+      error: (error) => {
+        console.error('[PROCESS-CREATE][SEARCH_CLIENTS_ERROR]', error);
+        this.clientSearchResults.set([]);
+        this.isSearchingClients.set(false);
+      },
+    });
+  }
+
+  selectClient(client: ClientSearchResponse): void {
+    this.selectedClient.set(client);
+    this.clientSearchQuery.set('');
+    this.clientSearchResults.set([]);
+  }
+
+  clearSelectedClient(): void {
+    this.selectedClient.set(null);
+    this.clientSearchQuery.set('');
+    this.clientSearchResults.set([]);
   }
 
   canCancelProcess(process: ProcessInstanceSummaryResponse): boolean {
@@ -248,5 +321,13 @@ export class ProcessCreate implements OnInit {
 
   getStartedBy(process: ProcessInstanceSummaryResponse): string {
     return process.startedByUserName?.trim() || 'Usuario no disponible';
+  }
+
+  getClientName(process: ProcessInstanceSummaryResponse): string {
+    return process.clientName?.trim() || 'Cliente no asociado';
+  }
+
+  getClientEmail(process: ProcessInstanceSummaryResponse): string {
+    return process.clientEmail?.trim() || '';
   }
 }

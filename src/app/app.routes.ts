@@ -51,6 +51,15 @@ export const routes: Routes = [
         loadChildren: () => import('./features/users/users.routes').then((m) => m.USER_ROUTES),
       },
       {
+        path: 'reports/intelligent',
+        canActivate: [roleGuard],
+        data: { roles: ['ADMIN'] },
+        loadChildren: () =>
+          import('./features/intelligent-reports/intelligent-reports.routes').then(
+            (m) => m.INTELLIGENT_REPORTS_ROUTES,
+          ),
+      },
+      {
         path: 'diagram',
         canActivate: [roleGuard],
         data: { roles: ['ADMIN', 'DESIGNER'] },
@@ -66,6 +75,15 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./features/process-management/process-management.routes').then(
             (m) => m.PROCESS_MANAGEMENT_ROUTES,
+          ),
+      },
+      {
+        path: 'document-management',
+        canActivate: [roleGuard],
+        data: { roles: ['ADMIN', 'WORKER', 'RECEP'] },
+        loadChildren: () =>
+          import('./features/document-management/document-management.routes').then(
+            (m) => m.DOCUMENT_MANAGEMENT_ROUTES,
           ),
       },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },

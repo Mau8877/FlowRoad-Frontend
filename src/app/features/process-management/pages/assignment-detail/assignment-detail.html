@@ -318,6 +318,247 @@
         }
 
         <section class="mt-8 border-t border-fr-taupe/25 pt-6">
+          <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h3 class="text-lg font-extrabold text-fr-black">
+                Documentos requeridos para esta tarea
+              </h3>
+              <p class="mt-1 text-sm text-slate-500">
+                Requisitos documentales vinculados al nodo actual.
+              </p>
+            </div>
+
+            @if (isLoadingDocuments()) {
+              <span class="w-fit rounded-full bg-fr-gold/15 px-3 py-1 text-xs font-extrabold text-fr-brown">
+                Cargando...
+              </span>
+            }
+          </div>
+
+          @if (documentSuccessMessage()) {
+            <div class="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+              {{ documentSuccessMessage() }}
+            </div>
+          }
+
+          @if (documentErrorMessage()) {
+            <div class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+              {{ documentErrorMessage() }}
+            </div>
+          } @else if (isLoadingDocuments()) {
+            <div class="rounded-2xl border border-dashed border-fr-taupe/45 bg-fr-black/5 px-6 py-8 text-center">
+              <p class="text-sm font-bold text-slate-600">Cargando documentos...</p>
+            </div>
+          } @else if (taskDocumentItems().length === 0) {
+            <div class="rounded-2xl border border-dashed border-fr-taupe/45 bg-fr-black/5 px-6 py-8 text-center">
+              <h4 class="text-base font-extrabold text-fr-black">Sin documentos para esta tarea</h4>
+              <p class="mt-2 text-sm text-slate-600">
+                Este nodo no tiene requisitos documentales visibles.
+              </p>
+            </div>
+          } @else {
+            <div class="grid grid-cols-1 gap-4">
+              @for (item of taskDocumentItems(); track item.requirement.id) {
+                <article class="min-w-0 rounded-2xl border border-fr-taupe/35 bg-fr-black/5 p-4">
+                  <div class="mb-4 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="min-w-0 max-w-full">
+                      <div class="flex flex-wrap items-center gap-2">
+                        <h4 class="min-w-0 max-w-full overflow-hidden break-words text-base font-extrabold text-fr-black">
+                          {{ item.requirement.name }}
+                        </h4>
+                        <span
+                          class="rounded-full px-3 py-1 text-xs font-extrabold"
+                          [class.bg-red-50]="item.requirement.required"
+                          [class.text-red-700]="item.requirement.required"
+                          [class.bg-slate-100]="!item.requirement.required"
+                          [class.text-slate-700]="!item.requirement.required"
+                        >
+                          {{ item.requirement.required ? 'Obligatorio' : 'Opcional' }}
+                        </span>
+                      </div>
+
+                      @if (item.requirement.description) {
+                        <p class="mt-2 text-sm text-slate-600">
+                          {{ item.requirement.description }}
+                        </p>
+                      }
+                    </div>
+
+                    <span
+                      class="w-fit rounded-full px-3 py-1 text-xs font-extrabold"
+                      [ngClass]="getDocumentStatusBadgeClass(item.status)"
+                    >
+                      {{ formatDocumentStatus(item.status) }}
+                    </span>
+                  </div>
+
+                  <div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div class="rounded-xl border border-fr-taupe/35 bg-white p-3">
+                      <p class="text-xs font-extrabold uppercase tracking-wide text-fr-gray">
+                        Tipos permitidos
+                      </p>
+                      <p class="mt-1 text-sm font-semibold text-slate-800">
+                        {{ formatAllowedDocumentTypes(item) }}
+                      </p>
+                    </div>
+
+                    <div class="rounded-xl border border-fr-taupe/35 bg-white p-3">
+                      <p class="text-xs font-extrabold uppercase tracking-wide text-fr-gray">
+                        Tamaño máximo
+                      </p>
+                      <p class="mt-1 text-sm font-semibold text-slate-800">
+                        {{ item.requirement.maxFileSizeMb }} MB
+                      </p>
+                    </div>
+                  </div>
+
+                  @if (item.currentFile) {
+                    <div class="mb-4 min-w-0 rounded-2xl border border-fr-taupe/35 bg-white p-4">
+                      <div class="mb-3 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div class="min-w-0 max-w-full flex-1">
+                          <p class="text-xs font-extrabold uppercase tracking-wide text-fr-gray">
+                            Archivo actual
+                          </p>
+                          <h5 class="mt-1 max-w-full overflow-hidden break-words text-sm font-extrabold leading-snug text-fr-black [overflow-wrap:anywhere]">
+                            {{ item.currentFile.originalFileName }}
+                          </h5>
+                        </div>
+
+                        <span class="max-w-full shrink-0 self-start rounded-full bg-fr-gold/20 px-3 py-1 text-xs font-extrabold text-fr-brown">
+                          v{{ item.currentFile.version }}
+                        </span>
+                      </div>
+
+                      <dl class="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                        <div>
+                          <dt class="text-xs font-extrabold uppercase tracking-wide text-slate-500">
+                            Extensión
+                          </dt>
+                          <dd class="mt-1 font-semibold text-slate-800">
+                            {{ item.currentFile.fileExtension }}
+                          </dd>
+                        </div>
+
+                        <div>
+                          <dt class="text-xs font-extrabold uppercase tracking-wide text-slate-500">
+                            Tamaño
+                          </dt>
+                          <dd class="mt-1 font-semibold text-slate-800">
+                            {{ formatDocumentFileSize(item.currentFile.fileSizeBytes) }}
+                          </dd>
+                        </div>
+
+                        <div>
+                          <dt class="text-xs font-extrabold uppercase tracking-wide text-slate-500">
+                            Subido por
+                          </dt>
+                          <dd class="mt-1 font-semibold text-slate-800">
+                            {{ item.currentFile.uploadedByName || 'Sin usuario' }}
+                          </dd>
+                        </div>
+
+                        <div>
+                          <dt class="text-xs font-extrabold uppercase tracking-wide text-slate-500">
+                            Fecha
+                          </dt>
+                          <dd class="mt-1 font-semibold text-slate-800">
+                            {{ formatDate(item.currentFile.createdAt) }}
+                          </dd>
+                        </div>
+                      </dl>
+                    </div>
+                  } @else {
+                    <div class="mb-4 rounded-2xl border border-dashed border-fr-taupe/45 bg-white px-4 py-6 text-center">
+                      <p class="text-sm font-bold text-slate-500">
+                        Todavía no hay archivo subido.
+                      </p>
+                    </div>
+                  }
+
+                  @if (getDocumentItemError(item)) {
+                    <div class="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                      {{ getDocumentItemError(item) }}
+                    </div>
+                  }
+
+                  <div class="flex min-w-0 max-w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                    @if (item.canRead && item.currentFile) {
+                      <button
+                        type="button"
+                        class="max-w-full rounded-xl border border-fr-taupe/45 bg-white px-4 py-2 text-sm font-bold text-fr-black transition hover:bg-fr-black/5 disabled:cursor-not-allowed disabled:opacity-50"
+                        [disabled]="areTaskDocumentActionsDisabled(item)"
+                        (click)="downloadTaskDocument(item)"
+                      >
+                        {{ isDocumentItemLoading(item, 'download') ? 'Preparando...' : 'Descargar' }}
+                      </button>
+                    }
+
+                    @if (canOpenTaskDocumentCollaboratively(item)) {
+                      <button
+                        type="button"
+                        class="max-w-full rounded-xl border border-fr-gold/55 bg-fr-gold/15 px-4 py-2 text-sm font-bold text-fr-brown transition hover:bg-fr-gold/25 disabled:cursor-not-allowed disabled:opacity-50"
+                        [disabled]="areTaskDocumentActionsDisabled(item)"
+                        (click)="openTaskDocumentCollaborativeEditor(item)"
+                      >
+                        {{ getTaskDocumentCollaborationButtonLabel(item) }}
+                      </button>
+                    }
+
+                    @if (item.canUpload && !item.currentFile) {
+                      <input
+                        #uploadTaskDocumentInput
+                        type="file"
+                        class="hidden"
+                        [accept]="getDocumentAcceptAttribute(item)"
+                        (change)="uploadTaskDocument(item, $event)"
+                      />
+                      <button
+                        type="button"
+                        class="max-w-full rounded-xl bg-fr-brown px-4 py-2 text-sm font-bold text-white transition hover:bg-fr-black disabled:cursor-not-allowed disabled:opacity-50"
+                        [disabled]="areTaskDocumentActionsDisabled(item)"
+                        (click)="uploadTaskDocumentInput.click()"
+                      >
+                        {{ isDocumentItemLoading(item, 'upload') ? 'Subiendo...' : 'Subir' }}
+                      </button>
+                    } @else if (!item.currentFile) {
+                      <span class="text-sm font-semibold text-slate-500">
+                        Sin permiso para subir
+                      </span>
+                    }
+
+                    @if (item.canEdit && item.currentFile) {
+                      <input
+                        #replaceTaskDocumentInput
+                        type="file"
+                        class="hidden"
+                        [accept]="getDocumentAcceptAttribute(item)"
+                        (change)="replaceTaskDocument(item, $event)"
+                      />
+                      <button
+                        type="button"
+                        class="max-w-full rounded-xl bg-fr-black px-4 py-2 text-sm font-bold text-white transition hover:bg-fr-brown disabled:cursor-not-allowed disabled:opacity-50"
+                        [disabled]="areTaskDocumentActionsDisabled(item)"
+                        (click)="replaceTaskDocumentInput.click()"
+                      >
+                        {{
+                          isDocumentItemLoading(item, 'replace')
+                            ? 'Reemplazando...'
+                            : 'Reemplazar'
+                        }}
+                      </button>
+                    } @else if (item.currentFile) {
+                      <span class="text-sm font-semibold text-slate-500">
+                        Sin permiso para reemplazar
+                      </span>
+                    }
+                  </div>
+                </article>
+              }
+            </div>
+          }
+        </section>
+
+        <section class="mt-8 border-t border-fr-taupe/25 pt-6">
           <label class="block">
             <span class="mb-2 block text-sm font-bold text-fr-black">Comentario</span>
 
