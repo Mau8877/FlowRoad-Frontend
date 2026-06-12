@@ -31,6 +31,12 @@ export const MENU_ITEMS: NavItem[] = [
     ],
   },
   { label: 'Gestión Usuarios', icon: 'users', route: '/users', roles: ['ADMIN'] },
+  {
+    label: 'Reportes Inteligentes',
+    icon: 'bar-chart-3',
+    route: '/reports/intelligent',
+    roles: ['ADMIN'],
+  },
 
   {
     label: 'Diagrama De Actividades',

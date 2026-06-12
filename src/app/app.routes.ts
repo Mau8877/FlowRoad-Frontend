@@ -51,6 +51,15 @@ export const routes: Routes = [
         loadChildren: () => import('./features/users/users.routes').then((m) => m.USER_ROUTES),
       },
       {
+        path: 'reports/intelligent',
+        canActivate: [roleGuard],
+        data: { roles: ['ADMIN'] },
+        loadChildren: () =>
+          import('./features/intelligent-reports/intelligent-reports.routes').then(
+            (m) => m.INTELLIGENT_REPORTS_ROUTES,
+          ),
+      },
+      {
         path: 'diagram',
         canActivate: [roleGuard],
         data: { roles: ['ADMIN', 'DESIGNER'] },

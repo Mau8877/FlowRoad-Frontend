@@ -1,0 +1,180 @@
+<section class="reports-page">
+  <header class="page-header">
+    <div>
+      <h1>Reportes Inteligentes</h1>
+      <p class="subtitle">Genera reportes administrativos desde lenguaje natural y expórtalos.</p>
+    </div>
+    <button
+      *ngIf="hasSpeechSupport()"
+      type="button"
+      class="ghost-button"
+      [disabled]="isListening()"
+      (click)="startDictation()"
+    >
+      {{ isListening() ? 'Escuchando...' : 'Dictar prompt' }}
+    </button>
+  </header>
+
+  <section class="examples-panel">
+    <div class="examples-header">
+      <div>
+        <p class="eyebrow">Guía rápida</p>
+        <h2>Reportes que puedes pedir</h2>
+      </div>
+      <p class="subtitle">
+        Toca un ejemplo para llevarlo al prompt. No se genera hasta que confirmes.
+      </p>
+    </div>
+
+    <div class="category-grid">
+      <article class="category-card" *ngFor="let category of promptCategories">
+        <h3>{{ category.title }}</h3>
+        <div class="example-list">
+          <button
+            type="button"
+            class="example-chip"
+            *ngFor="let example of category.examples"
+            (click)="useSuggestion(example)"
+          >
+            {{ example }}
+          </button>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <div class="prompt-panel">
+    <label for="reportPrompt">Prompt del reporte</label>
+    <textarea
+      #promptInput
+      id="reportPrompt"
+      [ngModel]="prompt()"
+      (ngModelChange)="prompt.set($event)"
+      rows="4"
+      placeholder="Trámites creados en los últimos 7 días"
+    ></textarea>
+
+    <div class="actions">
+      <button type="button" class="primary-button" [disabled]="isLoading()" (click)="generate()">
+        {{ isLoading() ? 'Generando...' : 'Generar reporte' }}
+      </button>
+      <span class="error" *ngIf="errorMessage()">{{ errorMessage() }}</span>
+    </div>
+  </div>
+
+  <section class="report-preview" *ngIf="report() as currentReport">
+    <div class="report-toolbar">
+      <div>
+        <h2>{{ currentReport.title }}</h2>
+        <p>{{ currentReport.summary }}</p>
+      </div>
+      <div class="export-actions">
+        <button type="button" (click)="export('HTML')" [disabled]="!!isExporting()">
+          {{ isExporting() === 'HTML' ? 'Exportando...' : 'Exportar HTML' }}
+        </button>
+        <button type="button" (click)="export('PDF')" [disabled]="!!isExporting()">
+          {{ isExporting() === 'PDF' ? 'Exportando...' : 'Exportar PDF' }}
+        </button>
+        <button type="button" (click)="export('EXCEL')" [disabled]="!!isExporting()">
+          {{ isExporting() === 'EXCEL' ? 'Exportando...' : 'Exportar Excel' }}
+        </button>
+      </div>
+    </div>
+
+    <dl class="report-facts">
+      <div>
+        <dt>Tipo de reporte</dt>
+        <dd>{{ currentReport.reportIntent || 'UNKNOWN' }}</dd>
+      </div>
+      <div>
+        <dt>Rango de fechas</dt>
+        <dd>{{ currentReport.dateRangeLabel || 'Todo el historial' }}</dd>
+      </div>
+      <div>
+        <dt>Fuente de datos</dt>
+        <dd>{{ currentReport.dataSource || 'Datos operativos' }}</dd>
+      </div>
+      <div>
+        <dt>Visualización</dt>
+        <dd>{{ chartLabel(currentReport.chartType) }}</dd>
+      </div>
+      <div *ngIf="currentReport.generatedAt">
+        <dt>Generado</dt>
+        <dd>{{ formatDate(currentReport.generatedAt) }}</dd>
+      </div>
+      <div *ngIf="currentReport.prompt">
+        <dt>Prompt original</dt>
+        <dd>{{ currentReport.prompt }}</dd>
+      </div>
+    </dl>
+
+    <div class="warnings" *ngIf="currentReport.warnings.length > 0">
+      <p *ngFor="let warning of currentReport.warnings">{{ warning }}</p>
+    </div>
+
+    <div class="chart" *ngIf="chartRows().length > 0">
+      <div class="bar-row" *ngFor="let row of chartRows()">
+        <span>{{ row.label }}</span>
+        <div class="bar-track">
+          <div class="bar-fill" [style.width]="row.width"></div>
+        </div>
+        <strong>{{ row.value }}</strong>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th *ngFor="let column of currentReport.columns">{{ column }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngIf="currentReport.rows.length === 0">
+            <td [attr.colspan]="currentReport.columns.length">
+              No se encontraron datos para este reporte.
+            </td>
+          </tr>
+          <tr *ngFor="let row of currentReport.rows">
+            <td *ngFor="let column of currentReport.columns">{{ row[column] ?? '' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <aside class="history-panel">
+    <div class="history-header">
+      <div>
+        <h2>Historial de reportes</h2>
+        <p class="muted" *ngIf="historyPage() as pageInfo">
+          {{ pageInfo.totalElements }} reporte{{ pageInfo.totalElements === 1 ? '' : 's' }}
+        </p>
+      </div>
+      <div class="history-pagination" *ngIf="historyPage() as pageInfo">
+        <button type="button" [disabled]="pageInfo.first" (click)="previousHistoryPage()">
+          Anterior
+        </button>
+        <span>Página {{ pageInfo.page + 1 }} de {{ pageInfo.totalPages || 1 }}</span>
+        <button
+          type="button"
+          [disabled]="pageInfo.last || pageInfo.totalPages === 0"
+          (click)="nextHistoryPage()"
+        >
+          Siguiente
+        </button>
+      </div>
+    </div>
+    <p *ngIf="history().length === 0" class="muted">Aún no hay reportes generados.</p>
+    <button
+      type="button"
+      class="history-item"
+      *ngFor="let item of history()"
+      (click)="useSuggestion(item.prompt)"
+    >
+      <strong>{{ item.title }}</strong>
+      <span>{{ item.rowCount }} filas - {{ formatDate(item.generatedAt) }}</span>
+      <small>{{ item.prompt }}</small>
+    </button>
+  </aside>
+</section>

@@ -104,7 +104,7 @@
           </thead>
 
           <tbody class="divide-y divide-fr-taupe/20 bg-white">
-            @for (expedient of filteredExpedients(); track expedient.processInstanceId) {
+            @for (expedient of paginatedExpedients(); track expedient.processInstanceId) {
               <tr class="transition hover:bg-fr-black/5">
                 <td class="px-4 py-3">
                   <div class="font-bold text-fr-black">{{ expedient.processCode }}</div>
@@ -168,6 +168,35 @@
             }
           </tbody>
         </table>
+      </div>
+
+      <div
+        class="mt-4 flex flex-col gap-3 rounded-2xl border border-fr-taupe/35 bg-fr-black/5 px-4 py-3 text-sm font-semibold text-slate-600 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <span>
+          Mostrando {{ pageStart() }}-{{ pageEnd() }} de {{ filteredExpedients().length }} expediente{{
+            filteredExpedients().length === 1 ? '' : 's'
+          }}
+        </span>
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            class="rounded-xl border border-fr-taupe/45 bg-white px-4 py-2 text-sm font-bold text-fr-black transition hover:bg-fr-black/5 disabled:cursor-not-allowed disabled:opacity-50"
+            [disabled]="currentPage() === 0"
+            (click)="previousPage()"
+          >
+            Anterior
+          </button>
+          <span class="px-2 text-slate-500">Página {{ currentPage() + 1 }} de {{ totalPages() }}</span>
+          <button
+            type="button"
+            class="rounded-xl border border-fr-taupe/45 bg-white px-4 py-2 text-sm font-bold text-fr-black transition hover:bg-fr-black/5 disabled:cursor-not-allowed disabled:opacity-50"
+            [disabled]="currentPage() >= totalPages() - 1"
+            (click)="nextPage()"
+          >
+            Siguiente
+          </button>
+        </div>
       </div>
     }
   </section>

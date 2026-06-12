@@ -26,6 +26,8 @@ export class DocumentExpedientList implements OnInit {
   public isLoading = signal(false);
   public errorMessage = signal<string | null>(null);
   public filterText = signal('');
+  public currentPage = signal(0);
+  public readonly pageSize = 8;
 
   public filteredExpedients = computed(() => {
     const term = this.normalize(this.filterText());
@@ -49,6 +51,27 @@ export class DocumentExpedientList implements OnInit {
       return this.normalize(searchable).includes(term);
     });
   });
+
+  public totalPages = computed(() =>
+    Math.max(1, Math.ceil(this.filteredExpedients().length / this.pageSize)),
+  );
+
+  public paginatedExpedients = computed(() => {
+    const page = Math.min(this.currentPage(), this.totalPages() - 1);
+    const start = page * this.pageSize;
+    return this.filteredExpedients().slice(start, start + this.pageSize);
+  });
+
+  public pageStart = computed(() => {
+    if (this.filteredExpedients().length === 0) {
+      return 0;
+    }
+    return this.currentPage() * this.pageSize + 1;
+  });
+
+  public pageEnd = computed(() =>
+    Math.min((this.currentPage() + 1) * this.pageSize, this.filteredExpedients().length),
+  );
 
   public totalReadableRequirements = computed(() =>
     this.filteredExpedients().reduce(
@@ -83,7 +106,10 @@ export class DocumentExpedientList implements OnInit {
       .getExpedients()
       .pipe(finalize(() => this.isLoading.set(false)))
       .subscribe({
-        next: (expedients) => this.expedients.set(expedients),
+        next: (expedients) => {
+          this.currentPage.set(0);
+          this.expedients.set(expedients);
+        },
         error: (error) => {
           console.error('[DOCUMENT-MANAGEMENT][LOAD_EXPEDIENTS_ERROR]', error);
           this.errorMessage.set('No se pudieron cargar los expedientes documentales.');
@@ -93,10 +119,20 @@ export class DocumentExpedientList implements OnInit {
 
   setFilter(value: string): void {
     this.filterText.set(value);
+    this.currentPage.set(0);
   }
 
   clearFilter(): void {
     this.filterText.set('');
+    this.currentPage.set(0);
+  }
+
+  previousPage(): void {
+    this.currentPage.update((page) => Math.max(0, page - 1));
+  }
+
+  nextPage(): void {
+    this.currentPage.update((page) => Math.min(this.totalPages() - 1, page + 1));
   }
 
   formatDate(value?: string | null): string {

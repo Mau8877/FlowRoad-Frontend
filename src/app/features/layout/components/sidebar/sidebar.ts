@@ -9,6 +9,7 @@ import { filter } from 'rxjs';
 
 // Icons
 import {
+  BarChart3,
   Briefcase,
   ChevronDown,
   FileText,
@@ -36,6 +37,7 @@ import {
       multi: true,
       useValue: new LucideIconProvider({
         House,
+        BarChart3,
         Users,
         Briefcase,
         FileText,
